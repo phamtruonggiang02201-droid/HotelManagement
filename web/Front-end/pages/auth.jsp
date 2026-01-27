@@ -76,6 +76,10 @@
                             <input type="email" placeholder="example@luxestay.com" required class="w-full bg-white border border-slate-200 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-100 font-medium">
                         </div>
                         <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Số điện thoại</label>
+                            <input type="phone" placeholder="example@luxestay.com" required class="w-full bg-white border border-slate-200 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-100 font-medium">
+                        </div>
+                        <div class="space-y-2">
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
                             <input type="password" placeholder="••••••••" required class="w-full bg-white border border-slate-200 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-100 font-medium">
                         </div>
