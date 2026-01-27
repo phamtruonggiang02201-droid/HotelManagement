@@ -5,7 +5,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>LuxeStay - Quản trị & Đặt phòng Khách sạn</title>
+        <title>LuxeStay - Khách sạn</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
         <script src="https://unpkg.com/lucide@latest"></script>
@@ -433,7 +433,7 @@
                                     </div>
                                     <h3 class="text-xl font-bold text-slate-900 mb-2">Đăng nhập để gửi đánh giá</h3>
                                     <p class="text-slate-500 mb-8 font-medium">Chúng tôi rất mong nhận được những góp ý chân thành từ bạn.</p>
-                                    <a href="auth.html" class="inline-block bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20">Đăng nhập ngay</a>
+                                    <a href="auth.jsp" class="inline-block bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20">Đăng nhập ngay</a>
                                 </div>
 
                                 <!-- List -->
@@ -454,7 +454,7 @@
                         </section>
 
                         <!-- Section: Booking History -->
-                        <section id="booking-history-section" class="auth-only">
+                        <section id="booking-history-section" >
                             <div class="mb-10"><h1 class="text-3xl font-black text-slate-900">Lịch sử booking</h1></div>
                             <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm">
                                 <table class="w-full text-left">
@@ -465,7 +465,7 @@
                         </section>
 
                         <!-- Section: Schedule -->
-                        <section id="schedule-section" class="auth-only">
+                        <section id="schedule-section" >
                             <div class="flex flex-col lg:flex-row justify-between items-center mb-12 gap-6">
                                 <div>
                                     <h1 class="text-3xl font-black text-slate-900">Lịch trình công tác</h1>
@@ -553,7 +553,7 @@
                         </section>
 
                         <!-- Section: Stats -->
-                        <section id="stats-section" class="auth-only">
+                        <section id="stats-section" >
                             <div class="mb-12"><h1 class="text-3xl font-black text-slate-900">Thống kê Doanh thu</h1></div>
                             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div class="lg:col-span-2 bg-white p-12 rounded-[56px] border border-slate-100 shadow-sm">
@@ -581,7 +581,7 @@
                         </section>
 
                         <!-- Section: Manage -->
-                        <section id="manage-section" class="auth-only">
+                        <section id="manage-section" >
                             <div class="mb-12"><h1 class="text-3xl font-black text-slate-900">Cấu hình Hệ thống</h1></div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                                 <div class="bg-white p-12 rounded-[56px] border border-slate-100 shadow-sm card-hover">
@@ -604,7 +604,7 @@
                         </section>
 
                         <!-- Section: Account -->
-                        <section id="account-section" class="auth-only">
+                        <section id="account-section" >
                             <div class="max-w-3xl mx-auto">
                                 <div class="text-center mb-12">
                                     <div class="w-32 h-32 bg-indigo-600 rounded-[40px] flex items-center justify-center text-white text-4xl font-black mx-auto mb-6 shadow-2xl shadow-indigo-600/30 transform -rotate-6">VA</div>
