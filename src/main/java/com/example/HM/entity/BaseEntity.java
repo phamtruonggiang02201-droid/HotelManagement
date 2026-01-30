@@ -13,14 +13,17 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import java.util.UUID;
+
 @MappedSuperclass
 @Getter
 @Setter
 public abstract class BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "BINARY(16)")
+    private UUID id;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
