@@ -18,7 +18,7 @@ public class Account extends BaseEntity {
     @Column(name = "password", length = 255, nullable = false)
     private String password;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
@@ -60,4 +60,13 @@ public class Account extends BaseEntity {
 
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
+
+    @Column(name = "verification_token", length = 100)
+    private String verificationToken;
+
+    @Column(name = "verification_token_expiry")
+    private LocalDateTime verificationTokenExpiry;
+
+    @Column(name = "email_verified")
+    private Boolean emailVerified = false;
 }

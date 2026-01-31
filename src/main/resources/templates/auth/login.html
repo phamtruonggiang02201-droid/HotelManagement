@@ -1,0 +1,102 @@
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/landing_layout}">
+
+<head>
+    <title>Đăng nhập - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="min-h-screen flex items-center justify-center bg-slate-50">
+        <div
+            class="max-w-[1000px] w-full mx-10 bg-white rounded-[48px] overflow-hidden shadow-2xl flex flex-col md:flex-row h-[700px]">
+            <!-- Left Side: Image -->
+            <div class="hidden md:block w-1/2 relative">
+                <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=1200"
+                    class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-indigo-600/20 backdrop-blur-[2px]"></div>
+                <div class="absolute bottom-16 left-12 right-12 text-white">
+                    <h2 class="text-4xl font-black mb-4 leading-tight">Chào mừng bạn quay lại LuxeStay</h2>
+                    <p class="text-white/80 font-medium">Đăng nhập để nhận những ưu đãi dành riêng cho thành viên và
+                        quản lý kỳ nghỉ của bạn.</p>
+                </div>
+            </div>
+
+            <!-- Right Side: Form -->
+            <div class="w-full md:w-1/2 p-12 md:p-16 flex flex-col justify-center">
+                <div class="mb-10">
+                    <h2 class="text-4xl font-black text-slate-900 mb-2">Đăng nhập</h2>
+                    <p class="text-slate-500 text-sm font-medium">Nhập thông tin tài khoản của bạn</p>
+                </div>
+
+                <!-- Flash messages from RedirectAttributes -->
+                <div th:if="${message}"
+                    class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-3xl mb-8 text-xs font-bold uppercase tracking-wider flex items-center gap-3">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                    <span th:text="${message}">Thông báo thành công</span>
+                </div>
+
+                <form id="loginForm" th:action="@{/perform_login}" method="post" class="space-y-6">
+                    <div>
+                        <label
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
+                        <input type="text" name="username" id="username" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                            <a th:href="@{/forgot-password}"
+                                class="text-[10px] font-bold text-indigo-400 hover:text-indigo-600 uppercase tracking-widest transition-colors">Quên?</a>
+                        </div>
+                        <input type="password" name="password" id="password" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-indigo-600 text-white py-5 rounded-[28px] font-black shadow-xl shadow-indigo-600/20 hover:bg-slate-900 hover:scale-[1.02] transition-all duration-300">
+                        Tiếp tục
+                    </button>
+                </form>
+
+                <div class="mt-12 pt-8 border-t border-slate-50 text-center">
+                    <p class="text-sm font-medium text-slate-500">
+                        Chưa có tài khoản? <a th:href="@{/register}" class="text-indigo-600 font-black">Tham gia
+                            ngay</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <script th:inline="javascript">
+            lucide.createIcons();
+
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        toastService.success(result.message);
+                        setTimeout(() => {
+                            window.location.href = result.targetUrl;
+                        }, 1000);
+                    } else {
+                        toastService.error(result.message);
+                    }
+                } catch (error) {
+                    toastService.error('Có lỗi xảy ra trong quá trình đăng nhập!');
+                }
+            });
+        </script>
+    </div>
+</body>
+
+</html>
