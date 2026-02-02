@@ -20,5 +20,6 @@ public class AccountDTO {
     private String idNumber;
     private String idType;
     private String nationality;
+    private Boolean emailVerified;
     private LocalDateTime createdAt;
 }
