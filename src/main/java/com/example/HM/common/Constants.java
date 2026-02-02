@@ -12,4 +12,6 @@ public class Constants {
     public static final String REGEX_EMAIL = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$";
     public static final String REGEX_FULLNAME = "^[\\p{L} ]{2,50}$";
     public static final String REGEX_PHONE = "^[0-9]{10,11}$";
+    public static final String REGEX_ID_NUMBER = "^[a-zA-Z0-9]{8,20}$";
+    public static final String REGEX_NATIONALITY = "^[\\p{L} ]{2,30}$";
 }

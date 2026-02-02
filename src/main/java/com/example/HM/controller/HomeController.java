@@ -1,4 +1,6 @@
 package com.example.HM.controller;
+ 
+import com.example.HM.security.SecurityUtils;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,8 +22,7 @@ public class HomeController {
 
     @GetMapping({"/login", "/Login"})
     public String login() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+        if (SecurityUtils.isAuthenticated()) {
             return "redirect:/dashboard";
         }
         return "auth/login";
@@ -29,8 +30,7 @@ public class HomeController {
 
     @GetMapping({"/register", "/Register"})
     public String register() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+        if (SecurityUtils.isAuthenticated()) {
             return "redirect:/dashboard";
         }
         return "auth/register";
