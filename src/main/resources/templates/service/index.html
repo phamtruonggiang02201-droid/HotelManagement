@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Quản lý Dịch vụ - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <section id="manage-services-section" class="active">
+            <div class="flex justify-between items-center mb-12">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900">Quản lý Dịch vụ</h1>
+                    <p class="text-slate-500 font-medium">Quản lý danh mục và bảng giá dịch vụ bổ sung.</p>
+                </div>
+                <button onclick="openServiceModal()"
+                    class="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-rose-600/20 hover:scale-105 transition-all">
+                    + Thêm dịch vụ mới
+                </button>
+            </div>
+
+            <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead
+                        class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <tr>
+                            <th class="px-8 py-6">Tên Dịch vụ</th>
+                            <th class="px-8 py-6">Danh mục</th>
+                            <th class="px-8 py-6">Giá (VNĐ)</th>
+                            <th class="px-8 py-6 text-right">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="service-manage-tbody" class="divide-y divide-slate-50 font-medium text-slate-600">
+                        <!-- Data will be loaded via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Service Manage Modal -->
+        <div id="service-manage-modal" class="modal">
+            <div class="bg-white w-full max-xl rounded-[56px] p-12 relative shadow-2xl">
+                <button onclick="toggleModal('service-manage-modal', false)"
+                    class="absolute top-8 right-8 text-slate-400"><i data-lucide="x" class="w-8 h-8"></i></button>
+                <h2 id="service-modal-title" class="text-3xl font-black mb-8 text-slate-900">Thêm dịch vụ mới</h2>
+                <form id="service-form" class="space-y-6">
+                    <input type="hidden" id="service-id">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Tên dịch vụ</label>
+                        <input type="text" id="service-name-input" required placeholder="Tên dịch vụ..."
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Danh mục</label>
+                        <select id="service-category-id" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-rose-500 appearance-none">
+                            <!-- Loaded via AJAX -->
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Giá dịch vụ</label>
+                        <input type="number" id="service-price-input" required placeholder="VNĐ"
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-rose-600 text-white py-6 rounded-[28px] font-black shadow-xl shadow-rose-600/20 mt-4">
+                        Lưu dịch vụ
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script th:src="@{/js/management.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                loadServicesForManage();
+                loadServiceCategories();
+            });
+        </script>
+    </div>
+</body>
+
+</html>
