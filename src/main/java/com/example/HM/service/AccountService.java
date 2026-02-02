@@ -6,7 +6,11 @@ import com.example.HM.dto.RegisterRequest;
 import com.example.HM.dto.UpdateProfileRequest;
 import com.example.HM.entity.Account;
 
+import java.util.List;
+
 public interface AccountService {
+
+    List<AccountDTO> getAllAccounts();
     AccountDTO register(RegisterRequest request);
     boolean verifyEmail(String token);
     AccountDTO findByUsername(String username);
