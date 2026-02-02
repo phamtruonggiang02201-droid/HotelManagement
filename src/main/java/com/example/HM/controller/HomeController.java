@@ -10,13 +10,11 @@ public class HomeController {
 
     @GetMapping("/")
     public String index() {
-        // Returns the view name "index" (src/main/resources/templates/index.html) - NOW LANDING PAGE
         return "index";
     }
 
     @GetMapping("/dashboard")
     public String dashboard() {
-        // Returns the dashboard view (src/main/resources/templates/dashboard.html)
         return "dashboard";
     }
 

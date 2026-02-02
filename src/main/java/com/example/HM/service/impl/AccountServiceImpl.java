@@ -1,6 +1,7 @@
 package com.example.HM.service.impl;
 
 import com.example.HM.common.Constants;
+import com.example.HM.dto.AccountDTO;
 import com.example.HM.dto.RegisterRequest;
 import com.example.HM.entity.Account;
 import com.example.HM.entity.Role;
@@ -10,6 +11,7 @@ import com.example.HM.service.AccountService;
 import com.example.HM.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +35,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public Account register(RegisterRequest request) {
+    public AccountDTO register(RegisterRequest request) {
         // 1. Validation
         validateRequest(request);
 
@@ -83,7 +85,7 @@ public class AccountServiceImpl implements AccountService {
                 verifyUrl
         );
 
-        return saved;
+        return convertToDTO(saved);
     }
 
     @Override
@@ -112,15 +114,28 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public Account findByUsername(String username) {
+    public AccountDTO findByUsername(String username) {
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Tài khoản không tồn tại!"));
+        return convertToDTO(account);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Account findAccountByUsername(String username) {
+        return findAccountEntity(username);
+    }
+
+    // Helper method to find entity internally
+    private Account findAccountEntity(String username) {
         return accountRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+                .orElseThrow(() -> new UsernameNotFoundException("Tài khoản không tồn tại!"));
     }
 
     @Override
     @Transactional
     public void updateProfile(String username, String fullName) {
-        Account account = findByUsername(username);
+        Account account = findAccountEntity(username);
         
         String trimmedFullName = fullName.trim();
         if (!Pattern.matches(Constants.REGEX_FULLNAME, trimmedFullName)) {
@@ -142,7 +157,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public void changePassword(String username, String oldPassword, String newPassword) {
-        Account account = findByUsername(username);
+        Account account = findAccountEntity(username);
         
         if (!passwordEncoder.matches(oldPassword, account.getPassword())) {
             throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
@@ -160,7 +175,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void processForgotPassword(String email) {
         Account account = accountRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
+                .orElseThrow(() -> new UsernameNotFoundException("Email không tồn tại trong hệ thống!"));
 
         String token = UUID.randomUUID().toString();
         account.setResetToken(token);
@@ -185,7 +200,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void resetPassword(String token, String newPassword) {
         Account account = accountRepository.findByResetToken(token)
-                .orElseThrow(() -> new RuntimeException("Mã xác nhận không hợp lệ hoặc đã hết hạn!"));
+                .orElseThrow(() -> new UsernameNotFoundException("Mã xác nhận không hợp lệ hoặc đã hết hạn!"));
 
         if (account.getResetTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
             throw new RuntimeException("Mã xác nhận đã hết hạn!");
@@ -217,5 +232,23 @@ public class AccountServiceImpl implements AccountService {
         if (request.getConfirmPassword() == null || !request.getConfirmPassword().equals(request.getPassword())) {
             throw new RuntimeException("Mật khẩu xác nhận không khớp!");
         }
+    }
+
+    private AccountDTO convertToDTO(Account account) {
+        if (account == null) return null;
+        return AccountDTO.builder()
+                .id(account.getId())
+                .username(account.getUsername())
+                .email(account.getEmail())
+                .firstName(account.getFirstName())
+                .lastName(account.getLastName())
+                .fullName((account.getFirstName() != null ? account.getFirstName() : "") + " " + 
+                         (account.getLastName() != null ? account.getLastName() : ""))
+                .avatar(account.getAvatar())
+                .roleName(account.getRole() != null ? account.getRole().getRoleName() : null)
+                .roleDescription(account.getRole() != null ? account.getRole().getDescription() : null)
+                .status(account.getStatus())
+                .createdAt(account.getCreatedAt())
+                .build();
     }
 }

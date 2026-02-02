@@ -52,9 +52,9 @@ public class ProfileController {
 
     @PostMapping("/api/profile/change-password")
     @ResponseBody
-    public ResponseEntity<?> changePassword(@RequestParam String oldPassword,
-                                            @RequestParam String newPassword,
-                                            Authentication authentication) {
+    public ResponseEntity<?> changePassword(@RequestParam String oldPassword, 
+                                          @RequestParam String newPassword, 
+                                          Authentication authentication) {
         try {
             accountService.changePassword(authentication.getName(), oldPassword, newPassword);
             return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công!"));
@@ -88,34 +88,34 @@ public class ProfileController {
             // We fetch the entity internally in the service, but here we need it for CustomUserDetails password
             // Since we can't expose password in DTO, we might need a separate call or handle it in service
             // For now, let's just return the DTO and fix the bug by NOT passing nulls.
-
-            // NOTE: To update the session, we still need the password.
+            
+            // NOTE: To update the session, we still need the password. 
             // I will fetch the entity via the service JUST for the session update.
             Account accountEntity = accountService.findAccountByUsername(userDetails.getUsername());
-
+            
             CustomUserDetails updatedPrincipal = new CustomUserDetails(
-                    accountEntity.getUsername(),
-                    accountEntity.getPassword(),
-                    accountEntity.getEmailVerified() != null && accountEntity.getEmailVerified(),
-                    true,
-                    true,
-                    accountEntity.getStatus(),
-                    userDetails.getAuthorities(),
-                    updatedAccount.getFullName(),
-                    updatedAccount.getRoleName(),
-                    avatarUrl
+                accountEntity.getUsername(),
+                accountEntity.getPassword(),
+                accountEntity.getEmailVerified() != null && accountEntity.getEmailVerified(),
+                true,
+                true,
+                accountEntity.getStatus(),
+                userDetails.getAuthorities(),
+                updatedAccount.getFullName(),
+                updatedAccount.getRoleName(),
+                avatarUrl
             );
-
+            
             Authentication newAuth = new UsernamePasswordAuthenticationToken(
-                    updatedPrincipal,
-                    null, // Password can be null in Token after authentication
-                    updatedPrincipal.getAuthorities()
+                updatedPrincipal, 
+                null, // Password can be null in Token after authentication
+                updatedPrincipal.getAuthorities()
             );
             SecurityContextHolder.getContext().setAuthentication(newAuth);
 
             return ResponseEntity.ok(Map.of(
-                    "message", "Cập nhật ảnh đại diện thành công!",
-                    "account", updatedAccount
+                "message", "Cập nhật ảnh đại diện thành công!",
+                "account", updatedAccount
             ));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("message", "Có lỗi xảy ra: " + e.getMessage()));
