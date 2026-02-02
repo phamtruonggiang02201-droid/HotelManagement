@@ -17,5 +17,8 @@ public class AccountDTO {
     private String roleName;
     private String roleDescription;
     private Boolean status;
+    private String idNumber;
+    private String idType;
+    private String nationality;
     private LocalDateTime createdAt;
 }
