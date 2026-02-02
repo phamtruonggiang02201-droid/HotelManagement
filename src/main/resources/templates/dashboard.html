@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Tổng quan - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <!-- Section: Home -->
+        <section id="home-section" class="active">
+            <div class="mb-12">
+                <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">Chào mừng quay trở lại,
+                    <span th:text="${#authentication.name}">User</span>
+                </h1>
+                <p class="text-slate-500 mt-2 font-medium">Bắt đầu quản lý và trải nghiệm dịch vụ tại LuxeStay.</p>
+            </div>
+
+            <!-- Dashboard Overview Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+                <div class="bg-indigo-600 p-8 rounded-[40px] text-white shadow-xl shadow-indigo-600/20">
+                    <h4 class="text-indigo-100 text-xs font-black uppercase tracking-widest mb-2">Tổng doanh thu</h4>
+                    <p class="text-3xl font-black">420.5M</p>
+                </div>
+                <div class="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
+                    <h4 class="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Phòng đang trống</h4>
+                    <p class="text-3xl font-black text-slate-900">12</p>
+                </div>
+                <div class="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
+                    <h4 class="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Booking mới</h4>
+                    <p class="text-3xl font-black text-slate-900">08</p>
+                </div>
+                <div class="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
+                    <h4 class="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Yêu cầu hỗ trợ</h4>
+                    <p class="text-3xl font-black text-rose-600">02</p>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mb-12">
+                <h3 class="text-2xl font-black text-slate-900 mb-8">Thao tác nhanh</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <a th:href="@{/management/rooms}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
+                        class="bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm card-hover text-center">
+                        <div
+                            class="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <i data-lucide="bed" class="w-8 h-8"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900">Quản lý Phòng</h4>
+                    </a>
+                    <a th:href="@{/management/services}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
+                        class="bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm card-hover text-center">
+                        <div
+                            class="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <i data-lucide="package-plus" class="w-8 h-8"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900">Quản lý Dịch vụ</h4>
+                    </a>
+                    <a th:href="@{/profile}"
+                        class="bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm card-hover text-center">
+                        <div
+                            class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <i data-lucide="user-cog" class="w-8 h-8"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900">Cài đặt cá nhân</h4>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>
