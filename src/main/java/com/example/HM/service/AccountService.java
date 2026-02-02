@@ -4,6 +4,7 @@ import com.example.HM.dto.AccountDTO;
 import com.example.HM.dto.ChangePasswordRequest;
 import com.example.HM.dto.RegisterRequest;
 import com.example.HM.dto.UpdateProfileRequest;
+import com.example.HM.dto.AdminAccountRequest;
 import com.example.HM.entity.Account;
 
 import java.util.List;
@@ -11,6 +12,10 @@ import java.util.List;
 public interface AccountService {
 
     List<AccountDTO> getAllAccounts();
+    AccountDTO getAccountById(String id);
+    AccountDTO createAccountByAdmin(AdminAccountRequest request);
+    AccountDTO updateAccountByAdmin(String id, AdminAccountRequest request);
+    void deleteAccount(String id);
     AccountDTO register(RegisterRequest request);
     boolean verifyEmail(String token);
     AccountDTO findByUsername(String username);
