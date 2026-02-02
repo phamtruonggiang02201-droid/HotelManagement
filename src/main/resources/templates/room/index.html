@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Quản lý Phòng - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <section id="manage-rooms-section" class="active">
+            <div class="flex justify-between items-center mb-12">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900">Quản lý Phòng nghỉ</h1>
+                    <p class="text-slate-500 font-medium">Thiết lập và cập nhật thông tin phòng trong hệ thống.</p>
+                </div>
+                <button onclick="openRoomModal()"
+                    class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-600/20 hover:scale-105 transition-all">
+                    + Thêm phòng mới
+                </button>
+            </div>
+
+            <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead
+                        class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <tr>
+                            <th class="px-8 py-6">Tên Phòng</th>
+                            <th class="px-8 py-6">Loại Phòng</th>
+                            <th class="px-8 py-6">Giá (VNĐ)</th>
+                            <th class="px-8 py-6">Trạng thái</th>
+                            <th class="px-8 py-6 text-right">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="room-manage-tbody" class="divide-y divide-slate-50 font-medium text-slate-600">
+                        <!-- Data will be loaded via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Room Manage Modal -->
+        <div id="room-manage-modal" class="modal">
+            <div class="bg-white w-full max-w-2xl rounded-[56px] p-12 relative shadow-2xl">
+                <button onclick="toggleModal('room-manage-modal', false)"
+                    class="absolute top-8 right-8 text-slate-400"><i data-lucide="x" class="w-8 h-8"></i></button>
+                <h2 id="room-modal-title" class="text-3xl font-black mb-8 text-slate-900">Thêm phòng mới</h2>
+                <form id="room-form" class="space-y-6">
+                    <input type="hidden" id="room-id">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Tên phòng</label>
+                            <input type="text" id="room-name" required placeholder="Ví dụ: P.101"
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Loại phòng</label>
+                            <select id="room-type-id" required
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
+                                <!-- Loaded via AJAX -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Giá phòng</label>
+                            <input type="number" id="room-price" required placeholder="VNĐ"
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Trạng thái</label>
+                            <select id="room-status"
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
+                                <option value="AVAILABLE">Sẵn sàng</option>
+                                <option value="OCCUPIED">Đang ở</option>
+                                <option value="MAINTENANCE">Bảo trì</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-indigo-600 text-white py-6 rounded-[28px] font-black shadow-xl shadow-indigo-600/20 mt-4">
+                        Lưu thông tin
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script th:src="@{/js/management.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                loadRoomsForManage();
+                loadRoomTypes();
+            });
+        </script>
+    </div>
+</body>
+
+</html>
