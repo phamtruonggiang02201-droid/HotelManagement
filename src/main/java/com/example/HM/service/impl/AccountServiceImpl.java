@@ -1,10 +1,7 @@
 package com.example.HM.service.impl;
 
 import com.example.HM.common.Constants;
-import com.example.HM.dto.AccountDTO;
-import com.example.HM.dto.ChangePasswordRequest;
-import com.example.HM.dto.RegisterRequest;
-import com.example.HM.dto.UpdateProfileRequest;
+import com.example.HM.dto.*;
 import com.example.HM.entity.Account;
 import com.example.HM.entity.Role;
 import com.example.HM.repository.AccountRepository;
@@ -44,6 +41,101 @@ public class AccountServiceImpl implements AccountService {
         return accountRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountDTO getAccountById(String id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        return convertToDTO(account);
+    }
+
+    @Override
+    @Transactional
+    public AccountDTO createAccountByAdmin(AdminAccountRequest request) {
+        // Validate
+        if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new RuntimeException("Tên đăng nhập đã tồn tại!");
+        }
+        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email đã được sử dụng!");
+        }
+
+        Account account = new Account();
+        account.setUsername(request.getUsername());
+        account.setPassword(passwordEncoder.encode(request.getPassword()));
+        account.setEmail(request.getEmail());
+
+        // Split full name
+        String fullName = request.getFullName().trim();
+        int firstSpaceIndex = fullName.indexOf(" ");
+        if (firstSpaceIndex != -1) {
+            account.setFirstName(fullName.substring(0, firstSpaceIndex));
+            account.setLastName(fullName.substring(firstSpaceIndex + 1));
+        } else {
+            account.setFirstName(fullName);
+            account.setLastName("");
+        }
+
+        account.setEmailVerified(false);
+        account.setVerificationToken(UUID.randomUUID().toString());
+        account.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusDays(1)); // 24 hours for admin-created
+        account.setStatus(false); // Locked until email verified
+
+        // Set Role
+        Role role = roleRepository.findByRoleName(request.getRoleName())
+                .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
+        account.setRole(role);
+
+        Account saved = accountRepository.save(account);
+
+        // Send Verification Email
+        String verifyUrl = "http://localhost:8080/verify-email?token=" + saved.getVerificationToken();
+        emailService.sendRegistrationEmail(saved.getEmail(), saved.getUsername(), request.getFullName(), verifyUrl);
+
+        return convertToDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public AccountDTO updateAccountByAdmin(String id, AdminAccountRequest request) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+
+        // Update name
+        String fullName = request.getFullName().trim();
+        int firstSpaceIndex = fullName.indexOf(" ");
+        if (firstSpaceIndex != -1) {
+            account.setFirstName(fullName.substring(0, firstSpaceIndex));
+            account.setLastName(fullName.substring(firstSpaceIndex + 1));
+        } else {
+            account.setFirstName(fullName);
+            account.setLastName("");
+        }
+
+        // Update role if provided
+        if (request.getRoleName() != null && !request.getRoleName().isEmpty()) {
+            Role role = roleRepository.findByRoleName(request.getRoleName())
+                    .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
+            account.setRole(role);
+        }
+
+        // Update password if provided
+        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+            account.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        accountRepository.save(account);
+        return convertToDTO(account);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAccount(String id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        accountRepository.delete(account);
     }
 
     @Override
