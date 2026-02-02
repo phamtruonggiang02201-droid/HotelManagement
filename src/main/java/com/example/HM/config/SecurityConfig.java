@@ -29,8 +29,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Tắt CSRF để đơn giản hóa việc gọi AJAX (Fetch API)
             .authorizeHttpRequests(auth -> auth
                 // Public pages
-                .requestMatchers("/", "/login", "/Login", "/register", "/Register", "/verify-email").permitAll()
+                .requestMatchers("/", "/login", "/Login", "/register", "/Register", "/verify-email", 
+                                "/forgot-password", "/reset-password", "/api/forgot-password", "/api/reset-password").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                .requestMatchers("/api/payment/**").permitAll()
                 // Room & Service APIs
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/rooms/**", "/api/services/**").permitAll()
                 .requestMatchers("/api/rooms/**", "/api/services/**").hasAnyRole("ADMIN", "MANAGER")

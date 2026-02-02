@@ -38,11 +38,17 @@ public class HomeController {
 
     @GetMapping("/forgot-password")
     public String forgotPassword() {
+        if (SecurityUtils.isAuthenticated()) {
+            return "redirect:/dashboard";
+        }
         return "auth/forgot-password";
     }
 
     @GetMapping("/reset-password")
     public String resetPassword() {
+        if (SecurityUtils.isAuthenticated()) {
+            return "redirect:/dashboard";
+        }
         return "auth/reset-password";
     }
 }
