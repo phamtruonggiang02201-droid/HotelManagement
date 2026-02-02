@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.HM.security.SecurityUtils;
+
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -35,6 +37,14 @@ public class AccountServiceImpl implements AccountService {
 
     @Autowired
     private EmailService emailService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AccountDTO> getAllAccounts() {
+        return accountRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .collect(java.util.stream.Collectors.toList());
+    }
 
     @Override
     @Transactional
@@ -282,6 +292,7 @@ public class AccountServiceImpl implements AccountService {
                 .roleName(account.getRole() != null ? account.getRole().getRoleName() : null)
                 .roleDescription(account.getRole() != null ? account.getRole().getDescription() : null)
                 .status(account.getStatus())
+                .emailVerified(account.getEmailVerified())
                 .idNumber(account.getIdNumber())
                 .idType(account.getIdType())
                 .nationality(account.getNationality())

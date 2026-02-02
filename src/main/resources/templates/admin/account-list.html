@@ -38,13 +38,13 @@
                     <td class="px-6 py-4 font-medium" th:text="${acc.username}"></td>
 
                     <td class="px-6 py-4"
-                        th:text="${acc.firstName + ' ' + acc.lastName}"></td>
+                        th:text="${acc.fullName}"></td>
 
                     <td class="px-6 py-4" th:text="${acc.email}"></td>
 
                     <td class="px-6 py-4">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700"
-                              th:text="${acc.role.roleName}"></span>
+                              th:text="${acc.roleName}"></span>
                     </td>
 
                     <td class="px-6 py-4 text-center">
