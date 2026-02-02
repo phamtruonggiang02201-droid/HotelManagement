@@ -1,7 +1,10 @@
 package com.example.HM.service.impl;
 
 import com.example.HM.common.Constants;
+import com.example.HM.dto.AccountDTO;
+import com.example.HM.dto.ChangePasswordRequest;
 import com.example.HM.dto.RegisterRequest;
+import com.example.HM.dto.UpdateProfileRequest;
 import com.example.HM.entity.Account;
 import com.example.HM.entity.Role;
 import com.example.HM.repository.AccountRepository;
@@ -10,9 +13,11 @@ import com.example.HM.service.AccountService;
 import com.example.HM.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.HM.security.SecurityUtils;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -33,7 +38,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public Account register(RegisterRequest request) {
+    public AccountDTO register(RegisterRequest request) {
         // 1. Validation
         validateRequest(request);
 
@@ -83,7 +88,7 @@ public class AccountServiceImpl implements AccountService {
                 verifyUrl
         );
 
-        return saved;
+        return convertToDTO(saved);
     }
 
     @Override
@@ -112,47 +117,88 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public Account findByUsername(String username) {
+    public AccountDTO findByUsername(String username) {
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Tài khoản không tồn tại!"));
+        return convertToDTO(account);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Account findAccountByUsername(String username) {
+        return findAccountEntity(username);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountDTO getCurrentProfile() {
+        String username = SecurityUtils.getCurrentUsername();
+        if (username == null) return null;
+        return findByUsername(username);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Account getCurrentAccount() {
+        String username = SecurityUtils.getCurrentUsername();
+        if (username == null) return null;
+        return findAccountByUsername(username);
+    }
+
+    // Helper method to find entity internally
+    private Account findAccountEntity(String username) {
         return accountRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+                .orElseThrow(() -> new UsernameNotFoundException("Tài khoản không tồn tại!"));
     }
 
     @Override
     @Transactional
-    public void updateProfile(String username, String fullName) {
-        Account account = findByUsername(username);
+    public void updateProfile(UpdateProfileRequest request) {
+        String username = SecurityUtils.getCurrentUsername();
+        if (username == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này!");
         
-        String trimmedFullName = fullName.trim();
-        if (!Pattern.matches(Constants.REGEX_FULLNAME, trimmedFullName)) {
-            throw new RuntimeException("Họ tên chỉ được chứa chữ cái và khoảng trắng (2-50 ký tự)!");
-        }
+        Account account = findAccountEntity(username);
+        
+        if (request.getFullName() != null) {
+            String trimmedFullName = request.getFullName().trim();
+            if (!Pattern.matches(Constants.REGEX_FULLNAME, trimmedFullName)) {
+                throw new RuntimeException("Họ tên chỉ được chứa chữ cái và khoảng trắng (2-50 ký tự)!");
+            }
 
-        int firstSpaceIndex = trimmedFullName.indexOf(" ");
-        if (firstSpaceIndex != -1) {
-            account.setFirstName(trimmedFullName.substring(0, firstSpaceIndex));
-            account.setLastName(trimmedFullName.substring(firstSpaceIndex + 1));
-        } else {
-            account.setFirstName(trimmedFullName);
-            account.setLastName("");
+            int firstSpaceIndex = trimmedFullName.indexOf(" ");
+            if (firstSpaceIndex != -1) {
+                account.setFirstName(trimmedFullName.substring(0, firstSpaceIndex));
+                account.setLastName(trimmedFullName.substring(firstSpaceIndex + 1));
+            } else {
+                account.setFirstName(trimmedFullName);
+                account.setLastName("");
+            }
         }
+        
+        if (request.getIdNumber() != null) account.setIdNumber(request.getIdNumber());
+        if (request.getIdType() != null) account.setIdType(request.getIdType());
+        if (request.getNationality() != null) account.setNationality(request.getNationality());
         
         accountRepository.save(account);
     }
 
     @Override
     @Transactional
-    public void changePassword(String username, String oldPassword, String newPassword) {
-        Account account = findByUsername(username);
+    public void changePassword(ChangePasswordRequest request) {
+        String username = SecurityUtils.getCurrentUsername();
+        if (username == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này!");
+
+        Account account = findAccountEntity(username);
         
-        if (!passwordEncoder.matches(oldPassword, account.getPassword())) {
+        if (!passwordEncoder.matches(request.getOldPassword(), account.getPassword())) {
             throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
         }
         
-        if (!Pattern.matches(Constants.REGEX_PASSWORD, newPassword)) {
+        if (!Pattern.matches(Constants.REGEX_PASSWORD, request.getNewPassword())) {
             throw new RuntimeException("Mật khẩu mới không đúng định dạng (tối thiểu 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt)!");
         }
         
-        account.setPassword(passwordEncoder.encode(newPassword));
+        account.setPassword(passwordEncoder.encode(request.getNewPassword()));
         accountRepository.save(account);
     }
 
@@ -160,7 +206,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void processForgotPassword(String email) {
         Account account = accountRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
+                .orElseThrow(() -> new UsernameNotFoundException("Email không tồn tại trong hệ thống!"));
 
         String token = UUID.randomUUID().toString();
         account.setResetToken(token);
@@ -174,7 +220,10 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public void updateAvatar(String username, String avatarUrl) {
+    public void updateAvatar(String avatarUrl) {
+        String username = SecurityUtils.getCurrentUsername();
+        if (username == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này!");
+        
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
         account.setAvatar(avatarUrl);
@@ -185,7 +234,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void resetPassword(String token, String newPassword) {
         Account account = accountRepository.findByResetToken(token)
-                .orElseThrow(() -> new RuntimeException("Mã xác nhận không hợp lệ hoặc đã hết hạn!"));
+                .orElseThrow(() -> new UsernameNotFoundException("Mã xác nhận không hợp lệ hoặc đã hết hạn!"));
 
         if (account.getResetTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
             throw new RuntimeException("Mã xác nhận đã hết hạn!");
@@ -217,5 +266,26 @@ public class AccountServiceImpl implements AccountService {
         if (request.getConfirmPassword() == null || !request.getConfirmPassword().equals(request.getPassword())) {
             throw new RuntimeException("Mật khẩu xác nhận không khớp!");
         }
+    }
+
+    private AccountDTO convertToDTO(Account account) {
+        if (account == null) return null;
+        return AccountDTO.builder()
+                .id(account.getId())
+                .username(account.getUsername())
+                .email(account.getEmail())
+                .firstName(account.getFirstName())
+                .lastName(account.getLastName())
+                .fullName((account.getFirstName() != null ? account.getFirstName() : "") + " " + 
+                         (account.getLastName() != null ? account.getLastName() : ""))
+                .avatar(account.getAvatar())
+                .roleName(account.getRole() != null ? account.getRole().getRoleName() : null)
+                .roleDescription(account.getRole() != null ? account.getRole().getDescription() : null)
+                .status(account.getStatus())
+                .idNumber(account.getIdNumber())
+                .idType(account.getIdType())
+                .nationality(account.getNationality())
+                .createdAt(account.getCreatedAt())
+                .build();
     }
 }

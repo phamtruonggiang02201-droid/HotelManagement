@@ -55,6 +55,15 @@ public class Account extends BaseEntity {
     @Column(name = "bio", length = 1000)
     private String bio;
 
+    @Column(name = "id_number", length = 50)
+    private String idNumber; // CCCD, CMND hoặc Passport
+
+    @Column(name = "id_type", length = 20)
+    private String idType; // CCCD, CMND, PASSPORT
+
+    @Column(name = "nationality", length = 50)
+    private String nationality;
+
     @Column(name = "reset_token", length = 100)
     private String resetToken;
 

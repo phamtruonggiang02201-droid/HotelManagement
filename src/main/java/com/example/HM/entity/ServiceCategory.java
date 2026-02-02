@@ -17,4 +17,7 @@ public class ServiceCategory extends BaseEntity {
 
     @Column(name = "Status", length = 20)
     private String status;
+
+    @Column(name = "description")
+    private String description;
 }

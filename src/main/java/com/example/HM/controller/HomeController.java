@@ -1,4 +1,6 @@
 package com.example.HM.controller;
+ 
+import com.example.HM.security.SecurityUtils;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -10,20 +12,17 @@ public class HomeController {
 
     @GetMapping("/")
     public String index() {
-        // Returns the view name "index" (src/main/resources/templates/index.html) - NOW LANDING PAGE
         return "index";
     }
 
     @GetMapping("/dashboard")
     public String dashboard() {
-        // Returns the dashboard view (src/main/resources/templates/dashboard.html)
         return "dashboard";
     }
 
     @GetMapping({"/login", "/Login"})
     public String login() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+        if (SecurityUtils.isAuthenticated()) {
             return "redirect:/dashboard";
         }
         return "auth/login";
@@ -31,8 +30,7 @@ public class HomeController {
 
     @GetMapping({"/register", "/Register"})
     public String register() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+        if (SecurityUtils.isAuthenticated()) {
             return "redirect:/dashboard";
         }
         return "auth/register";

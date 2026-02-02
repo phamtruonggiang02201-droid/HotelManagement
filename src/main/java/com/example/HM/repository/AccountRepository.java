@@ -10,10 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface AccountRepository extends JpaRepository<Account, UUID> {
+public interface AccountRepository extends JpaRepository<Account, String> {
     Optional<Account> findByUsername(String username);
     Optional<Account> findByEmail(String email);
     Optional<Account> findByVerificationToken(String token);

@@ -29,9 +29,16 @@ public class SecurityConfig {
                 // Public pages
                 .requestMatchers("/", "/login", "/Login", "/register", "/Register", "/verify-email").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                // Room & Service APIs
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/rooms/**", "/api/services/**").permitAll()
+                .requestMatchers("/api/rooms/**", "/api/services/**").hasAnyRole("ADMIN", "MANAGER")
+                
+                // Profile & Account APIs
+                .requestMatchers("/api/profile/**").authenticated()
+                
                 // Protected pages
                 .requestMatchers("/dashboard/**", "/dashboard").authenticated()
-                .anyRequest().permitAll()
+                .anyRequest().authenticated()
             )
             .formLogin(form -> form
                 .loginPage("/login")
