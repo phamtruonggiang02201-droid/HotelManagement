@@ -111,7 +111,8 @@
                 <i data-lucide="users-2" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Quản lý nhân viên</span>
             </a>
-            <a href="#" data-target="manage-accounts-section" sec:authorize="hasRole('ADMIN')"
+            <a th:href="@{/management/accounts}" sec:authorize="hasRole('ADMIN')"
+                th:classappend="${currentUri == '/management/accounts'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="user-cog" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Quản lý tài khoản</span>
