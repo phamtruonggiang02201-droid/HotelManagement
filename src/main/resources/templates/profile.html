@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Hồ sơ cá nhân - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <div class="mb-12">
+            <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Hồ sơ cá nhân</h1>
+            <p class="text-slate-500 mt-2 font-medium">Quản lý thông tin tài khoản và bảo mật của bạn.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <!-- Left Column: User BriefCard -->
+            <div class="lg:col-span-1 space-y-8">
+                <div
+                    class="bg-white p-10 rounded-[48px] border border-slate-100 shadow-xl text-center relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 left-0 w-full h-24 bg-indigo-600/10 group-hover:h-28 transition-all duration-500">
+                    </div>
+
+                    <div class="relative pt-4 flex flex-col items-center">
+                        <div class="relative group/avatar cursor-pointer mx-auto"
+                            onclick="document.getElementById('avatarInput').click()">
+                            <!-- Avatar Image or Initial -->
+                            <div
+                                class="w-32 h-32 bg-white rounded-[40px] flex items-center justify-center text-indigo-600 text-5xl font-black shadow-2xl border-4 border-white transition-transform duration-500 group-hover/avatar:scale-105 overflow-hidden">
+                                <img id="profileAvatar" th:if="${account.avatar != null}" th:src="${account.avatar}"
+                                    class="w-full h-full object-cover">
+                                <span id="profileInitial" th:if="${account.avatar == null}"
+                                    th:text="${#authentication.principal.fullName != null && !#authentication.principal.fullName.isEmpty() ? #strings.substring(#authentication.principal.fullName,0,1).toUpperCase() : #strings.substring(#authentication.name,0,1).toUpperCase()}">U</span>
+                            </div>
+
+                            <!-- Edit Overlay -->
+                            <div
+                                class="absolute inset-0 bg-slate-900/40 rounded-[40px] flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-300">
+                                <i data-lucide="camera" class="w-8 h-8 text-white"></i>
+                            </div>
+
+                            <!-- Hidden File Input -->
+                            <input type="file" id="avatarInput" class="hidden" accept="image/*">
+                        </div>
+
+                        <div class="mt-6 text-center">
+                            <h2 class="text-2xl font-black text-slate-900 mb-1" id="displayFullName"
+                                th:text="${account.fullName}">Full Name</h2>
+                            <p class="text-xs font-bold text-indigo-600 uppercase tracking-widest"
+                                th:text="${account.roleDescription}">CUSTOMER</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-10 pt-10 border-t border-slate-50 space-y-4">
+                        <div class="flex items-center justify-between text-left">
+                            <span
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Username</span>
+                            <span class="text-sm font-bold text-slate-700" th:text="${account.username}">username</span>
+                        </div>
+                        <div class="flex items-center justify-between text-left">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trạng
+                                thái</span>
+                            <span class="flex items-center gap-1.5 text-emerald-600 text-sm font-bold">
+                                <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                Hoạt động
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Details & Actions -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Info Section -->
+                <div class="bg-white p-12 rounded-[56px] border border-slate-100 shadow-sm">
+                    <div class="flex justify-between items-center mb-10">
+                        <h3 class="text-2xl font-black text-slate-900">Thông tin chi tiết</h3>
+                        <button onclick="toggleModal('edit-profile-modal', true)"
+                            class="text-indigo-600 text-xs font-black uppercase tracking-widest hover:underline flex items-center gap-2">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i> Chỉnh sửa
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Họ và
+                                tên</label>
+                            <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100"
+                                th:text="${account.fullName}">Nguyen Van A</div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email
+                                liên lạc</label>
+                            <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100"
+                                th:text="${account.email}">ndminh.work@gmail.com</div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Quốc
+                                tịch</label>
+                            <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100"
+                                th:text="${account.nationality ?: 'Chưa cập nhật'}">Việt Nam</div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Số định
+                                danh ([[${account.idType ?: 'CCCD'}]])</label>
+                            <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100"
+                                th:text="${account.idNumber ?: 'Chưa cập nhật'}">00120100xxxx</div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ngày
+                                tham gia</label>
+                            <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100"
+                                th:text="${#temporals.format(account.createdAt, 'dd/MM/yyyy')}">31/01/2026</div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Loại tài
+                                khoản</label>
+                            <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100 text-indigo-600"
+                                th:text="${account.roleDescription}">Khách hàng</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Section -->
+                <div class="bg-white p-12 rounded-[56px] border border-slate-100 shadow-sm">
+                    <h3 class="text-2xl font-black text-slate-900 mb-8">Bảo mật tài khoản</h3>
+                    <div
+                        class="flex flex-col md:flex-row items-center justify-between gap-6 p-8 bg-rose-50 rounded-[40px] border border-rose-100 text-center md:text-left">
+                        <div>
+                            <h4 class="font-black text-rose-900 mb-1 text-lg">Đổi mật khẩu định kỳ</h4>
+                            <p class="text-rose-700/70 text-sm font-medium">Bảo vệ tài khoản của bạn bằng cách thay đổi
+                                mật khẩu thường xuyên.</p>
+                        </div>
+                        <button onclick="toggleModal('change-password-modal', true)"
+                            class="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-rose-600/20 hover:bg-slate-900 transition-all">
+                            Đổi mật khẩu ngay
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALS -->
+        <!-- Edit Profile Modal -->
+        <div id="edit-profile-modal" class="modal">
+            <div class="bg-white w-full max-w-xl rounded-[56px] p-12 relative shadow-2xl">
+                <button onclick="toggleModal('edit-profile-modal', false)"
+                    class="absolute top-8 right-8 text-slate-400 hover:text-slate-900 transition-colors"><i
+                        data-lucide="x" class="w-8 h-8"></i></button>
+
+                <div class="text-center mb-10">
+                    <div
+                        class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="user" class="w-10 h-10"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-slate-900 mb-2">Chỉnh sửa hồ sơ</h2>
+                    <p class="text-slate-400 text-sm font-medium">Cập nhật thông tin định danh của bạn</p>
+                </div>
+
+                <form id="update-profile-form" class="space-y-6">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Họ và
+                            tên</label>
+                        <input type="text" name="fullName" th:value="${account.fullName}" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Quốc
+                                tịch</label>
+                            <input type="text" name="nationality" th:value="${account.nationality}"
+                                placeholder="Ví dụ: Việt Nam"
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Loại
+                                giấy tờ</label>
+                            <select name="idType"
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all appearance-none cursor-pointer">
+                                <option value="CCCD" th:selected="${account.idType == 'CCCD'}">CCCD</option>
+                                <option value="CMND" th:selected="${account.idType == 'CMND'}">CMND</option>
+                                <option value="PASSPORT" th:selected="${account.idType == 'PASSPORT'}">Passport</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Số định danh
+                            (CCCD/Passport)</label>
+                        <input type="text" name="idNumber" th:value="${account.idNumber}"
+                            placeholder="Nhập số định danh"
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-indigo-600 text-white py-5 rounded-[28px] font-black shadow-xl shadow-indigo-600/20 hover:bg-slate-900 transition-all duration-300">
+                        Lưu thay đổi
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Change Password Modal -->
+        <div id="change-password-modal" class="modal">
+            <div class="bg-white w-full max-w-xl rounded-[56px] p-12 relative shadow-2xl">
+                <button onclick="toggleModal('change-password-modal', false)"
+                    class="absolute top-8 right-8 text-slate-400 hover:text-slate-900 transition-colors"><i
+                        data-lucide="x" class="w-8 h-8"></i></button>
+
+                <div class="text-center mb-10">
+                    <div
+                        class="w-20 h-20 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="shield-lock" class="w-10 h-10"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-slate-900 mb-2">Đổi mật khẩu</h2>
+                    <p class="text-slate-400 text-sm font-medium">Đảm bảo mật khẩu của bạn là an toàn</p>
+                </div>
+
+                <form id="change-password-form" class="space-y-6">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mật khẩu
+                            hiện tại</label>
+                        <input type="password" name="oldPassword" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-rose-100 font-bold transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mật khẩu
+                            mới</label>
+                        <input type="password" name="newPassword" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Xác nhận mật
+                            khẩu mới</label>
+                        <input type="password" name="confirmPassword" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-slate-900 text-white py-5 rounded-[28px] font-black shadow-xl shadow-slate-900/20 hover:bg-rose-600 transition-all duration-300">
+                        Xác nhận thay đổi
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script th:src="@{/js/toast.js}"></script>
+        <link rel="stylesheet" th:href="@{/css/toast.css}">
+
+        <script th:inline="javascript">
+            // Update Profile AJAX
+            document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+
+                try {
+                    const response = await fetch('/api/profile/update', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        toastService.success(result.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastService.error(result.message);
+                    }
+                } catch (err) {
+                    toastService.error('Có lỗi xảy ra, vui lòng thử lại!');
+                }
+            });
+
+            // Change Password AJAX
+            document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+
+                const newPass = formData.get('newPassword');
+                const confirmPass = formData.get('confirmPassword');
+
+                if (newPass !== confirmPass) {
+                    toastService.error('Mật khẩu xác nhận không khớp!');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/profile/change-password', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        toastService.success(result.message);
+                        toggleModal('change-password-modal', false);
+                        e.target.reset();
+                    } else {
+                        toastService.error(result.message);
+                    }
+                } catch (err) {
+                    toastService.error('Có lỗi xảy ra, vui lòng thử lại!');
+                }
+            });
+
+            // Avatar Upload AJAX
+            document.getElementById('avatarInput').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    toastService.info('Đang tải ảnh lên...');
+                    const response = await fetch('/api/profile/upload-avatar', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        toastService.success(result.message);
+
+                        const avatarUrl = result.account.avatar;
+
+                        // Update UI immediately
+                        const avatarImg = document.getElementById('profileAvatar');
+                        const initialSpan = document.getElementById('profileInitial');
+
+                        if (avatarImg) {
+                            avatarImg.src = avatarUrl;
+                        } else if (initialSpan) {
+                            // Convert initial span to img
+                            const newImg = document.createElement('img');
+                            newImg.id = 'profileAvatar';
+                            newImg.src = avatarUrl;
+                            newImg.className = 'w-full h-full object-cover';
+                            initialSpan.parentNode.replaceChild(newImg, initialSpan);
+                        }
+                    } else {
+                        toastService.error(result.message);
+                    }
+                } catch (err) {
+                    toastService.error('Có lỗi xảy ra khi tải ảnh!');
+                } finally {
+                    e.target.value = ''; // Reset input
+                }
+            });
+        </script>
+    </div>
+</body>
+
+</html>
