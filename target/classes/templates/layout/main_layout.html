@@ -15,8 +15,11 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Favicon fix -->
     <link rel="icon" href="data:,">
+
+    <!-- Toast Service -->
+    <link rel="stylesheet" th:href="@{/css/toast.css}">
+    <script th:src="@{/js/toast.js}"></script>
 
     <style>
         body {
@@ -32,11 +35,10 @@
         }
 
         section {
-            display: none;
+            display: block;
         }
 
         section.active {
-            display: block;
             animation: slideIn 0.4s ease-out;
         }
 
@@ -105,6 +107,7 @@
 </head>
 
 <body class="overflow-x-hidden" th:classappend="${#authorization.expression('isAuthenticated()')} ? 'logged-in' : ''">
+    <div id="toast-container"></div>
 
     <div class="flex min-h-screen">
         <!-- SIDEBAR -->
@@ -130,29 +133,6 @@
     <script th:inline="javascript">
         // Khởi tạo Lucide Icons
         lucide.createIcons();
-
-        // Xử lý chuyển đổi section (SPA behavior)
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                const targetId = link.getAttribute('data-target');
-                if (!targetId) return;
-
-                e.preventDefault();
-
-                // Ẩn tất cả các section
-                document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
-
-                // Hiển thị section đích
-                const targetSec = document.getElementById(targetId);
-                if (targetSec) {
-                    targetSec.classList.add('active');
-                }
-
-                // Cập nhật trạng thái active trên sidebar
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('sidebar-item-active'));
-                link.classList.add('sidebar-item-active');
-            });
-        });
 
         // Hàm helper để mở/đóng modal (Thêm vào layout để dùng chung)
         function toggleModal(modalId, show) {
