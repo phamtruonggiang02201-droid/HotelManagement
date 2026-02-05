@@ -36,6 +36,10 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Override
     @Transactional
     public RoomTypeDTO createRoomType(RoomTypeDTO dto) {
+        if (roomRepository.existsByTypeName(request.getTypeName())) {
+            throw new IllegalArgumentException("Loại phòng đã tồn tại");
+        }
+
         RoomType roomType = new RoomType();
         roomType.setTypeName(dto.getTypeName());
         roomType.setDescription(dto.getDescription());
