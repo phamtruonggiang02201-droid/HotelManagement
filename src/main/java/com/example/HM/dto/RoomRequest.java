@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 public class RoomRequest {
     private String roomName;
     private String roomTypeId;
+    @PositiveOrZero(message = "Giá phòng phải >= 0")
     private BigDecimal price;
     private String status;
     private String roomImage;

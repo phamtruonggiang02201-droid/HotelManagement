@@ -11,4 +11,5 @@ import java.util.List;
 public interface RoomRepository extends JpaRepository<Room, String> {
     List<Room> findByRoomType(RoomType roomType);
     List<Room> findByStatus(String status);
+    boolean existsByRoomName(String roomName);
 }
