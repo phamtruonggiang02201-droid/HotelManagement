@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -19,6 +20,7 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
     Optional<Account> findByResetToken(String token);
+    List<Account> findByRole_RoleName(String roleName);
     @Modifying
     @Transactional
     @Query("DELETE FROM Account a WHERE a.emailVerified = false AND a.verificationTokenExpiry < :now")
