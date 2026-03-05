@@ -51,7 +51,9 @@ public class RoomServiceImpl implements RoomService {
     public RoomDTO createRoom(RoomRequest request) {
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
                 .orElseThrow(() -> new RuntimeException("Loại phòng không hợp lệ!"));
-        
+        if (roomRepository.existsByRoomNumber(request.getRoomNumber())) {
+            throw new IllegalArgumentException("Tên phòng đã tồn tại");
+        }
         Room room = new Room();
         room.setRoomName(request.getRoomName());
         room.setRoomType(roomType);

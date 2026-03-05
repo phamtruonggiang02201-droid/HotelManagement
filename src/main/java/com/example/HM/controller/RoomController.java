@@ -53,7 +53,7 @@ public class RoomController {
     @PostMapping("/api/rooms")
     @ResponseBody
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<?> createRoom(@RequestBody RoomRequest request) {
+    public ResponseEntity<?> createRoom(@Valid @RequestBody RoomRequest request) {
         try {
             return ResponseEntity.ok(roomService.createRoom(request));
         } catch (Exception e) {
@@ -83,7 +83,7 @@ public class RoomController {
     @PostMapping("/api/room-types")
     @ResponseBody
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<?> createRoomType(@RequestBody RoomTypeDTO request) {
+    public ResponseEntity<?> createRoomType(@Valid @RequestBody RoomTypeDTO request) {
         try {
             return ResponseEntity.ok(roomTypeService.createRoomType(request));
         } catch (Exception e) {
