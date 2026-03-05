@@ -4,6 +4,9 @@ import com.example.HM.dto.AccountDTO;
 import com.example.HM.dto.AdminAccountRequest;
 import com.example.HM.service.AccountService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -45,8 +48,8 @@ public class AccountController {
 
     @GetMapping("/api/accounts")
     @ResponseBody
-    public ResponseEntity<List<AccountDTO>> getAllAccounts() {
-        return ResponseEntity.ok(accountService.getAllAccounts());
+    public ResponseEntity<Page<AccountDTO>> getAllAccounts(@PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(accountService.getAllAccounts(pageable));
     }
 
     @GetMapping("/api/accounts/{id}")
@@ -83,6 +86,18 @@ public class AccountController {
         try {
             accountService.deleteAccount(id);
             return ResponseEntity.ok(Map.of("message", "Xóa tài khoản thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/accounts/{id}/status")
+    @ResponseBody
+    public ResponseEntity<?> updateAccountStatus(@PathVariable String id, @RequestBody Map<String, Boolean> statusMap) {
+        try {
+            boolean status = statusMap.get("status");
+            accountService.updateStatus(id, status);
+            return ResponseEntity.ok(Map.of("message", "Cập nhật trạng thái thành công!"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

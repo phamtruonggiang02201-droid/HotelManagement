@@ -5,4 +5,5 @@ public interface EmailService {
     void sendHtmlMessage(String to, String subject, String htmlBody);
     void sendRegistrationEmail(String to, String username, String fullName, String verifyUrl);
     void sendForgotPasswordEmail(String to, String resetUrl, String fullName);
+    void sendEmployeeCredentialsEmail(String to, String username, String plainPassword, String fullName);
 }

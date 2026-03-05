@@ -15,10 +15,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.HM.security.SecurityUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.Random;
+import java.time.LocalDate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class AccountServiceImpl implements AccountService {
@@ -37,10 +43,17 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AccountDTO> getAllAccounts() {
-        return accountRepository.findAll().stream()
-                .map(this::convertToDTO)
-                .collect(java.util.stream.Collectors.toList());
+    public Page<AccountDTO> getAllAccounts(Pageable pageable) {
+        return accountRepository.findAll(pageable)
+                .map(this::convertToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponseDTO> getEmployees(Pageable pageable) {
+        List<String> employeeRoles = List.of("ADMIN", "MANAGER", "RECEPTION");
+        return accountRepository.findAllByRole_RoleNameIn(employeeRoles, pageable)
+                .map(this::convertToEmployeeDTO);
     }
 
     @Override
@@ -54,17 +67,11 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountDTO createAccountByAdmin(AdminAccountRequest request) {
-        // Validate
-        if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Tên đăng nhập đã tồn tại!");
-        }
-        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email đã được sử dụng!");
-        }
+        // Validation
+        validateAdminAccountRequest(request, true);
 
         Account account = new Account();
         account.setUsername(request.getUsername());
-        account.setPassword(passwordEncoder.encode(request.getPassword()));
         account.setEmail(request.getEmail());
 
         // Split full name
@@ -78,23 +85,49 @@ public class AccountServiceImpl implements AccountService {
             account.setLastName("");
         }
 
-        account.setEmailVerified(false);
-        account.setVerificationToken(UUID.randomUUID().toString());
-        account.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusDays(1)); // 24 hours for admin-created
-        account.setStatus(false); // Locked until email verified
+        account.setEmailVerified(true); // Admin created accounts are verified by default
+        account.setStatus(true); 
+        account.setJobTitle(request.getJobTitle());
+        
+        // Map personal info
+        if (request.getPhone() != null) account.setPhone(request.getPhone());
+        if (request.getDob() != null && !request.getDob().isEmpty()) {
+            account.setDob(LocalDate.parse(request.getDob()));
+        }
+        if (request.getAddress() != null) account.setAddress(request.getAddress());
+        if (request.getIdNumber() != null) account.setIdNumber(request.getIdNumber());
+        if (request.getIdType() != null) account.setIdType(request.getIdType());
+        if (request.getNationality() != null) account.setNationality(request.getNationality());
 
         // Set Role
         Role role = roleRepository.findByRoleName(request.getRoleName())
                 .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
         account.setRole(role);
 
+        // Generate Random Password
+        String randomPassword = generateRandomPassword();
+        account.setPassword(passwordEncoder.encode(randomPassword));
+
         Account saved = accountRepository.save(account);
 
-        // Send Verification Email
-        String verifyUrl = "http://localhost:8080/verify-email?token=" + saved.getVerificationToken();
-        emailService.sendRegistrationEmail(saved.getEmail(), saved.getUsername(), request.getFullName(), verifyUrl);
+        // Send Email to Employee
+        emailService.sendEmployeeCredentialsEmail(
+                saved.getEmail(), 
+                saved.getUsername(), 
+                randomPassword, 
+                request.getFullName()
+        );
 
         return convertToDTO(saved);
+    }
+
+    private String generateRandomPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&";
+        Random rnd = new Random();
+        StringBuilder sb = new StringBuilder(10);
+        for (int i = 0; i < 10; i++)
+            sb.append(chars.charAt(rnd.nextInt(chars.length())));
+        return sb.toString();
     }
 
     @Override
@@ -102,6 +135,20 @@ public class AccountServiceImpl implements AccountService {
     public AccountDTO updateAccountByAdmin(String id, AdminAccountRequest request) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+
+        // Validation
+        validateAdminAccountRequest(request, false);
+        
+        // Custom check for email/username uniqueness if changed
+        if (!account.getUsername().equals(request.getUsername()) && accountRepository.existsByUsername(request.getUsername())) {
+             throw new RuntimeException("Tên đăng nhập đã tồn tại!");
+        }
+        if (!account.getEmail().equals(request.getEmail()) && accountRepository.existsByEmail(request.getEmail())) {
+             throw new RuntimeException("Email đã được sử dụng!");
+        }
+
+        account.setUsername(request.getUsername());
+        account.setEmail(request.getEmail());
 
         // Update name
         String fullName = request.getFullName().trim();
@@ -114,7 +161,7 @@ public class AccountServiceImpl implements AccountService {
             account.setLastName("");
         }
 
-        // Update role if provided
+        // Update role
         if (request.getRoleName() != null && !request.getRoleName().isEmpty()) {
             Role role = roleRepository.findByRoleName(request.getRoleName())
                     .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
@@ -125,6 +172,19 @@ public class AccountServiceImpl implements AccountService {
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             account.setPassword(passwordEncoder.encode(request.getPassword()));
         }
+
+        account.setJobTitle(request.getJobTitle());
+
+        // Update personal info
+        if (request.getPhone() != null) account.setPhone(request.getPhone());
+        if (request.getDob() != null && !request.getDob().isEmpty()) {
+            account.setDob(LocalDate.parse(request.getDob()));
+        }
+        if (request.getAddress() != null) account.setAddress(request.getAddress());
+        if (request.getIdNumber() != null) account.setIdNumber(request.getIdNumber());
+        if (request.getIdType() != null) account.setIdType(request.getIdType());
+        if (request.getNationality() != null) account.setNationality(request.getNationality());
+        if (request.getStatus() != null) account.setStatus(request.getStatus());
 
         accountRepository.save(account);
         return convertToDTO(account);
@@ -263,7 +323,7 @@ public class AccountServiceImpl implements AccountService {
         
         if (request.getFullName() != null) {
             String trimmedFullName = request.getFullName().trim();
-            if (!Pattern.matches(Constants.REGEX_FULLNAME, trimmedFullName)) {
+            if (!Pattern.matches(   Constants.REGEX_FULLNAME, trimmedFullName)) {
                 throw new RuntimeException("Họ tên chỉ được chứa chữ cái và khoảng trắng (2-50 ký tự)!");
             }
 
@@ -352,6 +412,15 @@ public class AccountServiceImpl implements AccountService {
         accountRepository.save(account);
     }
 
+    @Override
+    @Transactional
+    public void updateStatus(String id, boolean status) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        account.setStatus(status);
+        accountRepository.save(account);
+    }
+
     private void validateRequest(RegisterRequest request) {
         if (!Pattern.matches(Constants.REGEX_FULLNAME, request.getFullName())) {
             throw new RuntimeException("Họ tên chỉ được chứa chữ cái và khoảng trắng (2-50 ký tự)!");
@@ -389,6 +458,45 @@ public class AccountServiceImpl implements AccountService {
                 .idType(account.getIdType())
                 .nationality(account.getNationality())
                 .createdAt(account.getCreatedAt())
+                .jobTitle(account.getJobTitle())
                 .build();
+    }
+
+    private EmployeeResponseDTO convertToEmployeeDTO(Account account) {
+        if (account == null) return null;
+        return EmployeeResponseDTO.builder()
+                .id(account.getId())
+                .username(account.getUsername())
+                .email(account.getEmail())
+                .fullName((account.getFirstName() != null ? account.getFirstName() : "") + " " + 
+                         (account.getLastName() != null ? account.getLastName() : ""))
+                .phone(account.getPhone())
+                .address(account.getAddress())
+                .jobTitle(account.getJobTitle())
+                .roleName(account.getRole() != null ? account.getRole().getRoleName() : null)
+                .status(account.getStatus())
+                .createdAt(account.getCreatedAt())
+                .build();
+    }
+
+    private void validateAdminAccountRequest(AdminAccountRequest request, boolean isCreate) {
+        if (!Pattern.matches(Constants.REGEX_USERNAME, request.getUsername())) {
+            throw new RuntimeException("Tên đăng nhập không đúng định dạng!");
+        }
+        if (!Pattern.matches(Constants.REGEX_EMAIL, request.getEmail())) {
+            throw new RuntimeException("Email không đúng định dạng!");
+        }
+        if (!Pattern.matches(Constants.REGEX_FULLNAME, request.getFullName())) {
+            throw new RuntimeException("Họ tên không đúng định dạng!");
+        }
+        if (isCreate) {
+            // Password is now generated automatically for admin-created accounts
+            if (accountRepository.existsByUsername(request.getUsername())) {
+                throw new RuntimeException("Tên đăng nhập đã tồn tại!");
+            }
+            if (accountRepository.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("Email đã được sử dụng!");
+            }
+        }
     }
 }
