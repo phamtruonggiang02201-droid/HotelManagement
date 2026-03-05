@@ -176,6 +176,17 @@
                 nav.classList.remove('py-3', 'shadow-xl');
             }
         });
+
+        // Global toast helper
+        function showToast(message, type = 'success') {
+            if (window.toastService) {
+                if (type === 'success') toastService.success(message);
+                else if (type === 'error') toastService.error(message);
+                else toastService.info(message);
+            } else {
+                console.warn('Toast service not loaded:', message);
+            }
+        }
     </script>
     <th:block layout:fragment="script"></th:block>
 </body>
