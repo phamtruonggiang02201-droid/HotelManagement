@@ -6,21 +6,15 @@ import java.time.LocalDateTime;
 
 @Data
 @Builder
-public class AccountDTO {
+public class EmployeeResponseDTO {
     private String id;
     private String username;
     private String email;
-    private String firstName;
-    private String lastName;
     private String fullName;
-    private String avatar;
-    private String roleName;
-    private String roleDescription;
-    private Boolean status;
-    private String idNumber;
-    private String idType;
-    private String nationality;
-    private Boolean emailVerified;
+    private String phone;
+    private String address;
     private String jobTitle;
+    private String roleName;
+    private Boolean status;
     private LocalDateTime createdAt;
 }

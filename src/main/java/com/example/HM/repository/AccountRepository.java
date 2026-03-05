@@ -6,12 +6,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.data.domain.Page;
 import java.time.LocalDateTime;
 
-import java.util.List;
 import java.util.Optional;
-
+import java.util.List;
+import org.springframework.data.domain.Pageable;
 @Repository
 public interface AccountRepository extends JpaRepository<Account, String> {
     Optional<Account> findByUsername(String username);
@@ -20,7 +20,9 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
     Optional<Account> findByResetToken(String token);
-    List<Account> findByRole_RoleName(String roleName);
+
+    Page<Account> findAllByRole_RoleNameIn(List<String> roleNames, Pageable pageable);
+
     @Modifying
     @Transactional
     @Query("DELETE FROM Account a WHERE a.emailVerified = false AND a.verificationTokenExpiry < :now")

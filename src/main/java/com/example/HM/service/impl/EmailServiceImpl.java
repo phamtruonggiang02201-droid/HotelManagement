@@ -68,4 +68,16 @@ public class EmailServiceImpl implements EmailService {
         String htmlContent = templateEngine.process("mail/forgot-password", context);
         sendHtmlMessage(to, "Khôi phục mật khẩu tài khoản LuxeStay", htmlContent);
     }
+
+    @Override
+    public void sendEmployeeCredentialsEmail(String to, String username, String plainPassword, String fullName) {
+        org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
+        context.setVariable("username", username);
+        context.setVariable("password", plainPassword);
+        context.setVariable("fullName", fullName);
+        context.setVariable("loginUrl", "http://localhost:8080/login");
+
+        String htmlContent = templateEngine.process("mail/employee-credentials", context);
+        sendHtmlMessage(to, "Thông tin tài khoản nhân viên LuxeStay của bạn", htmlContent);
+    }
 }
