@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Lịch trực của tôi - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1200px] mx-auto">
+        <div class="mb-12">
+            <h1 class="text-3xl font-black text-slate-900">Lịch trực của tôi</h1>
+            <p class="text-slate-500 font-medium">Theo dõi các ca làm việc và khu vực được phân công.</p>
+        </div>
+
+        <div id="my-schedule-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Loaded via JS -->
+            <div class="animate-pulse bg-white p-8 rounded-3xl border border-slate-100">
+                <div class="h-4 bg-slate-100 rounded-full w-24 mb-4"></div>
+                <div class="h-8 bg-slate-50 rounded-xl mb-6"></div>
+                <div class="h-4 bg-slate-100 rounded-full w-32"></div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                loadMySchedule();
+            });
+
+            function loadMySchedule() {
+                fetch('/management/assignments/api/my')
+                    .then(res => res.json())
+                    .then(data => {
+                        renderSchedule(data);
+                    });
+            }
+
+            function renderSchedule(data) {
+                const container = document.getElementById('my-schedule-list');
+                container.innerHTML = '';
+
+                if (data.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-span-full py-20 flex flex-col items-center justify-center bg-white rounded-[40px] border border-slate-100 border-dashed">
+                            <div class="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
+                                <i data-lucide="calendar-off" class="w-10 h-10 text-slate-300"></i>
+                            </div>
+                            <h3 class="text-xl font-black text-slate-900 mb-2">Chưa có lịch phân công</h3>
+                            <p class="text-slate-500 font-medium text-center max-w-xs">Bạn hiện chưa được phân công ca trực nào. Vui lòng liên hệ quản lý.</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                // Sort by date (descending)
+                data.sort((a, b) => new Date(b.workDate) - new Date(a.workDate));
+
+                data.forEach(as => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300';
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getShiftClass(as.shift)}">
+                                Ca ${as.shift}
+                            </div>
+                            <div class="text-xs font-bold text-slate-400">
+                                ${formatDate(as.workDate)}
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="map-pin" class="w-5 h-5 text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Khu vực</p>
+                                    <h4 class="font-black text-slate-900">${as.area}</h4>
+                                </div>
+                            </div>
+                            ${as.notes ? `
+                                <div class="p-4 bg-slate-50 rounded-2xl">
+                                    <p class="text-xs text-slate-600 leading-relaxed italic">"${as.notes}"</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+                lucide.createIcons();
+            }
+
+            function getShiftClass(shift) {
+                if (shift === 'Sáng') return 'bg-amber-100 text-amber-600';
+                if (shift === 'Chiều') return 'bg-indigo-100 text-indigo-600';
+                return 'bg-slate-800 text-slate-300';
+            }
+
+            function formatDate(dateStr) {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            }
+        </script>
+    </div>
+</body>
+
+</html>
