@@ -7,11 +7,16 @@ import com.example.HM.dto.UpdateProfileRequest;
 import com.example.HM.dto.AdminAccountRequest;
 import com.example.HM.entity.Account;
 
+import com.example.HM.dto.EmployeeResponseDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 public interface AccountService {
 
-    List<AccountDTO> getAllAccounts();
+    Page<AccountDTO> getAllAccounts(Pageable pageable);
+    Page<EmployeeResponseDTO> getEmployees(Pageable pageable);
     AccountDTO getAccountById(String id);
     AccountDTO createAccountByAdmin(AdminAccountRequest request);
     AccountDTO updateAccountByAdmin(String id, AdminAccountRequest request);
@@ -26,5 +31,6 @@ public interface AccountService {
     void changePassword(ChangePasswordRequest request);
     void processForgotPassword(String email);
     void resetPassword(String token, String newPassword);
+    void updateStatus(String id, boolean status);
     void updateAvatar(String avatarUrl);
 }
