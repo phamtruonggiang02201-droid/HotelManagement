@@ -29,12 +29,12 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Tắt CSRF để đơn giản hóa việc gọi AJAX (Fetch API)
             .authorizeHttpRequests(auth -> auth
                 // Public pages
-                .requestMatchers("/", "/login", "/Login", "/register", "/Register", "/verify-email", 
+                .requestMatchers("/", "/login", "/Login", "/register", "/Register", "/verify-email",
                                 "/forgot-password", "/reset-password", "/api/forgot-password", "/api/reset-password").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                 .requestMatchers("/api/payment/**").permitAll()
                 // Room & Service APIs
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/rooms/**", "/api/services/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/rooms/**", "/api/services/**", "/api/categories/**").permitAll()
                 .requestMatchers("/api/rooms/**", "/api/services/**").hasAnyRole("ADMIN", "MANAGER")
                 
                 // Profile & Account APIs
@@ -42,6 +42,13 @@ public class SecurityConfig {
                 
                 // Protected pages
                 .requestMatchers("/dashboard/**", "/dashboard").authenticated()
+                .requestMatchers("/bookings/**").authenticated()
+                .requestMatchers("/management/accounts/**", "/management/api/accounts/**").hasRole("ADMIN")
+                .requestMatchers("/reception/**").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
+                .requestMatchers("/management/assignments/my-schedule", "/management/assignments/api/my", "/management/assignments/api/*/status").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
+                .requestMatchers("/management/**").hasAnyRole("ADMIN", "MANAGER")
+                .requestMatchers("/feedback/summary", "/feedback/api/issues/**", "/feedback/api/refunds/**").hasAnyRole("ADMIN", "MANAGER")
+                .requestMatchers("/feedback/api/**").authenticated()
                 .requestMatchers("/management/accounts/**", "/management/api/accounts/**").hasRole("ADMIN")
                 .requestMatchers("/management/**").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
                 .anyRequest().authenticated()
