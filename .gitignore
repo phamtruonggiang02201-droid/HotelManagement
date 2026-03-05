@@ -37,4 +37,3 @@ PROJECT_STRUCTURE.md
 .agents
 target
 src/main/resources/application.properties
-target
