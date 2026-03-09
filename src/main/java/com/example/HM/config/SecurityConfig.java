@@ -46,7 +46,6 @@ public class SecurityConfig {
                 .requestMatchers("/management/accounts/**", "/management/api/accounts/**").hasRole("ADMIN")
                 .requestMatchers("/reception/**").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
                 .requestMatchers("/management/assignments/my-schedule", "/management/assignments/api/my", "/management/assignments/api/*/status").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
-                .requestMatchers("/management/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers("/feedback/summary", "/feedback/api/issues/**", "/feedback/api/refunds/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers("/feedback/api/**").authenticated()
                 .requestMatchers("/management/accounts/**", "/management/api/accounts/**").hasRole("ADMIN")
