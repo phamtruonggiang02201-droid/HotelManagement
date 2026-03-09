@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<body>
+    <header th:fragment="header"
+        class="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-200 px-10 py-5 flex items-center justify-between">
+        <div
+            class="flex items-center gap-4 bg-slate-50 px-5 py-2.5 rounded-2xl border border-slate-200 w-full max-w-lg focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+            <input type="text" placeholder="Tìm phòng, dịch vụ..."
+                class="bg-transparent border-none outline-none w-full text-sm font-medium">
+        </div>
+        <div class="flex items-center gap-4 ml-auto">
+            <div sec:authorize="isAuthenticated()" class="flex items-center gap-3">
+                <div class="text-right hidden sm:block">
+                    <p class="text-[10px] text-slate-400 font-medium" th:text="${#authentication.principal.fullName}">
+                    </p>
+                </div>
+                <div
+                    class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 font-bold shadow-sm border border-slate-100 overflow-hidden">
+                    <img th:if="${#authentication.principal.avatar != null}"
+                        th:src="${#authentication.principal.avatar}" class="w-full h-full object-cover">
+                    <span th:if="${#authentication.principal.avatar == null}"
+                        th:text="${#strings.substring(#authentication.principal.fullName,0,1).toUpperCase()}">U</span>
+                </div>
+            </div>
+            <a th:href="@{/login}" sec:authorize="!isAuthenticated()"
+                class="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-all shadow-lg shadow-slate-900/20">Bắt
+                đầu ngay</a>
+        </div>
+    </header>
+</body>
+
+</html>
