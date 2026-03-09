@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title th:text="${mode == 'create'} ? 'Thêm Nhân viên mới - LuxeStay' : 'Chi tiết Nhân viên - LuxeStay'">Chi tiết
+        Nhân viên</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1000px] mx-auto">
+        <div class="mb-8">
+            <a th:href="@{/management/employees}"
+                class="inline-flex items-center text-slate-500 hover:text-indigo-600 transition-colors">
+                <i data-lucide="arrow-left" class="w-5 h-5 mr-2"></i>
+                <span class="font-medium">Quay lại danh sách</span>
+            </a>
+        </div>
+
+        <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm p-12">
+            <h1 class="text-3xl font-black text-slate-900 mb-2" id="page-title"
+                th:text="${mode == 'create'} ? 'Thêm Nhân viên mới' : 'Chi tiết Nhân viên'">Chi tiết Nhân viên</h1>
+            <p class="text-slate-500 mb-10" id="page-subtitle"
+                th:text="${mode == 'create'} ? 'Điền thông tin để tạo tài khoản nhân viên mới.' : 'Xem và chỉnh sửa thông tin nhân viên.'">
+                Thông tin nhân viên</p>
+
+            <form id="employee-form" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <input type="hidden" id="employee-id" th:value="${employeeId}" />
+                <input type="hidden" id="form-mode" th:value="${mode}" />
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Họ và tên</label>
+                    <input type="text" id="fullName" name="fullName" required
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        placeholder="Nguyễn Văn A" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Email</label>
+                    <input type="email" id="email" name="email" required
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        placeholder="email@example.com" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Username</label>
+                    <input type="text" id="username" name="username" required
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        placeholder="username" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Số điện thoại</label>
+                    <input type="text" id="phone" name="phone"
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        placeholder="09xxx..." />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Ngày sinh</label>
+                    <input type="date" id="dob" name="dob"
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Quốc tịch</label>
+                    <input type="text" id="nationality" name="nationality"
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        placeholder="Việt Nam..." />
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Loại giấy tờ</label>
+                        <select id="idType" name="idType"
+                            class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none bg-white">
+                            <option value="CCCD">CCCD</option>
+                            <option value="CMND">CMND</option>
+                            <option value="PASSPORT">Passport</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Số giấy tờ</label>
+                        <input type="text" id="idNumber" name="idNumber"
+                            class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                            placeholder="Số CCCD/Passport..." />
+                    </div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Địa chỉ thường trú</label>
+                    <textarea id="address" name="address" rows="2"
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        placeholder="Số nhà, tên đường, quận/huyện..."></textarea>
+                </div>
+
+                <div th:if="${mode == 'edit'}">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Mật khẩu mới (bỏ trống nếu không đổi)</label>
+                    <input type="password" id="password" name="password"
+                        class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        placeholder="••••••••" />
+                </div>
+
+                <div th:if="${mode == 'edit'}" class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="p-2 bg-white rounded-lg shadow-sm">
+                                <i data-lucide="shield-check" class="w-5 h-5 text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-indigo-900 text-sm mb-1">Trạng thái tài khoản</p>
+                                <p class="text-indigo-700 text-xs leading-relaxed">
+                                    Cho phép hoặc chặn nhân viên đăng nhập vào hệ thống.
+                                </p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="status" name="status" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div th:classappend="${mode == 'edit'} ? '' : 'md:col-span-2'" th:if="${mode == 'create'}" class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                    <div class="flex items-start gap-4">
+                        <div class="p-2 bg-white rounded-lg shadow-sm">
+                            <i data-lucide="info" class="w-5 h-5 text-indigo-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-indigo-900 text-sm mb-1">Tự động hóa mật khẩu</p>
+                            <p class="text-indigo-700 text-xs leading-relaxed">
+                                Đã bật chế độ tự động tạo mật khẩu. Thông tin đăng nhập sẽ được gửi trực tiếp đến Email trên ngay sau khi tài khoản được tạo.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 mt-4 pt-8 border-t border-slate-100">
+                    <div class="hidden">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Quyền hạn</label>
+                        <select id="roleName" name="roleName" required
+                            class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none bg-white">
+                            <option value="">-- Chọn quyền --</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="MANAGER">Manager</option>
+                            <option value="RECEPTION">Reception</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Chức vụ nhân viên</label>
+                        <select id="jobTitle" name="jobTitle" required
+                            class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none bg-white">
+                            <option value="">-- Chọn chức vụ --</option>
+                            <option value="Lễ tân">Lễ tân (Quyền Reception)</option>
+                            <option value="Lễ tân trưởng">Lễ tân trưởng (Quyền Reception)</option>
+                            <option value="Quản lý">Quản lý (Quyền Manager)</option>
+                            <option value="Quản trị viên">Quản trị viên (Quyền Admin)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 flex justify-end gap-4 mt-4 pt-8 border-t border-slate-100">
+                    <a th:href="@{/management/employees}"
+                        class="px-8 py-4 rounded-2xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all">Hủy</a>
+                    <button type="submit"
+                        class="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black shadow-lg shadow-indigo-600/20 hover:scale-105 transition-all">
+                        <span th:text="${mode == 'create'} ? 'Thêm nhân viên' : 'Lưu thay đổi'">Lưu</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <script th:src="@{/js/employee-detail.js}"></script>
+    </div>
+</body>
+
+</html>

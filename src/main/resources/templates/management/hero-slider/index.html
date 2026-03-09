@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Quản lý Slider - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content">
+        <div class="mb-10 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 mb-2">Quản lý Hero Slider</h1>
+                <p class="text-slate-500 font-medium">Cấu hình hình ảnh và nội dung hiển thị trên trang chủ.</p>
+            </div>
+            <button onclick="openAddModal()"
+                class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 flex items-center gap-3">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+                Thêm Slider mới
+            </button>
+        </div>
+
+        <!-- Slider List Table -->
+        <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                        <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Xem trước
+                        </th>
+                        <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Tiêu đề /
+                            Phụ đề</th>
+                        <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Thứ tự
+                        </th>
+                        <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái
+                        </th>
+                        <th
+                            class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                            Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="slider-table-body">
+                    <!-- Data will be loaded via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Add/Edit Modal -->
+        <div id="slider-modal" class="fixed inset-0 z-[100] hidden">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-6">
+                <div
+                    class="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+                    <div class="p-10">
+                        <div class="flex justify-between items-center mb-10">
+                            <h2 id="modal-title" class="text-3xl font-black text-slate-900">Thêm Slider mới</h2>
+                            <button onclick="closeModal()"
+                                class="text-slate-400 hover:text-slate-600 transition-colors">
+                                <i data-lucide="x" class="w-8 h-8"></i>
+                            </button>
+                        </div>
+
+                        <form id="slider-form" onsubmit="handleFormSubmit(event)" class="space-y-8">
+                            <input type="hidden" id="slider-id">
+
+                            <!-- Image Upload Section -->
+                            <div class="space-y-4">
+                                <label class="text-xs font-black uppercase tracking-widest text-slate-400">Hình ảnh
+                                    Slider</label>
+                                <div id="image-preview-container"
+                                    class="relative aspect-video rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden group cursor-pointer"
+                                    onclick="document.getElementById('slider-file-input').click()">
+                                    <img id="image-preview" src="" class="hidden w-full h-full object-cover">
+                                    <div id="upload-placeholder"
+                                        class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <div
+                                            class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <i data-lucide="image-plus" class="w-8 h-8"></i>
+                                        </div>
+                                        <p class="text-sm font-bold text-slate-500">Nhấn để tải ảnh lên</p>
+                                    </div>
+                                    <div id="uploading-state"
+                                        class="absolute inset-0 bg-white/80 backdrop-blur-sm hidden flex flex-col items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin mb-4">
+                                        </div>
+                                        <p class="text-xs font-black uppercase tracking-widest text-indigo-600">Đang tải
+                                            lên...</p>
+                                    </div>
+                                </div>
+                                <input type="file" id="slider-file-input" class="hidden" accept="image/*"
+                                    onchange="uploadImage(event)">
+                                <input type="hidden" id="image-url">
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div class="space-y-2">
+                                    <label class="text-xs font-black uppercase tracking-widest text-slate-400">Tiêu
+                                        đề</label>
+                                    <input type="text" id="title" required placeholder="Nhập tiêu đề chính..."
+                                        class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 font-bold transition-all">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-black uppercase tracking-widest text-slate-400">Thứ tự
+                                        hiển thị</label>
+                                    <input type="number" id="displayOrder" required value="0"
+                                        class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 font-bold transition-all">
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-xs font-black uppercase tracking-widest text-slate-400">Phụ đề / Mô
+                                    tả ngắn</label>
+                                <textarea id="subtitle" rows="3" placeholder="Nhập mô tả cho slider..."
+                                    class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 font-bold transition-all"></textarea>
+                            </div>
+
+                            <div class="flex items-center gap-4 p-5 bg-slate-50 rounded-2xl">
+                                <input type="checkbox" id="active" checked
+                                    class="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <label for="active" class="text-sm font-bold text-slate-700">Kích hoạt hiển thị</label>
+                            </div>
+
+                            <div class="flex gap-4 pt-4">
+                                <button type="button" onclick="closeModal()"
+                                    class="flex-1 px-8 py-5 rounded-2xl font-black text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all uppercase tracking-widest text-xs">
+                                    Hủy bỏ
+                                </button>
+                                <button type="submit"
+                                    class="flex-1 px-8 py-5 rounded-2xl font-black text-white bg-slate-900 hover:bg-indigo-600 transition-all uppercase tracking-widest text-xs shadow-xl shadow-slate-900/10">
+                                    Lưu cấu hình
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script layout:fragment="script">
+        let sliders = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSliders();
+        });
+
+        async function loadSliders() {
+            try {
+                const response = await fetch('/api/management/sliders');
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Không thể tải danh sách slider');
+                }
+                const data = await response.json();
+                // Handle Spring Data Page object
+                sliders = Array.isArray(data) ? data : (data.content || []); 
+                renderSliders();
+            } catch (error) {
+                console.error('Error loading sliders:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        function renderSliders() {
+            const body = document.getElementById('slider-table-body');
+            if (!Array.isArray(sliders)) {
+                body.innerHTML = '<tr><td colspan="5" class="px-8 py-10 text-center text-rose-500 font-bold">Lỗi: Dữ liệu không hợp lệ</td></tr>';
+                return;
+            }
+            if (sliders.length === 0) {
+                body.innerHTML = '<tr><td colspan="5" class="px-8 py-10 text-center text-slate-400 font-bold">Chưa có slider nào</td></tr>';
+                return;
+            }
+            body.innerHTML = sliders.map(s => `
+                <tr class="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                    <td class="px-8 py-6">
+                        <div class="w-32 aspect-video rounded-xl overflow-hidden border border-slate-200">
+                            <img src="${s.imageUrl}" class="w-full h-full object-cover">
+                        </div>
+                    </td>
+                    <td class="px-8 py-6">
+                        <p class="font-black text-slate-900 mb-1">${s.title}</p>
+                        <p class="text-xs text-slate-400 font-medium truncate max-w-xs">${s.subtitle || ''}</p>
+                    </td>
+                    <td class="px-8 py-6">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-900 font-black text-xs">${s.displayOrder}</span>
+                    </td>
+                    <td class="px-8 py-6">
+                        <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${s.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}">
+                            ${s.active ? 'Đang hoạt động' : 'Tạm ẩn'}
+                        </span>
+                    </td>
+                    <td class="px-8 py-6 text-right">
+                        <div class="flex justify-end gap-2">
+                            <button onclick="openEditModal('${s.id}')" class="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-600/30 transition-all shadow-sm">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteSlider('${s.id}')" class="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-600 hover:border-rose-600/30 transition-all shadow-sm">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-title').textContent = 'Thêm Slider mới';
+            document.getElementById('slider-form').reset();
+            document.getElementById('slider-id').value = '';
+            document.getElementById('image-url').value = '';
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('slider-modal').classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function openEditModal(id) {
+            const s = sliders.find(x => x.id === id);
+            if (!s) return;
+
+            document.getElementById('modal-title').textContent = 'Chỉnh sửa Slider';
+            document.getElementById('slider-id').value = s.id;
+            document.getElementById('image-url').value = s.imageUrl;
+            document.getElementById('title').value = s.title;
+            document.getElementById('subtitle').value = s.subtitle;
+            document.getElementById('displayOrder').value = s.displayOrder;
+            document.getElementById('active').checked = s.active;
+
+            document.getElementById('image-preview').src = s.imageUrl;
+            document.getElementById('image-preview').classList.remove('hidden');
+            document.getElementById('upload-placeholder').classList.add('hidden');
+
+            document.getElementById('slider-modal').classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('slider-modal').classList.add('hidden');
+        }
+
+        async function uploadImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            document.getElementById('uploading-state').classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/media/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                document.getElementById('image-url').value = data.url;
+                document.getElementById('image-preview').src = data.url;
+                document.getElementById('image-preview').classList.remove('hidden');
+                document.getElementById('upload-placeholder').classList.add('hidden');
+                showToast('Tải ảnh lên thành công!', 'success');
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                showToast('Tải ảnh lên thất bại', 'error');
+            } finally {
+                document.getElementById('uploading-state').classList.add('hidden');
+            }
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('slider-id').value;
+            const data = {
+                imageUrl: document.getElementById('image-url').value,
+                title: document.getElementById('title').value,
+                subtitle: document.getElementById('subtitle').value,
+                displayOrder: parseInt(document.getElementById('displayOrder').value),
+                active: document.getElementById('active').checked
+            };
+
+            if (!data.imageUrl) {
+                showToast('Vui lòng chọn hoặc tải ảnh lên!', 'error');
+                return;
+            }
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const url = id ? `/api/management/sliders/${id}` : '/api/management/sliders';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    showToast(id ? 'Cập nhật slider thành công!' : 'Thêm slider thành công!', 'success');
+                    closeModal();
+                    loadSliders();
+                } else {
+                    const err = await response.json();
+                    showToast(err.message || 'Thao tác thất bại', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving slider:', error);
+                showToast('Lỗi hệ thống khi lưu slider', 'error');
+            }
+        }
+
+        async function deleteSlider(id) {
+            if (!confirm('Bạn có chắc chắn muốn xóa slider này?')) return;
+
+            try {
+                const response = await fetch(`/api/management/sliders/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showToast('Xóa slider thành công!', 'success');
+                    loadSliders();
+                }
+            } catch (error) {
+                console.error('Error deleting slider:', error);
+                showToast('Lỗi khi xóa slider', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>
