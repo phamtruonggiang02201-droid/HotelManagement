@@ -36,6 +36,11 @@ public class SecurityUtils {
                !(authentication.getPrincipal() instanceof String && authentication.getPrincipal().equals("anonymousUser"));
     }
 
+    public static String getCurrentUserId() {
+        CustomUserDetails details = getCurrentUserDetails();
+        return details != null ? details.getId() : null;
+    }
+
     public static boolean isAnonymous() {
         return !isAuthenticated();
     }
