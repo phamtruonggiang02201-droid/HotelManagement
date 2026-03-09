@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Configuration
 public class DataInitializer {
@@ -19,8 +21,15 @@ public class DataInitializer {
                                      RoomRepository roomRepository,
                                      ServiceCategoryRepository categoryRepository,
                                      ExtraServiceRepository extraServiceRepository,
+                                     BookingRepository bookingRepository,
+                                     GuestRepository guestRepository,
+                                     BookedServiceRepository bookedServiceRepository,
+                                     FeedbackRepository feedbackRepository,
+                                     RoomIssueReportRepository roomIssueReportRepository,
+                                     RefundRepository refundRepository,
                                      PasswordEncoder passwordEncoder) {
         return args -> {
+            // 1. Init Roles
             if (roleRepository.findByRoleName("CUSTOMER").isEmpty()) {
                 Role customer = new Role();
                 customer.setRoleName("CUSTOMER");
@@ -33,11 +42,11 @@ public class DataInitializer {
                 admin.setDescription("Quản trị viên");
                 roleRepository.save(admin);
             }
-            if (roleRepository.findByRoleName("EMPLOYEE").isEmpty()) {
-                Role employee = new Role();
-                employee.setRoleName("EMPLOYEE");
-                employee.setDescription("Nhân viên");
-                roleRepository.save(employee);
+            if (roleRepository.findByRoleName("MANAGER").isEmpty()) {
+                Role manager = new Role();
+                manager.setRoleName("MANAGER");
+                manager.setDescription("Quản lý");
+                roleRepository.save(manager);
             }
             if (roleRepository.findByRoleName("RECEPTION").isEmpty()) {
                 Role reception = new Role();
@@ -45,17 +54,14 @@ public class DataInitializer {
                 reception.setDescription("Lễ tân");
                 roleRepository.save(reception);
             }
-            if (roleRepository.findByRoleName("MANAGER").isEmpty()) {
-                Role manager = new Role();
-                manager.setRoleName("MANAGER");
-                manager.setDescription("Quản lý");
-                roleRepository.save(manager);
-            }
 
-            // 2. Init Admin Account
-            if (accountRepository.findByUsername("admin").isEmpty()) {
-                Role adminRole = roleRepository.findByRoleName("ADMIN").get();
-                
+            Role adminRole = roleRepository.findByRoleName("ADMIN").orElse(null);
+            Role managerRole = roleRepository.findByRoleName("MANAGER").orElse(null);
+            Role receptionRole = roleRepository.findByRoleName("RECEPTION").orElse(null);
+            Role customerRole = roleRepository.findByRoleName("CUSTOMER").orElse(null);
+
+            // 2. Init Default Accounts
+            if (accountRepository.findByUsername("admin").isEmpty() && adminRole != null) {
                 Account admin = new Account();
                 admin.setUsername("admin");
                 admin.setPassword(passwordEncoder.encode("Admin@123"));
@@ -65,26 +71,10 @@ public class DataInitializer {
                 admin.setRole(adminRole);
                 admin.setStatus(true);
                 admin.setEmailVerified(true);
-                admin.setNationality("Việt Nam");
-                admin.setIdType("CCCD");
-                admin.setIdNumber("000000000000");
-                admin.setJobTitle("Quản trị hệ thống");
-                
                 accountRepository.save(admin);
-                System.out.println(">>> Default Admin Account Created: admin / Admin@123");
-            } else {
-                // Update existing admin if jobTitle is missing
-                accountRepository.findByUsername("admin").ifPresent(a -> {
-                    if (a.getJobTitle() == null || a.getJobTitle().isEmpty()) {
-                        a.setJobTitle("Quản trị hệ thống");
-                        accountRepository.save(a);
-                    }
-                });
             }
 
-            // 3. Init Manager Account
-            if (accountRepository.findByUsername("manager").isEmpty()) {
-                Role managerRole = roleRepository.findByRoleName("MANAGER").get();
+            if (accountRepository.findByUsername("manager").isEmpty() && managerRole != null) {
                 Account manager = new Account();
                 manager.setUsername("manager");
                 manager.setPassword(passwordEncoder.encode("Manager@123"));
@@ -94,159 +84,324 @@ public class DataInitializer {
                 manager.setRole(managerRole);
                 manager.setStatus(true);
                 manager.setEmailVerified(true);
-                manager.setNationality("Việt Nam");
-                manager.setIdType("CCCD");
-                manager.setIdNumber("111111111111");
-                manager.setJobTitle("Quản lý khách sạn");
                 accountRepository.save(manager);
-                System.out.println(">>> Default Manager Account Created: manager / Manager@123");
-            } else {
-                // Update existing manager if jobTitle is missing
-                accountRepository.findByUsername("manager").ifPresent(a -> {
-                    if (a.getJobTitle() == null || a.getJobTitle().isEmpty()) {
-                        a.setJobTitle("Quản lý khách sạn");
-                        accountRepository.save(a);
-                    }
-                });
             }
 
-            // 4. Init Receptionist Account
-            if (accountRepository.findByUsername("receptionist").isEmpty()) {
-                Role receptionRole = roleRepository.findByRoleName("RECEPTION").get();
+            if (accountRepository.findByUsername("reception").isEmpty() && receptionRole != null) {
                 Account reception = new Account();
-                reception.setUsername("receptionist");
+                reception.setUsername("reception");
                 reception.setPassword(passwordEncoder.encode("Reception@123"));
-                reception.setEmail("receptionists@luxestay.com");
-                reception.setFirstName("Trần");
+                reception.setEmail("reception@luxestay.com");
+                reception.setFirstName("Lê");
                 reception.setLastName("Lễ Tân");
                 reception.setRole(receptionRole);
                 reception.setStatus(true);
                 reception.setEmailVerified(true);
-                reception.setNationality("Việt Nam");
-                reception.setIdType("CCCD");
-                reception.setIdNumber("222222222222");
-                reception.setJobTitle("Lễ tân trưởng");
                 accountRepository.save(reception);
-                System.out.println(">>> Default Receptionist Account Created: receptionist / Reception@123");
-            } else {
-                // Update existing receptionist if jobTitle is missing
-                accountRepository.findByUsername("receptionist").ifPresent(a -> {
-                    if (a.getJobTitle() == null || a.getJobTitle().isEmpty()) {
-                        a.setJobTitle("Lễ tân trưởng");
-                        accountRepository.save(a);
-                    }
-                });
             }
 
-            // 4.5. Init 20 sample Receptionists for testing
-            if (accountRepository.findByUsername("staff1").isEmpty()) {
-                Role receptionRole = roleRepository.findByRoleName("RECEPTION").get();
-                String[] firstNames = {"Anh", "Bình", "Cường", "Dũng", "Em", "Linh", "Minh", "Nam", "Nga", "Oanh", "Phúc", "Quang", "Sơn", "Tâm", "Uyên", "Vinh", "Xuân", "Yến", "Hoàng", "Tuấn"};
-                String[] lastNames = {"Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Phan", "Vũ", "Đặng", "Bùi", "Đỗ"};
-
-                for (int i = 1; i <= 20; i++) {
-                    String username = "staff" + i;
-                    if (accountRepository.findByUsername(username).isEmpty()) {
-                        Account staff = new Account();
-                        staff.setUsername(username);
-                        staff.setPassword(passwordEncoder.encode("Staff@123"));
-                        staff.setEmail("staff" + i + "@luxestay.com");
-                        staff.setFirstName(firstNames[i % firstNames.length]);
-                        staff.setLastName(lastNames[i % lastNames.length]);
-                        staff.setRole(receptionRole);
-                        staff.setJobTitle("Lễ tân");
-                        staff.setStatus(true);
-                        staff.setEmailVerified(true);
-                        staff.setPhone("090" + String.format("%07d", i));
-                        staff.setNationality("Việt Nam");
-                        staff.setIdType("CCCD");
-                        staff.setIdNumber("1000000000" + String.format("%02d", i));
-                        
-                        accountRepository.save(staff);
-                    }
-                }
-                System.out.println(">>> 20 Sample Receptionists Created");
+            // 3. Init Sample Customers for Testing
+            if (accountRepository.findByUsername("customer1").isEmpty() && customerRole != null) {
+                Account c1 = new Account();
+                c1.setUsername("customer1");
+                c1.setPassword(passwordEncoder.encode("password123"));
+                c1.setEmail("customer1@example.com");
+                c1.setFirstName("Trường");
+                c1.setLastName("Giang");
+                c1.setRole(customerRole);
+                c1.setStatus(true);
+                c1.setEmailVerified(true);
+                accountRepository.save(c1);
             }
 
-            // 5. Init Room Types
+            if (accountRepository.findByUsername("customer2").isEmpty() && customerRole != null) {
+                Account c2 = new Account();
+                c2.setUsername("customer2");
+                c2.setPassword(passwordEncoder.encode("password123"));
+                c2.setEmail("customer2@example.com");
+                c2.setFirstName("Văn");
+                c2.setLastName("A");
+                c2.setRole(customerRole);
+                c2.setStatus(true);
+                c2.setEmailVerified(true);
+                accountRepository.save(c2);
+            }
+
+            // 4. Init Room Types
             if (roomTypeRepository.count() == 0) {
                 RoomType std = new RoomType();
                 std.setTypeName("Standard");
-                std.setDescription("Phòng tiêu chuẩn, đầy đủ tiện nghi cơ bản");
                 std.setCapacity(2);
                 std.setPrice(new BigDecimal("500000"));
-                std.setRoomImage("https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&q=80");
+                std.setDescription("Phòng tiêu chuẩn");
                 roomTypeRepository.save(std);
 
                 RoomType dlx = new RoomType();
                 dlx.setTypeName("Deluxe");
-                dlx.setDescription("Phòng cao cấp, không gian rộng rãi");
                 dlx.setCapacity(2);
                 dlx.setPrice(new BigDecimal("850000"));
-                dlx.setRoomImage("https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80");
+                dlx.setDescription("Phòng cao cấp");
                 roomTypeRepository.save(dlx);
-
-                RoomType suite = new RoomType();
-                suite.setTypeName("Suite");
-                suite.setDescription("Phòng sang trọng nhất với view đẹp");
-                suite.setCapacity(4);
-                suite.setPrice(new BigDecimal("1500000"));
-                suite.setRoomImage("https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80");
-                roomTypeRepository.save(suite);
-                System.out.println(">>> Sample Room Types Created");
             }
 
-            // 6. Init Rooms
+            // 5. Init Rooms
             if (roomRepository.count() == 0) {
-                RoomType std = roomTypeRepository.findByTypeName("Standard").get();
-                RoomType dlx = roomTypeRepository.findByTypeName("Deluxe").get();
-                
-                Room r101 = new Room();
-                r101.setRoomName("P.101");
-                r101.setRoomType(std);
-                r101.setStatus("AVAILABLE");
-                roomRepository.save(r101);
-
-                Room r102 = new Room();
-                r102.setRoomName("P.102");
-                r102.setRoomType(std);
-                r102.setStatus("AVAILABLE");
-                roomRepository.save(r102);
-
-                Room r201 = new Room();
-                r201.setRoomName("P.201");
-                r201.setRoomType(dlx);
-                r201.setStatus("AVAILABLE");
-                roomRepository.save(r201);
-                System.out.println(">>> Sample Rooms Created");
+                roomTypeRepository.findByTypeName("Standard").ifPresent(rt -> {
+                    Room r101 = new Room();
+                    r101.setRoomName("P.101");
+                    r101.setRoomType(rt);
+                    r101.setStatus("AVAILABLE");
+                    roomRepository.save(r101);
+                });
             }
 
-            // 7. Init Service Categories & Services
+            // 6. Init Service Categories
             if (categoryRepository.count() == 0) {
                 ServiceCategory food = new ServiceCategory();
                 food.setCategoryName("Ẩm thực");
-                food.setDescription("Dịch vụ ăn uống");
+                food.setDescription("Dịch vụ ăn uống tại phòng và nhà hàng");
                 categoryRepository.save(food);
 
-                ServiceCategory luxury = new ServiceCategory();
-                luxury.setCategoryName("Thư giãn");
-                luxury.setDescription("Spa, Massage, Sauna");
-                categoryRepository.save(luxury);
+                ServiceCategory spa = new ServiceCategory();
+                spa.setCategoryName("Spa & Wellness");
+                spa.setDescription("Chăm sóc sức khỏe và làm đẹp");
+                categoryRepository.save(spa);
 
-                // Add Services
-                ExtraService breakfast = new ExtraService();
-                breakfast.setServiceName("Buffet Sáng");
-                breakfast.setPrice(new BigDecimal("150000"));
-                breakfast.setCategory(food);
-                extraServiceRepository.save(breakfast);
-
-                ExtraService massage = new ExtraService();
-                massage.setServiceName("Massage Body (60p)");
-                massage.setPrice(new BigDecimal("350000"));
-                massage.setCategory(luxury);
-                extraServiceRepository.save(massage);
-                System.out.println(">>> Sample Services Created");
+                ServiceCategory transport = new ServiceCategory();
+                transport.setCategoryName("Di chuyển & Tiện ích");
+                transport.setDescription("Đưa đón và các dịch vụ khác");
+                categoryRepository.save(transport);
             }
+
+            // 7. Init Extra Services
+            if (extraServiceRepository.count() == 0) {
+                categoryRepository.findAll().forEach(cat -> {
+                    if (cat.getCategoryName().equals("Ẩm thực")) {
+                        ExtraService s1 = new ExtraService();
+                        s1.setServiceName("Buffet Sáng");
+                        s1.setPrice(new BigDecimal("150000"));
+                        s1.setCategory(cat);
+                        extraServiceRepository.save(s1);
+
+                        ExtraService s2 = new ExtraService();
+                        s2.setServiceName("Cơm Lam Gà Nướng");
+                        s2.setPrice(new BigDecimal("250000"));
+                        s2.setCategory(cat);
+                        extraServiceRepository.save(s2);
+
+                        ExtraService s3 = new ExtraService();
+                        s3.setServiceName("Coca Cola");
+                        s3.setPrice(new BigDecimal("20000"));
+                        s3.setCategory(cat);
+                        extraServiceRepository.save(s3);
+                    } else if (cat.getCategoryName().equals("Spa & Wellness")) {
+                        ExtraService s1 = new ExtraService();
+                        s1.setServiceName("Massage Toàn Thân (60p)");
+                        s1.setPrice(new BigDecimal("450000"));
+                        s1.setCategory(cat);
+                        extraServiceRepository.save(s1);
+
+                        ExtraService s2 = new ExtraService();
+                        s2.setServiceName("Xông Hơi Tinh Dầu");
+                        s2.setPrice(new BigDecimal("200000"));
+                        s2.setCategory(cat);
+                        extraServiceRepository.save(s2);
+                    } else if (cat.getCategoryName().equals("Di chuyển & Tiện ích")) {
+                        ExtraService s1 = new ExtraService();
+                        s1.setServiceName("Đưa đón Sân Bay");
+                        s1.setPrice(new BigDecimal("300000"));
+                        s1.setCategory(cat);
+                        extraServiceRepository.save(s1);
+
+                        ExtraService s2 = new ExtraService();
+                        s2.setServiceName("Thuê Xe Máy (Ngày)");
+                        s2.setPrice(new BigDecimal("120000"));
+                        s2.setCategory(cat);
+                        extraServiceRepository.save(s2);
+
+                        ExtraService s3 = new ExtraService();
+                        s3.setServiceName("Giặt ủi (kg)");
+                        s3.setPrice(new BigDecimal("30000"));
+                        s3.setCategory(cat);
+                        extraServiceRepository.save(s3);
+                    }
+                });
+            }
+
+            // 8. Init Sample Bookings for Test
+            if (bookingRepository.count() <= 2) {
+                accountRepository.findByUsername("customer1").ifPresent(acc -> {
+                    roomTypeRepository.findByTypeName("Deluxe").ifPresent(rt -> {
+                        // 1. Booking đã trả phòng (Để test Feedback)
+                        Booking b1 = new Booking();
+                        b1.setAccount(acc);
+                        b1.setRoomType(rt);
+                        b1.setCheckIn(LocalDate.now().minusDays(10));
+                        b1.setCheckOut(LocalDate.now().minusDays(7));
+                        b1.setStatus("CHECKED_OUT");
+                        b1.setTotalAmount(new BigDecimal("2550000"));
+                        b1.setPaymentDate(LocalDateTime.now().minusDays(7));
+                        bookingRepository.save(b1);
+
+                        // 2. Booking đang ở (Để test Check-out & Service Order)
+                        Booking b2 = new Booking();
+                        b2.setAccount(acc);
+                        b2.setRoomType(rt);
+                        b2.setCheckIn(LocalDate.now().minusDays(2));
+                        b2.setCheckOut(LocalDate.now().plusDays(1));
+                        b2.setStatus("CHECKED_IN");
+                        b2.setTotalAmount(new BigDecimal("2550000"));
+                        bookingRepository.save(b2);
+                        
+                        // Gán phòng cho khách đang ở
+                        roomRepository.findAll().stream()
+                            .filter(r -> r.getRoomType().getId().equals(rt.getId()) && "AVAILABLE".equals(r.getStatus()))
+                            .findFirst().ifPresent(room -> {
+                                b2.setRooms(java.util.Set.of(room));
+                                room.setStatus("OCCUPIED");
+                                roomRepository.save(room);
+                                bookingRepository.save(b2);
+                            });
+                    });
+                });
+
+                accountRepository.findByUsername("customer2").ifPresent(acc -> {
+                    roomTypeRepository.findByTypeName("Standard").ifPresent(rt -> {
+                        // 3. Booking chuẩn bị Check-in hôm nay
+                        Booking b3 = new Booking();
+                        b3.setAccount(acc);
+                        b3.setRoomType(rt);
+                        b3.setCheckIn(LocalDate.now());
+                        b3.setCheckOut(LocalDate.now().plusDays(2));
+                        b3.setStatus("PAID");
+                        b3.setTotalAmount(new BigDecimal("1000000"));
+                        b3.setPaymentDate(LocalDateTime.now().minusHours(5));
+                        bookingRepository.save(b3);
+
+                        // 4. Booking chờ thanh toán (Pending)
+                        Booking b4 = new Booking();
+                        b4.setAccount(acc);
+                        b4.setRoomType(rt);
+                        b4.setCheckIn(LocalDate.now().plusDays(5));
+                        b4.setCheckOut(LocalDate.now().plusDays(7));
+                        b4.setStatus("PENDING_PAYMENT");
+                        b4.setTotalAmount(new BigDecimal("1000000"));
+                        bookingRepository.save(b4);
+                    });
+                });
+
+                // 5. Booking vãng lai (Guest only - Không có Account)
+                roomTypeRepository.findByTypeName("Deluxe").ifPresent(rt -> {
+                    Guest g1 = new Guest();
+                    g1.setFullName("Nguyễn Văn Khách");
+                    g1.setPhone("0912345678");
+                    g1.setIdNumber("123456789012");
+                    g1.setEmail("khachvanglai@gmail.com");
+                    guestRepository.save(g1);
+
+                    Booking b5 = new Booking();
+                    b5.setGuest(g1);
+                    b5.setRoomType(rt);
+                    b5.setCheckIn(LocalDate.now());
+                    b5.setCheckOut(LocalDate.now().plusDays(3));
+                    b5.setStatus("PAID");
+                    b5.setTotalAmount(new BigDecimal("2550000"));
+                    bookingRepository.save(b5);
+                });
+
+                System.out.println(">>> 5 Diverse Sample Bookings Initialized <<<");
+
+                // 6. Thêm một vài dịch vụ cho khách đang ở (b2) để test Check-out
+                bookingRepository.findAll().stream()
+                    .filter(b -> "CHECKED_IN".equals(b.getStatus()))
+                    .findFirst().ifPresent(b -> {
+                        extraServiceRepository.findAll().stream().limit(3).forEach(srv -> {
+                            BookedService bs = new BookedService();
+                            bs.setBooking(b);
+                            bs.setService(srv);
+                            bs.setQuantity(1);
+                            bs.setUnitPrice(srv.getPrice());
+                            bs.setStatus("DELIVERED");
+                            bookedServiceRepository.save(bs);
+                        });
+                    });
+
+                // 7. Thêm Feedback mẫu cho các đơn đã CHECKED_OUT
+                bookingRepository.findAll().stream()
+                    .filter(b -> "CHECKED_OUT".equals(b.getStatus()))
+                    .forEach(b -> {
+                        Feedback f = new Feedback();
+                        f.setBooking(b);
+                        f.setRating(5);
+                        f.setComment("Dịch vụ tuyệt vời, phòng ốc sạch sẽ và nhân viên rất nhiệt tình. Chắc chắn sẽ quay lại!");
+                        feedbackRepository.save(f);
+                    });
+
+                // 8. Thêm Sự cố mẫu (Issue) cho khách đang ở
+                bookingRepository.findAll().stream()
+                    .filter(b -> "CHECKED_IN".equals(b.getStatus()))
+                    .findFirst().ifPresent(b -> {
+                        RoomIssueReport issue = new RoomIssueReport();
+                        issue.setBooking(b);
+                        issue.setDescription("Vòi hoa sen trong phòng tắm bị rò rỉ nước.");
+                        issue.setStatus("PENDING");
+                        
+                        // Lấy đại diện một phòng đang có khách để gán vào sự cố
+                        roomRepository.findAll().stream()
+                            .filter(r -> "OCCUPIED".equals(r.getStatus()))
+                            .findFirst()
+                            .ifPresent(issue::setRoom);
+                            
+                        roomIssueReportRepository.save(issue);
+                    });
+
+                // 9. Thêm yêu cầu hoàn tiền mẫu
+                bookingRepository.findAll().stream()
+                    .filter(b -> "PENDING_PAYMENT".equals(b.getStatus()))
+                    .findFirst().ifPresent(b -> {
+                        Refund r = new Refund();
+                        r.setBooking(b);
+                        r.setReason("Khách hàng muốn đổi sang loại phòng Suite và yêu cầu hoàn cọc đơn cũ.");
+                        r.setRefundAmount(new BigDecimal("500000"));
+                        r.setStatus("PENDING");
+                        r.setRequestedAt(LocalDateTime.now().minusHours(2));
+                        refundRepository.save(r);
+                    });
+            }
+
+            // 8. Init 20 Sample Staff Members
+            if (accountRepository.count() <= 10) { // Nếu chỉ có vài account mặc định thì thêm 20 staff
+                Role mgrRole = roleRepository.findByRoleName("MANAGER").orElse(null);
+                Role recRole = roleRepository.findByRoleName("RECEPTION").orElse(null);
+                
+                if (mgrRole != null && recRole != null) {
+                    for (int i = 1; i <= 20; i++) {
+                        String username = "staff" + i;
+                        if (accountRepository.findByUsername(username).isEmpty()) {
+                            Account staff = new Account();
+                            staff.setUsername(username);
+                            staff.setPassword(passwordEncoder.encode("Staff@123"));
+                            staff.setEmail(username + "@luxestay.com");
+                            staff.setFirstName("Nhân Viên");
+                            staff.setLastName(String.valueOf(i));
+                            staff.setRole(i <= 5 ? mgrRole : recRole); // 5 Manager, 15 Reception
+                            staff.setStatus(true);
+                            staff.setEmailVerified(true);
+                            //staff.setPhoneNumber("0908123" + String.format("%03d", i));
+                            accountRepository.save(staff);
+                        }
+                    }
+                    System.out.println(">>> 20 Sample Staff Members Initialized <<<");
+                }
+            }
+
+            // 9. Patch: Fix null isActive for existing services
+            extraServiceRepository.findByIsActiveIsNull().forEach(srv -> {
+                srv.setIsActive(true);
+                extraServiceRepository.save(srv);
+            });
+
+            System.out.println(">>> Data Initialized Successfully <<<");
         };
     }
 }
