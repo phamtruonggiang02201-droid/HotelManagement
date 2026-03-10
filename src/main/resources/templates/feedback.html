@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+    layout:decorate="${#authorization.expression('isAuthenticated()') ? 'layout/main_layout' : 'layout/landing_layout'}">
+
+<head>
+    <title>Đánh giá từ khách hàng - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="pb-20 px-10 max-w-[1400px] mx-auto"
+         th:classappend="${#authorization.expression('isAuthenticated()')} ? 'pt-10' : 'pt-32'">
+        
+        <div class="mb-16 text-center">
+            <span class="text-indigo-600 text-xs font-black uppercase tracking-widest mb-4 inline-block">Guest Experiences</span>
+            <h1 class="text-5xl font-black text-slate-900 mb-6">Những kỷ niệm đáng nhớ</h1>
+            <p class="text-slate-500 max-w-2xl mx-auto font-medium text-lg">Hơn 10,000 khách hàng đã tin tưởng và lựa chọn LuxeStay cho kỳ nghỉ của mình. Dưới đây là những chia sẻ chân thực nhất.</p>
+        </div>
+
+        <!-- Feedback Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <div th:each="feedback : ${feedbacks.content}" 
+                 class="group bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 relative">
+                
+                <div class="flex items-center gap-1 mb-8 text-amber-400">
+                    <i th:each="i : ${#numbers.sequence(1, 5)}" 
+                       data-lucide="star" 
+                       th:class="${i <= feedback.rating ? 'fill-amber-400 w-6 h-6' : 'text-slate-100 w-6 h-6'}"></i>
+                </div>
+
+                <div class="relative mb-10">
+                    <i data-lucide="quote" class="absolute -top-4 -left-4 w-12 h-12 text-indigo-50 opacity-50 group-hover:text-indigo-100 transition-colors"></i>
+                    <p class="text-slate-700 font-medium text-xl leading-relaxed relative z-10 italic" 
+                       th:text="${feedback.comment ?: 'Một trải nghiệm tuyệt vời và khó quên tại LuxeStay. Dịch vụ chuyên nghiệp và không gian vô cùng sang trọng.'}"></p>
+                </div>
+
+                <div class="flex items-center gap-5 pt-8 border-t border-slate-50">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-indigo-200">
+                        <span th:text="${feedback.booking.guest != null ? #strings.substring(feedback.booking.guest.fullName, 0, 1) : feedback.booking.account.firstName.substring(0, 1)}">G</span>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-slate-900 text-lg mb-1" 
+                            th:text="${feedback.booking.guest != null ? feedback.booking.guest.fullName : feedback.booking.account.firstName + ' ' + feedback.booking.account.lastName}">Tên khách</h4>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-indigo-400">Khách hàng thân thiết</span>
+                            <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400" 
+                                  th:text="${#temporals.format(feedback.createdAt, 'MMMM, yyyy')}">December, 2024</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${feedbacks.totalPages > 1}" class="mt-20 flex justify-center gap-3">
+            <a th:if="${feedbacks.hasPrevious()}" th:href="@{/feedback(page=${feedbacks.number - 1})}"
+               class="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm">
+                <i data-lucide="chevron-left" class="w-6 h-6"></i>
+            </a>
+            <div th:each="i : ${#numbers.sequence(0, feedbacks.totalPages - 1)}"
+                 th:classappend="${i == feedbacks.number} ? 'bg-slate-900 text-white shadow-xl' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'"
+                 class="w-14 h-14 flex items-center justify-center rounded-2xl font-black text-sm transition-all cursor-pointer">
+                 <a th:href="@{/feedback(page=${i})}" th:text="${i + 1}" class="w-full h-full flex items-center justify-center">1</a>
+            </div>
+            <a th:if="${feedbacks.hasNext()}" th:href="@{/feedback(page=${feedbacks.number + 1})}"
+               class="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm">
+                <i data-lucide="chevron-right" class="w-6 h-6"></i>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

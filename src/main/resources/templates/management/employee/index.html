@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Quản lý Nhân viên - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <section id="manage-employees-section" class="active">
+            <div class="flex justify-between items-center mb-12">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900">Quản lý Nhân viên</h1>
+                    <p class="text-slate-500 font-medium">Quản lý đội ngũ nhân viên, lễ tân và quản lý khách sạn.</p>
+                </div>
+                <a th:href="@{/management/employees/new}"
+                    class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-600/20 hover:scale-105 transition-all">
+                    + Thêm nhân viên mới
+                </a>
+            </div>
+
+            <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead
+                        class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <tr>
+                            <th class="px-8 py-6">Username</th>
+                            <th class="px-8 py-6">Họ tên</th>
+                            <th class="px-8 py-6">Email</th>
+                            <th class="px-8 py-6">Chức vụ</th>
+                            <th class="px-8 py-6">Quyền hạn</th>
+                            <th class="px-8 py-6">Ngày tham gia</th>
+                            <th class="px-8 py-6">Trạng thái</th>
+                            <th class="px-8 py-6 text-right">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employee-manage-tbody" class="divide-y divide-slate-50 font-medium text-slate-600">
+                        <!-- Data loaded via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="mt-8 flex justify-center gap-2" id="employee-pagination">
+                <!-- Pagination buttons -->
+            </div>
+        </section>
+
+        <script th:src="@{/js/employee-management.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                loadEmployees(0);
+            });
+        </script>
+    </div>
+</body>
+
+</html>
