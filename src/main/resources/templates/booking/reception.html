@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Quản lý Check-in/out - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <div class="mb-12">
+            <h1 class="text-4xl font-black text-slate-900 mb-2">Quản lý Check-in/out</h1>
+            <p class="text-slate-500 font-medium">Theo dõi và thực hiện nhận/trả phòng cho khách hàng.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <!-- Paid Bookings (Pending Check-in) -->
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                        <span class="w-2 h-8 bg-indigo-600 rounded-full"></span>
+                        Chờ Check-in
+                        <span class="ml-2 px-3 py-1 bg-indigo-100 text-indigo-600 text-xs rounded-full"
+                            th:text="${paidBookings.totalElements}">0</span>
+                    </h2>
+                </div>
+
+                <div class="grid gap-4">
+                    <div th:each="booking : ${paidBookings}"
+                        class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-black text-slate-900 text-lg" th:text="${booking.guest?.fullName}">Khách
+                                    hàng</h3>
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest"
+                                    th:text="${booking.roomType?.typeName}">Loại phòng</p>
+                            </div>
+                            <span
+                                class="px-3 py-1 bg-emerald-100 text-emerald-600 text-[10px] font-black uppercase rounded-lg">Đã
+                                thanh toán</span>
+                        </div>
+
+                        <div class="flex items-center gap-6 mb-6 text-slate-500 text-sm font-medium">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-4 h-4"></i>
+                                <span
+                                    th:text="|${booking.checkIn != null ? #temporals.format(booking.checkIn, 'dd/MM') : '..'} - ${booking.checkOut != null ? #temporals.format(booking.checkOut, 'dd/MM') : '..'}|">12/02 - 14/02</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="phone" class="w-4 h-4"></i>
+                                <span th:text="${booking.guest?.phone}">0123456789</span>
+                            </div>
+                        </div>
+
+                        <button
+                            th:data-booking-id="${booking.id}" th:data-room-type-id="${booking.roomType?.id}" th:data-room-type-name="${booking.roomType?.typeName}"
+                            onclick="openCheckInModal(this.getAttribute('data-booking-id'), this.getAttribute('data-room-type-id'), this.getAttribute('data-room-type-name'))"
+                            class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm hover:bg-indigo-600 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="log-in" class="w-4 h-4"></i>
+                            Thực hiện Check-in
+                        </button>
+                    </div>
+
+                    <div th:if="${paidBookings.isEmpty()}"
+                        class="py-12 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 text-center">
+                        <p class="text-slate-400 font-bold">Không có yêu cầu check-in nào</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Checked-in Bookings (Pending Check-out) -->
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                        <span class="w-2 h-8 bg-rose-500 rounded-full"></span>
+                        Đang Lưu Trú
+                        <span class="ml-2 px-3 py-1 bg-rose-100 text-rose-600 text-xs rounded-full"
+                            th:text="${checkedInBookings.totalElements}">0</span>
+                    </h2>
+                </div>
+
+                <div class="grid gap-4">
+                    <div th:each="booking : ${checkedInBookings}"
+                        class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-all border-l-4 border-l-indigo-600">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="font-black text-slate-900 text-lg" th:text="${booking.guest?.fullName}">
+                                        Khách hàng</h3>
+                                    <div class="flex gap-1">
+                                        <span th:each="room : ${booking.rooms}"
+                                            class="px-2 py-0.5 bg-indigo-600 text-white text-[10px] font-black rounded-md"
+                                            th:text="${room.roomName}">101</span>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest"
+                                    th:text="${booking.roomType?.typeName}">Loại phòng</p>
+                            </div>
+                            <span
+                                class="px-3 py-1 bg-indigo-100 text-indigo-600 text-[10px] font-black uppercase rounded-lg">Checked-in</span>
+                        </div>
+
+                        <div class="flex items-center gap-6 mb-6 text-slate-500 text-sm font-medium">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-4 h-4 text-rose-400"></i>
+                                <span>Trả phòng: <span
+                                        th:text="${#temporals.format(booking.checkOut, 'dd/MM/yyyy')}">14/02/2026</span></span>
+                            </div>
+                        </div>
+
+                        <button th:data-booking-id="${booking.id}"
+                            onclick="handleCheckOut(this.getAttribute('data-booking-id'))"
+                            class="w-full border-2 border-slate-900 text-slate-900 py-4 rounded-2xl font-black text-sm hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                            Thực hiện Check-out
+                        </button>
+                    </div>
+
+                    <div th:if="${checkedInBookings.isEmpty()}"
+                        class="py-12 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 text-center">
+                        <p class="text-slate-400 font-bold">Không có khách đang lưu trú</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Check-in Modal -->
+        <div id="check-in-modal" class="fixed inset-0 z-[60] hidden">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeCheckInModal()"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 transform transition-all scale-95 opacity-0 duration-300 pointer-events-auto"
+                    id="modal-content">
+                    
+                    <!-- Progress Bar -->
+                    <div class="flex gap-2 mb-8">
+                        <div id="step-1-indicator" class="h-1.5 flex-1 bg-indigo-600 rounded-full transition-all"></div>
+                        <div id="step-2-indicator" class="h-1.5 flex-1 bg-slate-100 rounded-full transition-all"></div>
+                    </div>
+
+                    <form id="check-in-form" class="space-y-8 text-left">
+                        <input type="hidden" id="modal-booking-id">
+
+                        <!-- STEP 1: SELECT ROOM -->
+                        <div id="step-1-container">
+                            <h3 class="text-3xl font-black text-slate-900 mb-2">Bước 1: Chọn phòng</h3>
+                            <p class="text-slate-500 font-medium mb-8">Vui lòng chọn số phòng trống loại <span id="modal-room-type-name" class="text-indigo-600 font-black">...</span></p>
+                            
+                            <div id="available-rooms-container" class="grid grid-cols-3 gap-3 min-h-[120px]">
+                                <!-- Room options will be loaded here -->
+                            </div>
+
+                            <div class="flex gap-4 mt-10">
+                                <button type="button" onclick="closeCheckInModal()"
+                                    class="flex-1 px-8 py-5 rounded-3xl font-black text-slate-500 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest">Hủy</button>
+                                <button type="button" onclick="goToStep2()"
+                                    class="flex-1 px-8 py-5 rounded-3xl bg-slate-900 text-white font-black hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10 uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                                    Tiếp theo
+                                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 2: GUEST INFO -->
+                        <div id="step-2-container" class="hidden">
+                            <h3 class="text-3xl font-black text-slate-900 mb-2">Bước 2: Thông tin khách</h3>
+                            <p class="text-slate-500 font-medium mb-8">Nhập thông tin định danh khách hàng thực hiện check-in.</p>
+                            
+                            <div class="space-y-5">
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Số CCCD / Passport</label>
+                                    <input type="text" id="guest-id-card" required
+                                        class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20"
+                                        placeholder="Nhập số giấy tờ định danh">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Họ và tên khách</label>
+                                    <input type="text" id="guest-full-name" required
+                                        class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20"
+                                        placeholder="Tên khách hàng check-in">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Ghi chú check-in</label>
+                                    <textarea id="check-in-note" rows="2"
+                                        class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20"
+                                        placeholder="Yêu cầu đặc biệt (nếu có)..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-4 mt-10">
+                                <button type="button" onclick="goToStep1()"
+                                    class="flex-1 px-8 py-5 rounded-3xl font-black text-slate-500 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                                    Quay lại
+                                </button>
+                                <button type="submit"
+                                    class="flex-1 px-8 py-5 rounded-3xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 uppercase text-xs tracking-widest">
+                                    Hoàn tất Check-in
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <!-- Checkout Summary Modal -->
+        <div id="checkout-modal" class="fixed inset-0 z-[60] hidden">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeCheckoutModal()"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl p-10 transform transition-all scale-95 opacity-0 duration-300"
+                    id="checkout-modal-content">
+                    <div class="flex justify-between items-start mb-8">
+                        <div>
+                            <h3 class="text-3xl font-black text-slate-900 mb-2">Bảng kê thanh toán</h3>
+                            <p class="text-slate-500 font-medium">Đối soát các khoản phí trước khi hoàn tất trả phòng.</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Mã Booking</span>
+                            <div class="font-bold text-slate-900" id="summary-booking-id">#...</div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Guest & Room Info -->
+                        <div class="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-3xl">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Khách hàng</label>
+                                <div class="font-bold text-slate-900" id="summary-guest-name">...</div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Phòng</label>
+                                <div class="font-bold text-indigo-600" id="summary-rooms">...</div>
+                            </div>
+                        </div>
+
+                        <!-- BILLING DETAILS -->
+                        <div class="space-y-4">
+                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Chi tiết hóa đơn</h4>
+                            <div class="border border-slate-100 rounded-3xl overflow-hidden">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50">
+                                        <tr>
+                                            <th class="px-6 py-4 text-left font-black text-slate-500">Nội dung</th>
+                                            <th class="px-6 py-4 text-center font-black text-slate-500">SL</th>
+                                            <th class="px-6 py-4 text-right font-black text-slate-500">Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="summary-table-body" class="divide-y divide-slate-50">
+                                        <!-- Row data -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- TOTALS -->
+                        <div class="p-8 bg-indigo-600 rounded-[32px] text-white space-y-4 shadow-xl shadow-indigo-600/20">
+                            <div class="flex justify-between items-center opacity-80 text-sm font-bold">
+                                <span>Tổng cộng (Phòng + Dịch vụ)</span>
+                                <span id="summary-total-amount">0đ</span>
+                            </div>
+                            <div class="flex justify-between items-center opacity-80 text-sm font-bold border-b border-white/10 pb-4">
+                                <span>Đã thanh toán trước</span>
+                                <span id="summary-paid-amount">0đ</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-black uppercase tracking-wider">Còn lại phải thu</span>
+                                <span class="text-3xl font-black" id="summary-balance">0đ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 mt-10">
+                        <button onclick="closeCheckoutModal()"
+                            class="flex-1 px-8 py-5 rounded-3xl font-black text-slate-500 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest">Quay lại</button>
+                        <button id="btn-confirm-checkout"
+                            class="flex-1 px-8 py-5 rounded-3xl bg-slate-900 text-white font-black hover:bg-rose-600 transition-all shadow-xl shadow-slate-900/10 uppercase text-xs tracking-widest">
+                            Xác nhận trả phòng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script layout:fragment="script">
+        let currentCheckInStep = 1;
+
+        function openCheckInModal(bookingId, roomTypeId, roomTypeName) {
+            document.getElementById('modal-booking-id').value = bookingId;
+            document.getElementById('modal-room-type-name').textContent = roomTypeName;
+
+            // Reset Form & Steps
+            document.getElementById('check-in-form').reset();
+            goToStep1();
+
+            // Load available rooms of this type
+            loadAvailableRooms(roomTypeId);
+
+            const modal = document.getElementById('check-in-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeCheckInModal() {
+            const modal = document.getElementById('check-in-modal');
+            const content = document.getElementById('modal-content');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function goToStep1() {
+            currentCheckInStep = 1;
+            document.getElementById('step-1-container').classList.remove('hidden');
+            document.getElementById('step-2-container').classList.add('hidden');
+            document.getElementById('step-1-indicator').className = 'h-1.5 flex-1 bg-indigo-600 rounded-full transition-all';
+            document.getElementById('step-2-indicator').className = 'h-1.5 flex-1 bg-slate-100 rounded-full transition-all';
+        }
+
+        function goToStep2() {
+            const selectedRooms = Array.from(document.querySelectorAll('input[name="roomIds"]:checked'));
+            if (selectedRooms.length === 0) {
+                alert('bạn vui lòng chọn ít nhất một phòng để tiếp tục ạ!');
+                return;
+            }
+
+            currentCheckInStep = 2;
+            document.getElementById('step-1-container').classList.add('hidden');
+            document.getElementById('step-2-container').classList.remove('hidden');
+            document.getElementById('step-1-indicator').className = 'h-1.5 flex-1 bg-emerald-500 rounded-full transition-all';
+            document.getElementById('step-2-indicator').className = 'h-1.5 flex-1 bg-indigo-600 rounded-full transition-all';
+            lucide.createIcons();
+        }
+
+        async function loadAvailableRooms(roomTypeId) {
+            const container = document.getElementById('available-rooms-container');
+            container.innerHTML = '<div class="col-span-full py-8 text-center text-slate-400"><i class="lucide-refresh-cw animate-spin w-8 h-8 mx-auto mb-2"></i><p class="text-[10px] font-black uppercase tracking-tighter">Đang tìm phòng trống...</p></div>';
+
+            try {
+                const response = await fetch(`/bookings/api/available-rooms/${roomTypeId}`);
+                const data = await response.json();
+                const rooms = data.content || [];
+
+                if (rooms.length === 0) {
+                    container.innerHTML = '<div class="col-span-full py-8 text-center bg-rose-50 border-2 border-rose-100 rounded-3xl"><p class="text-rose-500 font-black text-xs uppercase tracking-widest">Hết phòng trống loại này!</p></div>';
+                    return;
+                }
+
+                container.innerHTML = rooms.map(room => `
+                    <label class="cursor-pointer group">
+                        <input type="checkbox" name="roomIds" value="${room.id}" class="peer hidden">
+                        <div class="p-4 border-2 border-slate-100 rounded-2xl text-center font-black text-slate-600 group-hover:border-slate-300 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-600 transition-all shadow-sm">
+                            <div class="text-xs opacity-40 mb-1">ROOM</div>
+                            <div class="text-lg">${room.roomName}</div>
+                        </div>
+                    </label>
+                `).join('');
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Error loading available rooms:', error);
+                container.innerHTML = '<p class="col-span-full text-center text-rose-500 font-bold">Lỗi tải dữ liệu phòng</p>';
+            }
+        }
+
+        document.getElementById('check-in-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const bookingId = document.getElementById('modal-booking-id').value;
+            const selectedRooms = Array.from(document.querySelectorAll('input[name="roomIds"]:checked')).map(cb => cb.value);
+            
+            const guestIdCard = document.getElementById('guest-id-card').value;
+            const guestFullName = document.getElementById('guest-full-name').value;
+            const note = document.getElementById('check-in-note').value;
+
+            try {
+                const response = await fetch('/bookings/api/check-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bookingId: bookingId,
+                        roomIds: selectedRooms,
+                        guestIdCard: guestIdCard,
+                        guestFullName: guestFullName,
+                        note: note
+                    })
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(error.message || 'Check-in thất bại');
+                }
+            } catch (error) {
+                console.error('Error during check-in:', error);
+                alert('Đã có lỗi xảy ra, bạn kiểm tra lại nhé!');
+            }
+        });
+
+        async function handleCheckOut(bookingId) {
+            // Thay vì confirm ngay, ta load bảng kê
+            openCheckoutModal(bookingId);
+        }
+
+        async function openCheckoutModal(bookingId) {
+            try {
+                const response = await fetch(`/bookings/api/checkout-summary/${bookingId}`);
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(error.message || 'Không thể tải bảng kê thanh toán!');
+                    return;
+                }
+                const data = await response.json();
+
+                // Fill data
+                document.getElementById('summary-booking-id').textContent = `#${data.bookingId.substring(0, 8)}...`;
+                document.getElementById('summary-guest-name').textContent = data.guestName;
+                document.getElementById('summary-rooms').textContent = data.roomNames;
+                
+                const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+                
+                document.getElementById('summary-total-amount').textContent = formatCurrency(data.totalAmount);
+                document.getElementById('summary-paid-amount').textContent = formatCurrency(data.paidAmount);
+                document.getElementById('summary-balance').textContent = formatCurrency(data.balance);
+
+                const tbody = document.getElementById('summary-table-body');
+                tbody.innerHTML = `
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="px-6 py-4 font-bold text-slate-700">Tiền phòng (${data.totalNights} đêm x ${formatCurrency(data.roomPricePerNight)})</td>
+                        <td class="px-6 py-4 text-center font-bold text-slate-500">1</td>
+                        <td class="px-6 py-4 text-right font-black text-slate-900">${formatCurrency(data.totalRoomPrice)}</td>
+                    </tr>
+                `;
+
+                data.services.forEach(srv => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-50/50';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 font-bold text-slate-700">${srv.serviceName}</td>
+                        <td class="px-6 py-4 text-center font-bold text-slate-500">x${srv.quantity}</td>
+                        <td class="px-6 py-4 text-right font-black text-slate-900">${formatCurrency(srv.totalAmount)}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Set action for confirm button
+                const confirmBtn = document.getElementById('btn-confirm-checkout');
+                confirmBtn.onclick = () => processActualCheckOut(bookingId);
+
+                // Show modal
+                const modal = document.getElementById('checkout-modal');
+                const content = document.getElementById('checkout-modal-content');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+
+            } catch (error) {
+                console.error('Error loading checkout summary:', error);
+                alert('Không thể tải bảng kê thanh toán, bạn kiểm tra lại nhé!');
+            }
+        }
+
+        function closeCheckoutModal() {
+            const modal = document.getElementById('checkout-modal');
+            const content = document.getElementById('checkout-modal-content');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        async function processActualCheckOut(bookingId) {
+            if (!confirm('bạn xác nhận đã thu đủ tiền và hoàn tất trả phòng?')) return;
+
+            try {
+                const response = await fetch(`/bookings/api/check-out/${bookingId}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(error.message || 'Check-out thất bại');
+                }
+            } catch (error) {
+                console.error('Error during actual check-out:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>
