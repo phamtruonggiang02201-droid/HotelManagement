@@ -3,233 +3,233 @@
     layout:decorate="~{layout/main_layout}">
 
 <head>
-    <title>Tổng hợp Phản hồi - LuxeStay</title>
+    <title>Hệ thống Đánh giá & Phản hồi - LuxeStay</title>
 </head>
 
 <body>
-    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
-        <div class="mb-12">
-            <h1 class="text-4xl font-black text-slate-900 mb-2">Tổng hợp Phản hồi & Sự cố</h1>
-            <p class="text-slate-500 font-medium">Theo dõi đánh giá, sự cố phòng và yêu cầu hoàn tiền từ khách
-                hàng.</p>
+    <div layout:fragment="content" class="pb-20 px-10 pt-10 max-w-[1400px] mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div>
+                <span class="text-indigo-600 text-xs font-black uppercase tracking-widest mb-4 inline-block">Support & Experience</span>
+                <h1 class="text-5xl font-black text-slate-900 mb-2">Trung tâm Phản hồi</h1>
+                <p class="text-slate-500 font-medium">Lắng nghe ý kiến khách hàng và xử lý các vấn đề phát sinh.</p>
+            </div>
         </div>
 
-        <!-- Tab Navigation -->
-        <div class="flex gap-2 mb-8 border-b border-slate-200">
-            <button onclick="switchTab('feedbacks')" id="tab-feedbacks"
-                class="tab-btn px-6 py-3 font-black text-sm rounded-t-xl border-b-2 border-indigo-600 text-indigo-600 transition-all">
-                <i data-lucide="star" class="w-4 h-4 inline-block mr-1"></i> Đánh giá
-                <span class="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-600 text-xs rounded-full"
-                    th:text="${feedbacks.totalElements}">0</span>
+        <!-- Custom Tabs Navigation -->
+        <div class="flex gap-4 mb-8 bg-slate-100 p-2 rounded-[32px] w-fit">
+            <button onclick="switchTab('feedbacks')" id="tab-btn-feedbacks"
+                class="tab-btn px-8 py-4 rounded-[24px] font-black text-sm transition-all duration-300 bg-white text-slate-900 shadow-sm">
+                Đánh giá khách hàng
             </button>
-            <button onclick="switchTab('issues')" id="tab-issues"
-                class="tab-btn px-6 py-3 font-black text-sm rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all">
-                <i data-lucide="alert-triangle" class="w-4 h-4 inline-block mr-1"></i> Sự cố phòng
-                <span class="ml-1 px-2 py-0.5 bg-rose-100 text-rose-600 text-xs rounded-full"
-                    th:text="${issues.totalElements}">0</span>
+            <button onclick="switchTab('issues')" id="tab-btn-issues"
+                class="tab-btn px-8 py-4 rounded-[24px] font-black text-sm transition-all duration-300 text-slate-500 hover:text-slate-900">
+                Sự cố phòng nghỉ
             </button>
-            <button onclick="switchTab('refunds')" id="tab-refunds"
-                class="tab-btn px-6 py-3 font-black text-sm rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all">
-                <i data-lucide="credit-card" class="w-4 h-4 inline-block mr-1"></i> Hoàn tiền
-                <span class="ml-1 px-2 py-0.5 bg-amber-100 text-amber-600 text-xs rounded-full"
-                    th:text="${refunds.totalElements}">0</span>
+            <button onclick="switchTab('refunds')" id="tab-btn-refunds"
+                class="tab-btn px-8 py-4 rounded-[24px] font-black text-sm transition-all duration-300 text-slate-500 hover:text-slate-900">
+                Yêu cầu hoàn tiền
             </button>
         </div>
 
-        <!-- Tab: Feedbacks -->
-        <div id="content-feedbacks" class="tab-content">
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mã
-                                Booking</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Đánh
-                                giá</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhận
-                                xét</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngày
-                                gửi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="fb : ${feedbacks}" class="border-t border-slate-50 hover:bg-slate-50/50">
-                            <td class="px-6 py-4 text-sm font-bold text-slate-700"
-                                th:text="${fb.booking != null ? '#' + fb.booking.id.substring(0,8) : 'N/A'}"></td>
-                            <td class="px-6 py-4">
-                                <div class="flex gap-0.5">
-                                    <span th:each="i : ${#numbers.sequence(1,5)}"
-                                        th:class="${i <= fb.rating ? 'text-amber-400' : 'text-slate-200'}"
-                                        class="text-lg">★</span>
+        <!-- Tab Content: Feedbacks -->
+        <div id="tab-feedbacks" class="tab-pane animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div th:each="feedback : ${feedbacks.content}" 
+                    class="group bg-white p-8 rounded-[40px] border border-slate-50 shadow-sm hover:shadow-2xl transition-all duration-500 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -mr-16 -mt-16 group-hover:bg-indigo-100/50 transition-colors"></div>
+                    
+                    <div class="relative">
+                        <div class="flex items-center gap-1 mb-6 text-amber-400">
+                            <i th:each="i : ${#numbers.sequence(1, 5)}" 
+                               data-lucide="star" 
+                               th:class="${i <= feedback.rating ? 'fill-amber-400 w-5 h-5' : 'text-slate-200 w-5 h-5'}"></i>
+                        </div>
+                        
+                        <p class="text-slate-700 font-medium text-lg leading-relaxed mb-8 min-h-[80px]" 
+                           th:text="${feedback.comment ?: 'Không có nội dung đánh giá.'}"></p>
+                        
+                        <div class="flex items-center justify-between pt-8 border-t border-slate-50">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-sm">
+                                    <span th:text="${feedback.booking.guest != null ? #strings.substring(feedback.booking.guest.fullName, 0, 1) : feedback.booking.account.firstName.substring(0, 1)}">G</span>
                                 </div>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-slate-600 max-w-xs truncate"
-                                th:text="${fb.comment ?: '—'}"></td>
-                            <td class="px-6 py-4 text-xs text-slate-400 font-bold"
-                                th:text="${fb.createdAt != null ? #temporals.format(fb.createdAt, 'HH:mm dd/MM/yyyy') : 'N/A'}">
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div th:if="${feedbacks.totalElements == 0}" class="py-16 text-center">
-                    <p class="text-slate-400 font-bold">Chưa có đánh giá nào.</p>
+                                <div>
+                                    <h4 class="font-black text-slate-900 text-sm" 
+                                        th:text="${feedback.booking.guest != null ? feedback.booking.guest.fullName : feedback.booking.account.firstName + ' ' + feedback.booking.account.lastName}">Tên khách</h4>
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400" 
+                                       th:text="${#temporals.format(feedback.createdAt, 'dd/MM/yyyy')}">12/12/2024</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div th:if="${feedbacks.isEmpty()}" class="col-span-full py-32 text-center bg-white rounded-[48px] border-2 border-dashed border-slate-100">
+                    <div class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="message-square-off" class="w-10 h-10 text-slate-300"></i>
+                    </div>
+                    <p class="text-slate-400 font-bold text-xl">Chưa có đánh giá nào được gửi.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: Issues -->
-        <div id="content-issues" class="tab-content hidden">
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mã
-                                Booking</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phòng
-                            </th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mô tả
-                            </th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Trạng
-                                thái</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Thao
-                                tác</th>
+        <!-- Tab Content: Issues -->
+        <div id="tab-issues" class="tab-pane hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50">
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Thời gian</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Khách hàng / Phòng</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nội dung sự cố</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Trạng thái</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Thao tác</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr th:each="issue : ${issues}" class="border-t border-slate-50 hover:bg-slate-50/50">
-                            <td class="px-6 py-4 text-sm font-bold text-slate-700"
-                                th:text="${issue.booking != null ? '#' + issue.booking.id.substring(0,8) : 'N/A'}">
+                    <tbody class="divide-y divide-slate-50">
+                        <tr th:each="issue : ${issues.content}" class="hover:bg-slate-50/50 transition-colors">
+                            <td class="px-8 py-6">
+                                <p class="text-sm font-bold text-slate-900" th:text="${#temporals.format(issue.createdAt, 'dd/MM/yyyy HH:mm')}"></p>
                             </td>
-                            <td class="px-6 py-4 text-sm font-bold text-indigo-600"
-                                th:text="${issue.room != null ? issue.room.roomName : '—'}"></td>
-                            <td class="px-6 py-4 text-sm text-slate-600 max-w-xs truncate"
-                                th:text="${issue.description}"></td>
-                            <td class="px-6 py-4">
-                                <span
-                                    th:class="${issue.status == 'RESOLVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}"
-                                    class="px-3 py-1 rounded-full text-[10px] font-black uppercase"
-                                    th:text="${issue.status == 'RESOLVED' ? 'Đã xử lý' : 'Chờ xử lý'}"></span>
+                            <td class="px-8 py-6">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                                        <i data-lucide="door-open" class="w-5 h-5 text-indigo-500"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-900 text-sm" th:text="${issue.booking.guest != null ? issue.booking.guest.fullName : issue.booking.account.firstName}"></h4>
+                                        <p class="text-[10px] font-black text-indigo-400" th:text="${issue.room != null ? 'Phòng ' + issue.room.roomName : 'Sự cố chung'}"></p>
+                                    </div>
+                                </div>
                             </td>
-                            <td class="px-6 py-4">
-                                <button th:if="${issue.status != 'RESOLVED'}"
-                                    th:onclick="'resolveIssue(\'' + ${issue.id} + '\')'"
-                                    class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all">
-                                    Xử lý
+                            <td class="px-8 py-6">
+                                <p class="text-sm text-slate-600 font-medium line-clamp-2 max-w-xs" th:text="${issue.description}"></p>
+                            </td>
+                            <td class="px-8 py-6 text-center">
+                                <span th:if="${issue.status == 'PENDING'}" class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-500 text-white shadow-lg shadow-amber-500/20">Chưa xử lý</span>
+                                <span th:if="${issue.status == 'RESOLVED'}" class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">Đã xong</span>
+                            </td>
+                            <td class="px-8 py-6 text-right">
+                                <button th:if="${issue.status == 'PENDING'}" 
+                                        th:onclick="resolveIssue([[${issue.id}]])"
+                                        class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
+                                    <i data-lucide="check-circle" class="w-5 h-5"></i>
                                 </button>
-                                <span th:if="${issue.status == 'RESOLVED'}" class="text-xs text-slate-400">—</span>
                             </td>
                         </tr>
                     </tbody>
                 </table>
-                <div th:if="${issues.totalElements == 0}" class="py-16 text-center">
-                    <p class="text-slate-400 font-bold">Chưa có sự cố nào.</p>
-                </div>
             </div>
         </div>
 
-        <!-- Tab: Refunds -->
-        <div id="content-refunds" class="tab-content hidden">
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mã
-                                Booking</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Số
-                                tiền</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Lý do
-                            </th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Trạng
-                                thái</th>
-                            <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Thao
-                                tác</th>
+        <!-- Tab Content: Refunds -->
+        <div id="tab-refunds" class="tab-pane hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50">
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Yêu cầu</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Khách hàng</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Lý do</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Số tiền</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Trạng thái</th>
+                            <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Thao tác</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr th:each="refund : ${refunds}" class="border-t border-slate-50 hover:bg-slate-50/50">
-                            <td class="px-6 py-4 text-sm font-bold text-slate-700"
-                                th:text="${refund.booking != null ? '#' + refund.booking.id.substring(0,8) : 'N/A'}">
+                    <tbody class="divide-y divide-slate-50">
+                        <tr th:each="refund : ${refunds.content}" class="hover:bg-slate-50/50 transition-colors">
+                            <td class="px-8 py-6">
+                                <p class="text-sm font-bold text-slate-900" th:text="${#temporals.format(refund.requestedAt, 'dd/MM/yyyy')}"></p>
                             </td>
-                            <td class="px-6 py-4 text-sm font-black text-rose-600"
-                                th:text="${refund.refundAmount != null ? #numbers.formatDecimal(refund.refundAmount, 0, 'COMMA', 0, 'POINT') + ' VNĐ' : '0 VNĐ'}">
+                            <td class="px-8 py-6">
+                                <h4 class="font-bold text-slate-900 text-sm" th:text="${refund.booking.guest != null ? refund.booking.guest.fullName : refund.booking.account.firstName}"></h4>
+                                <p class="text-[10px] font-black text-slate-400 uppercase" th:text="'Mã: ' + ${refund.booking.id.substring(0,8)}"></p>
                             </td>
-                            <td class="px-6 py-4 text-sm text-slate-600 max-w-xs truncate"
-                                th:text="${refund.reason}"></td>
-                            <td class="px-6 py-4">
-                                <span
-                                    th:class="${refund.status == 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : (refund.status == 'REJECTED' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600')}"
-                                    class="px-3 py-1 rounded-full text-[10px] font-black uppercase"
-                                    th:text="${refund.status == 'APPROVED' ? 'Đã duyệt' : (refund.status == 'REJECTED' ? 'Từ chối' : 'Chờ duyệt')}"></span>
+                            <td class="px-8 py-6">
+                                <p class="text-sm text-slate-600 font-medium max-w-xs" th:text="${refund.reason}"></p>
                             </td>
-                            <td class="px-6 py-4">
-                                <div th:if="${refund.status == 'PENDING'}" class="flex gap-2">
-                                    <button
-                                        th:onclick="'updateRefundStatus(\'' + ${refund.id} + '\', \'APPROVED\')'"
-                                        class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-black hover:bg-emerald-700 transition-all">Duyệt</button>
-                                    <button
-                                        th:onclick="'updateRefundStatus(\'' + ${refund.id} + '\', \'REJECTED\')'"
-                                        class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-black hover:bg-rose-700 transition-all">Từ
-                                        chối</button>
+                            <td class="px-8 py-6 text-center">
+                                <span class="font-black text-rose-500" th:text="${#numbers.formatDecimal(refund.refundAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
+                            </td>
+                            <td class="px-8 py-6 text-center">
+                                <span th:if="${refund.status == 'PENDING'}" class="text-amber-500 font-black text-[10px] uppercase">Chờ duyệt</span>
+                                <span th:if="${refund.status == 'APPROVED'}" class="text-emerald-500 font-black text-[10px] uppercase">Đã duyệt</span>
+                                <span th:if="${refund.status == 'REJECTED'}" class="text-rose-500 font-black text-[10px] uppercase">Từ chối</span>
+                            </td>
+                            <td class="px-8 py-6 text-right">
+                                <div th:if="${refund.status == 'PENDING'}" class="flex items-center justify-end gap-2">
+                                    <button th:onclick="updateRefund([[${refund.id}]], 'APPROVED')" 
+                                            class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all font-black text-[10px]">
+                                        Duyệt
+                                    </button>
+                                    <button th:onclick="updateRefund([[${refund.id}]], 'REJECTED')" 
+                                            class="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-500 hover:text-white transition-all font-black text-[10px]">
+                                        Từ chối
+                                    </button>
                                 </div>
-                                <span th:if="${refund.status != 'PENDING'}" class="text-xs text-slate-400">—</span>
                             </td>
                         </tr>
                     </tbody>
                 </table>
-                <div th:if="${refunds.totalElements == 0}" class="py-16 text-center">
-                    <p class="text-slate-400 font-bold">Chưa có yêu cầu hoàn tiền nào.</p>
-                </div>
             </div>
         </div>
     </div>
 
-    <script layout:fragment="script">
+    <script layout:fragment="script" th:inline="javascript">
         function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Hide all panes
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
+            // Remove active style from all buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('border-indigo-600', 'text-indigo-600');
-                btn.classList.add('border-transparent', 'text-slate-400');
+                btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+                btn.classList.add('text-slate-500');
             });
-            document.getElementById('content-' + tabId).classList.remove('hidden');
-            const activeBtn = document.getElementById('tab-' + tabId);
-            activeBtn.classList.remove('border-transparent', 'text-slate-400');
-            activeBtn.classList.add('border-indigo-600', 'text-indigo-600');
+
+            // Show target pane
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            // Add active style to target button
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            activeBtn.classList.remove('text-slate-500');
+            activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+            
+            lucide.createIcons();
         }
 
-        async function resolveIssue(issueId) {
-            if (!confirm('Xác nhận đã xử lý sự cố này?')) return;
+        async function resolveIssue(id) {
+            if (!confirm('Xác nhận đã xử lý xong sự cố này?')) return;
             try {
-                const response = await fetch(`/feedback/api/issues/${issueId}/resolve`, { method: 'PUT' });
+                const baseUrl = /*[[@{/feedback/api/issues/}]]*/ '/feedback/api/issues/';
+                const response = await fetch(baseUrl + id + '/resolve', { method: 'PUT' });
                 if (response.ok) {
-                    toastService.success('Đã xử lý sự cố!');
-                    setTimeout(() => location.reload(), 800);
+                    location.reload();
                 } else {
                     const error = await response.json();
-                    toastService.error(error.message || 'Có lỗi xảy ra');
+                    alert(error.message || 'Có lỗi xảy ra!');
                 }
             } catch (error) {
-                toastService.error('Có lỗi xảy ra: ' + error.message);
+                console.error('Error resolving issue:', error);
             }
         }
 
-        async function updateRefundStatus(refundId, status) {
-            const label = status === 'APPROVED' ? 'duyệt' : 'từ chối';
-            if (!confirm(`Xác nhận ${label} yêu cầu hoàn tiền này?`)) return;
+        async function updateRefund(id, status) {
+            const msg = status === 'APPROVED' ? 'Xác nhận phê duyệt hoàn tiền?' : 'Từ chối yêu cầu này?';
+            if (!confirm(msg)) return;
             try {
-                const response = await fetch(`/feedback/api/refunds/${refundId}/status?status=${status}`, { method: 'PUT' });
+                const baseUrl = /*[[@{/feedback/api/refunds/}]]*/ '/feedback/api/refunds/';
+                const response = await fetch(baseUrl + id + '/status?status=' + status, { method: 'PUT' });
                 if (response.ok) {
-                    toastService.success('Cập nhật thành công!');
-                    setTimeout(() => location.reload(), 800);
+                    location.reload();
                 } else {
                     const error = await response.json();
-                    toastService.error(error.message || 'Có lỗi xảy ra');
+                    alert(error.message || 'Có lỗi xảy ra!');
                 }
             } catch (error) {
-                toastService.error('Có lỗi xảy ra: ' + error.message);
+                console.error('Error updating refund:', error);
             }
         }
-
-        lucide.createIcons();
     </script>
 </body>
 
