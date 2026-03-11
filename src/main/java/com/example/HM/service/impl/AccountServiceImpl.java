@@ -190,6 +190,7 @@ public class AccountServiceImpl implements AccountService {
         return convertToDTO(account);
     }
 
+
     @Override
     @Transactional
     public void deleteAccount(String id) {

@@ -43,9 +43,6 @@ function loadEmployees(page = 0) {
                             <a href="/management/employees/${emp.id}" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-all">
                                 <i data-lucide="edit-3" class="w-5 h-5"></i>
                             </a>
-                            <button onclick="deleteEmployee('${emp.id}')" class="p-2 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-all">
-                                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                            </button>
                         </div>
                     </td>
                 `;

@@ -8,15 +8,17 @@ import java.util.Collection;
 
 @Getter
 public class CustomUserDetails extends User {
+    private final String id;
     private final String fullName;
     private final String roleName;
     private final String avatar;
 
-    public CustomUserDetails(String username, String password, boolean enabled, boolean accountNonExpired,
+    public CustomUserDetails(String id, String username, String password, boolean enabled, boolean accountNonExpired,
                              boolean credentialsNonExpired, boolean accountNonLocked,
                              Collection<? extends GrantedAuthority> authorities,
                              String fullName, String roleName, String avatar) {
         super(username, password, enabled, accountNonExpired, credentialsNonExpired, accountNonLocked, authorities);
+        this.id = id;
         this.fullName = fullName;
         this.roleName = roleName;
         this.avatar = avatar;
