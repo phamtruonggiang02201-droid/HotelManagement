@@ -29,7 +29,7 @@
 
                     <div class="font-bold text-slate-500">Số tiền:</div>
                     <div class="font-bold text-indigo-600"
-                        th:text="${#numbers.formatDecimal(amount, 0, 'COMMA', 0, 'POINT')} + ' VND'">-</div>
+                        th:text="${#numbers.formatDecimal(amount, 0, 'COMMA', 0, 'POINT') + ' VND'}">-</div>
 
                     <div class="font-bold text-slate-500">Nội dung:</div>
                     <div class="font-bold text-slate-900" th:text="${orderInfo}">-</div>

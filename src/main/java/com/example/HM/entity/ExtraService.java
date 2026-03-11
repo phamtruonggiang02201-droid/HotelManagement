@@ -17,6 +17,9 @@ public class ExtraService extends BaseEntity {
     @Column(name = "Price", precision = 18, scale = 2)
     private BigDecimal price;
 
+    @Column(name = "IsActive")
+    private Boolean isActive = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "CategoryID")
     private ServiceCategory category;

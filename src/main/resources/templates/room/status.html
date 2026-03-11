@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Trạng thái vận hành - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <div class="flex justify-between items-center mb-12">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900">Trạng thái vận hành</h1>
+                <p class="text-slate-500 font-medium">Theo dõi và quản lý trạng thái phòng thời gian thực.</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                    <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                    <span class="text-xs font-black text-slate-600 uppercase">Trống</span>
+                </div>
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                    <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+                    <span class="text-xs font-black text-slate-600 uppercase">Đang ở</span>
+                </div>
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                    <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                    <span class="text-xs font-black text-slate-600 uppercase">Bảo trì</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Status Grid -->
+        <div id="room-status-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <!-- Grid items loaded via AJAX -->
+        </div>
+    </div>
+
+    <script layout:fragment="script">
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRoomStatus();
+        });
+
+        async function loadRoomStatus() {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                renderStatusGrid(rooms);
+            } catch (error) {
+                console.error('Error loading room status:', error);
+            }
+        }
+
+        function renderStatusGrid(rooms) {
+            const grid = document.getElementById('room-status-grid');
+            grid.innerHTML = rooms.map(room => `
+                <div class="group relative bg-white p-6 rounded-[32px] border-2 transition-all cursor-pointer ${getStatusBorder(room.status)} hover:shadow-xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="text-2xl font-black text-slate-900">${room.roomName}</span>
+                        <div class="w-3 h-3 rounded-full ${getStatusBg(room.status)}"></div>
+                    </div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">${room.roomType?.typeName}</p>
+                    
+                    <div class="flex flex-col gap-2 mt-auto">
+                         <button onclick="changeStatus('${room.id}', 'AVAILABLE')" class="text-[9px] font-bold py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">Sẵn sàng</button>
+                         <button onclick="changeStatus('${room.id}', 'MAINTENANCE')" class="text-[9px] font-bold py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-amber-50 hover:text-amber-700 transition-colors">Bảo trì</button>
+                    </div>
+
+                    <!-- Tooltip/Hover Effect -->
+                    <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm rounded-[30px] opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all p-4 text-center">
+                        <div class="space-y-4">
+                            <p class="text-white text-xs font-bold leading-relaxed">${getStatusActionText(room.status)}</p>
+                            <a href="/bookings/reception" class="inline-block text-[10px] font-black uppercase tracking-widest bg-white text-slate-900 px-4 py-2 rounded-xl">Quản lý Check-in</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function changeStatus(id, status) {
+            try {
+                // We need to fetch the existing room data first because updateRoom needs RoomRequest
+                const response = await fetch(`/api/rooms`);
+                const rooms = await response.json();
+                const room = rooms.find(r => r.id === id);
+
+                if (!room) return;
+
+                const request = {
+                    roomName: room.roomName,
+                    roomTypeId: room.roomType.id,
+                    price: room.price,
+                    status: status,
+                    roomImage: room.roomImage
+                };
+
+                const updateResponse = await fetch(`/api/rooms/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(request)
+                });
+
+                if (updateResponse.ok) {
+                    loadRoomStatus();
+                }
+            } catch (error) {
+                console.error('Error changing status:', error);
+            }
+        }
+
+        function getStatusBorder(status) {
+            switch (status) {
+                case 'AVAILABLE': return 'border-emerald-100';
+                case 'OCCUPIED': return 'border-rose-100';
+                case 'MAINTENANCE': return 'border-amber-100';
+                default: return 'border-slate-100';
+            }
+        }
+
+        function getStatusBg(status) {
+            switch (status) {
+                case 'AVAILABLE': return 'bg-emerald-500';
+                case 'OCCUPIED': return 'bg-rose-500';
+                case 'MAINTENANCE': return 'bg-amber-500';
+                default: return 'bg-slate-500';
+            }
+        }
+
+        function getStatusActionText(status) {
+            switch (status) {
+                case 'AVAILABLE': return 'Phòng đang trống. Sẵn sàng cho khách mới.';
+                case 'OCCUPIED': return 'Phòng đang có khách lưu trú.';
+                case 'MAINTENANCE': return 'Phòng đang bảo trì, không thể sử dụng.';
+                default: return 'Trạng thái không xác định.';
+            }
+        }
+    </script>
+</body>
+
+</html>

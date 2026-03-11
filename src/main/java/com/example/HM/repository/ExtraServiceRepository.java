@@ -19,4 +19,9 @@ public interface ExtraServiceRepository extends JpaRepository<ExtraService, Stri
 
     // Search and Pagination
     Page<ExtraService> findByServiceNameContainingIgnoreCase(String keyword, Pageable pageable);
+    
+    // Status-based queries
+    Page<ExtraService> findByIsActiveTrue(Pageable pageable);
+    Page<ExtraService> findByCategoryAndIsActiveTrue(ServiceCategory category, Pageable pageable);
+    List<ExtraService> findByIsActiveIsNull();
 }
