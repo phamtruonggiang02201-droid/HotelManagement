@@ -324,7 +324,7 @@
         function goToStep2() {
             const selectedRooms = Array.from(document.querySelectorAll('input[name="roomIds"]:checked'));
             if (selectedRooms.length === 0) {
-                alert('bạn vui lòng chọn ít nhất một phòng để tiếp tục ạ!');
+                alert('Đại ca vui lòng chọn ít nhất một phòng để tiếp tục ạ!');
                 return;
             }
 
@@ -396,7 +396,7 @@
                 }
             } catch (error) {
                 console.error('Error during check-in:', error);
-                alert('Đã có lỗi xảy ra, bạn kiểm tra lại nhé!');
+                alert('Đã có lỗi xảy ra, đại ca kiểm tra lại nhé!');
             }
         });
 
@@ -461,7 +461,7 @@
 
             } catch (error) {
                 console.error('Error loading checkout summary:', error);
-                alert('Không thể tải bảng kê thanh toán, bạn kiểm tra lại nhé!');
+                alert('Không thể tải bảng kê thanh toán, đại ca kiểm tra lại nhé!');
             }
         }
 
@@ -476,7 +476,7 @@
         }
 
         async function processActualCheckOut(bookingId) {
-            if (!confirm('bạn xác nhận đã thu đủ tiền và hoàn tất trả phòng?')) return;
+            if (!confirm('Đại ca xác nhận đã thu đủ tiền và hoàn tất trả phòng?')) return;
 
             try {
                 const response = await fetch(`/bookings/api/check-out/${bookingId}`, {

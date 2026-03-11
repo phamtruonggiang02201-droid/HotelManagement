@@ -12,6 +12,7 @@ import com.example.HM.service.RoomService;
 import com.example.HM.service.VNPayService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -78,8 +79,24 @@ public class BookingController {
     @GetMapping("/my-bookings")
     public String myBookings(Model model, @PageableDefault(size = 10) Pageable pageable) {
         String accountId = SecurityUtils.getCurrentUserId();
-        model.addAttribute("bookings", bookingService.getMyBookings(accountId, pageable));
+        if (accountId == null) {
+            return "redirect:/login";
+        }
+        Page<Booking> bookingPage = bookingService.getMyBookings(accountId, pageable);
+        model.addAttribute("bookings", bookingPage.getContent());
+        model.addAttribute("currentPage", bookingPage.getNumber());
+        model.addAttribute("totalPages", bookingPage.getTotalPages());
         return "booking/history";
+    }
+
+    @GetMapping("/api/my-bookings")
+    @ResponseBody
+    public ResponseEntity<?> getMyBookingsApi(@PageableDefault(size = 10) Pageable pageable) {
+        String accountId = SecurityUtils.getCurrentUserId();
+        if (accountId == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Vui lòng đăng nhập"));
+        }
+        return ResponseEntity.ok(bookingService.getMyBookings(accountId, pageable));
     }
 
     @GetMapping("/{id}")
@@ -100,6 +117,27 @@ public class BookingController {
         try {
             bookingService.bookService(request);
             return ResponseEntity.ok(Map.of("message", "Thêm dịch vụ thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/booked-services/{id}/quantity")
+    @ResponseBody
+    public ResponseEntity<?> updateBookedServiceQuantity(@PathVariable String id, @RequestBody Map<String, Integer> body) {
+        try {
+            Integer quantity = body.get("quantity");
+            return ResponseEntity.ok(bookingService.updateBookedServiceQuantity(id, quantity));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/api/booked-services/{id}")
+    @ResponseBody
+    public ResponseEntity<?> cancelBookedService(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(bookingService.updateBookedServiceStatus(id, "CANCELLED"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
@@ -145,6 +183,16 @@ public class BookingController {
     public ResponseEntity<?> getAvailableRooms(@PathVariable String roomTypeId, @PageableDefault(size = 10) Pageable pageable) {
         try {
             return ResponseEntity.ok(roomService.getRoomsByRoomTypeAndStatus(roomTypeId, "AVAILABLE", pageable));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+    @GetMapping("/api/checkout-summary/{bookingId}")
+    @ResponseBody
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    public ResponseEntity<?> getCheckoutSummary(@PathVariable String bookingId) {
+        try {
+            return ResponseEntity.ok(bookingService.getCheckoutSummary(bookingId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

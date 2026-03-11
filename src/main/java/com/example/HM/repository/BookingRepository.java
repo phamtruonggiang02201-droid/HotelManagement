@@ -9,6 +9,6 @@ import java.util.List;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, String> {
-    Page<Booking> findByAccountId(String accountId, Pageable pageable);
+    Page<Booking> findByAccount_Id(String accountId, Pageable pageable);
     Page<Booking> findByStatus(String status, Pageable pageable);
 }

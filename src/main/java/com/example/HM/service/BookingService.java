@@ -1,6 +1,8 @@
 package com.example.HM.service;
 
+import com.example.HM.dto.BookedServiceDTO;
 import com.example.HM.dto.BookServiceRequest;
+import com.example.HM.dto.CheckoutSummaryDTO;
 import com.example.HM.dto.BookingRequest;
 import com.example.HM.dto.CheckInRequest;
 import com.example.HM.entity.Booking;
@@ -20,4 +22,12 @@ public interface BookingService {
     void checkOut(String bookingId);
     Page<Booking> getPaidBookings(Pageable pageable);
     Page<Booking> getCheckedInBookings(Pageable pageable);
+    
+    // Manage Booked Services
+    Page<BookedServiceDTO> getAllBookedServices(String keyword, String status, Pageable pageable);
+    BookedServiceDTO updateBookedServiceStatus(String id, String status);
+    BookedServiceDTO updateBookedServiceQuantity(String id, int newQuantity);
+    
+    // Checkout Summary
+    CheckoutSummaryDTO getCheckoutSummary(String bookingId);
 }
