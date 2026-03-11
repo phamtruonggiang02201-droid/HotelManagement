@@ -14,5 +14,7 @@ public class ServiceDTO {
     private String id;
     private String serviceName;
     private BigDecimal price;
+    private String categoryId;
     private String categoryName;
+    private Boolean isActive;
 }
