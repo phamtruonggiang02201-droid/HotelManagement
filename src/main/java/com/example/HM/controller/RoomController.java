@@ -5,17 +5,23 @@ import com.example.HM.dto.RoomRequest;
 import com.example.HM.dto.RoomTypeDTO;
 import com.example.HM.service.RoomService;
 import com.example.HM.service.RoomTypeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
 @Controller
-@RequestMapping("/management")
 @RequiredArgsConstructor
 public class RoomController {
 
@@ -25,12 +31,23 @@ public class RoomController {
     // --- VIEW ROUTES ---
 
     @GetMapping("/rooms")
+    public String guestRoomList() {
+        return "room/list";
+    }
+
+    @GetMapping("/reception/rooms")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    public String receptionistRoomStatus() {
+        return "room/status";
+    }
+
+    @GetMapping("/management/rooms")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public String roomIndex() {
         return "room/index";
     }
 
-    @GetMapping("/room-types")
+    @GetMapping("/management/room-types")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public String roomTypeIndex() {
         return "room-type/index";
@@ -40,14 +57,43 @@ public class RoomController {
 
     @GetMapping("/api/rooms")
     @ResponseBody
-    public ResponseEntity<List<RoomDTO>> getAllRooms() {
-        return ResponseEntity.ok(roomService.getAllRooms());
+    public ResponseEntity<Page<RoomDTO>> getAllRooms(@PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(roomService.getAllRooms(pageable));
+    }
+
+    @GetMapping("/api/rooms/search")
+    @ResponseBody
+    public ResponseEntity<Page<RoomDTO>> searchRooms(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(required = false) String typeId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("roomName").ascending());
+        return ResponseEntity.ok(roomService.searchRooms(keyword, typeId, minPrice, maxPrice, pageable));
     }
 
     @GetMapping("/api/room-types")
     @ResponseBody
-    public ResponseEntity<List<RoomTypeDTO>> getAllRoomTypes() {
-        return ResponseEntity.ok(roomTypeService.getAllRoomTypes());
+    public ResponseEntity<Page<RoomTypeDTO>> getAllRoomTypes(@PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(roomTypeService.getAllRoomTypes(pageable));
+    }
+
+    @GetMapping("/api/room-types/{id}")
+    @ResponseBody
+    public ResponseEntity<RoomTypeDTO> getRoomTypeById(@PathVariable String id) {
+        return ResponseEntity.ok(roomTypeService.getRoomTypeById(id));
+    }
+
+    @GetMapping("/api/room-types/search")
+    @ResponseBody
+    public ResponseEntity<Page<RoomTypeDTO>> searchRoomTypes(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("typeName").ascending());
+        return ResponseEntity.ok(roomTypeService.searchRoomTypes(keyword, pageable));
     }
 
     @PostMapping("/api/rooms")
@@ -76,8 +122,12 @@ public class RoomController {
     @ResponseBody
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> deleteRoom(@PathVariable String id) {
-        roomService.deleteRoom(id);
-        return ResponseEntity.ok(Map.of("message", "Xóa phòng thành công!"));
+        try {
+            roomService.deleteRoom(id);
+            return ResponseEntity.ok(Map.of("message", "Xóa phòng thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping("/api/room-types")
@@ -110,7 +160,7 @@ public class RoomController {
             roomTypeService.deleteRoomType(id);
             return ResponseEntity.ok(Map.of("message", "Xóa loại phòng thành công!"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Không thể xóa loại phòng này vì có thể đang có phòng thuộc loại này!"));
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 }

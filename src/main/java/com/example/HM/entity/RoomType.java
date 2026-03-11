@@ -6,6 +6,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "RoomType")
 @Getter
@@ -20,4 +22,10 @@ public class RoomType extends BaseEntity {
 
     @Column(name = "Capacity")
     private Integer capacity;
+
+    @Column(name = "Price", precision = 18, scale = 2)
+    private BigDecimal price;
+
+    @Column(name = "RoomImage", length = 255)
+    private String roomImage;
 }
