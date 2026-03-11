@@ -31,16 +31,21 @@
                 <i data-lucide="bed" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Phòng nghỉ</span>
             </a>
+            <a th:href="@{/feedback}" th:classappend="${currentUri == '/feedback'} ? 'sidebar-item-active' : ''"
+                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
+                <i data-lucide="star" class="w-5 h-5 text-amber-400"></i>
+                <span class="font-medium text-sm">Đánh giá từ khách</span>
+            </a>
 
             <!-- Dành cho Khách hàng (CUSTOMER) -->
             <div sec:authorize="hasRole('CUSTOMER')"
                 class="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Dành cho Khách
                 hàng</div>
 
-            <a href="#" data-target="feedback-section" sec:authorize="hasRole('CUSTOMER')"
+            <a th:href="@{/feedback}" sec:authorize="hasRole('CUSTOMER')"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="message-square-heart" class="w-5 h-5"></i>
-                <span class="font-medium text-sm">Đánh giá</span>
+                <span class="font-medium text-sm">Gửi đánh giá</span>
             </a>
             <a th:href="@{/bookings/my-bookings}" sec:authorize="isAuthenticated()"
                 th:classappend="${currentUri == '/bookings/my-bookings'} ? 'sidebar-item-active' : ''"
@@ -99,11 +104,23 @@
                 <i data-lucide="door-open" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Quản lý Phòng</span>
             </a>
+            <a th:href="@{/feedback/summary}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
+                th:classappend="${currentUri == '/feedback/summary'} ? 'sidebar-item-active' : ''"
+                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
+                <i data-lucide="message-square" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Quản lý Phản hồi</span>
+            </a>
             <a th:href="@{/management/services}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
                 th:classappend="${currentUri == '/management/services'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="package-plus" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Quản lý Dịch vụ</span>
+            </a>
+            <a th:href="@{/management/service-orders}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')"
+                th:classappend="${currentUri == '/management/service-orders'} ? 'sidebar-item-active' : ''"
+                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
+                <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Quản lý Đơn dịch vụ</span>
             </a>
             <a th:href="@{/management/hero-slider}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
                 th:classappend="${currentUri == '/management/hero-slider'} ? 'sidebar-item-active' : ''"
