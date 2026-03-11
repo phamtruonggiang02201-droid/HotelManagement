@@ -9,7 +9,7 @@
 <body>
     <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
         <section id="manage-room-types-section" class="active">
-            <div class="flex justify-between items-center mb-12">
+            <div class="flex justify-between items-center mb-8">
                 <div>
                     <h1 class="text-3xl font-black text-slate-900">Quản lý Loại phòng</h1>
                     <p class="text-slate-500 font-medium">Định nghĩa các phân hạng phòng và sức chứa.</p>
@@ -20,6 +20,12 @@
                 </button>
             </div>
 
+            <!-- Search Bar -->
+            <div class="mb-6">
+                <input type="text" id="room-type-search-input" placeholder="Tìm kiếm theo tên loại phòng..."
+                    class="w-full md:w-1/2 bg-white border border-slate-200 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm">
+            </div>
+
             <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead
@@ -27,6 +33,7 @@
                         <tr>
                             <th class="px-8 py-6">Tên Loại</th>
                             <th class="px-8 py-6">Mô tả</th>
+                            <th class="px-8 py-6">Giá / Đêm</th>
                             <th class="px-8 py-6">Sức chứa</th>
                             <th class="px-8 py-6 text-right">Thao tác</th>
                         </tr>
@@ -35,6 +42,11 @@
                         <!-- Data will be loaded via AJAX -->
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div id="room-type-pagination" class="flex justify-center items-center gap-4 mt-8">
+                <!-- Pagination buttons will be rendered here -->
             </div>
         </section>
 
@@ -51,10 +63,41 @@
                         <input type="text" id="room-type-name" required placeholder="Ví dụ: Deluxe King"
                             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500">
                     </div>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Sức chứa (Người)</label>
+                            <input type="number" id="room-type-capacity" required placeholder="Số người tối đa"
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Giá / Đêm (VNĐ)</label>
+                            <input type="number" id="room-type-price" required placeholder="Ví dụ: 1500000"
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500">
+                        </div>
+                    </div>
                     <div class="space-y-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Sức chứa (Người)</label>
-                        <input type="number" id="room-type-capacity" required placeholder="Số người tối đa"
-                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Ảnh đại diện (URL)</label>
+                        <div class="relative group">
+                            <input type="text" id="room-type-image" placeholder="https://unsplash..."
+                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 pr-32">
+
+                            <!-- Upload Trigger -->
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                <button type="button" onclick="document.getElementById('room-type-image-file').click()"
+                                    class="p-2 bg-white text-slate-500 rounded-xl hover:text-cyan-600 border border-slate-100 shadow-sm transition-colors">
+                                    <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                                </button>
+                                <div
+                                    class="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-md bg-slate-200">
+                                    <img id="room-type-image-preview" src="" class="w-full h-full object-cover hidden">
+                                    <div id="room-type-image-placeholder"
+                                        class="w-full h-full flex items-center justify-center text-slate-400">
+                                        <i data-lucide="image" class="w-5 h-5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="room-type-image-file" class="hidden" accept="image/*">
+                        </div>
                     </div>
                     <div class="space-y-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Mô tả</label>
@@ -73,7 +116,14 @@
         <script th:src="@{/js/management.js}"></script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                loadRoomTypesForManage();
+                loadRoomTypesWithPagination();
+
+                const searchInput = document.getElementById('room-type-search-input');
+                let debounceTimer;
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => loadRoomTypesWithPagination(0, searchInput.value), 300);
+                });
             });
         </script>
     </div>
