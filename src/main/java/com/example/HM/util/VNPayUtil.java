@@ -4,6 +4,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.*;
 
 public class VNPayUtil {
@@ -48,7 +49,7 @@ public class VNPayUtil {
     }
 
     public static String getRandomNumber(int length) {
-        Random random = new Random();
+        SecureRandom random = new SecureRandom();
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < length; i++) {
             sb.append(random.nextInt(10));

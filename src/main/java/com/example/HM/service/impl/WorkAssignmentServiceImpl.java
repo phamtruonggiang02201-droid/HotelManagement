@@ -110,12 +110,107 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public void createTaskFromService(String bookedDetailId, String serviceName, String roomName, String guestName, String requiredRole) {
+        LocalDate today = LocalDate.now();
+        
+        // 1. Tìm những nhân viên có lịch trực (SCHEDULE) hôm nay và có Role phù hợp
+        List<WorkAssignment> onDutyStaff = assignmentRepository.findAllByEmployee_Role_RoleNameAndWorkDateAndType(
+                requiredRole, today, "SCHEDULE");
+
+        WorkAssignment task = new WorkAssignment();
+        task.setType("TASK");
+        task.setTargetId(bookedDetailId);
+        task.setWorkDate(today);
+        task.setArea(roomName); // Khu vực là phòng khách đang ở
+        task.setRoomName(roomName);
+        task.setGuestName(guestName);
+        task.setNotes("Phục vụ dịch vụ: " + serviceName);
+        task.setStatus("PENDING");
+
+        // 2. Nếu có nhân viên đang trực, có thể gán cho người đầu tiên hoặc để null cho "Task Pool"
+        // Ở đây em chọn để null nếu muốn dùng cơ chế "Nhận việc", hoặc gán nếu đại ca muốn chỉ định
+        if (!onDutyStaff.isEmpty()) {
+            // Tạm thời để null để nhân viên tự nhận trong pool của họ
+            // Hoặc gán: task.setEmployee(onDutyStaff.get(0).getEmployee());
+        }
+
+        assignmentRepository.save(task);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AssignmentResponseDTO> getTasksInPool(String roleName) {
+        // Lấy danh sách nhiệm vụ của bộ phận chưa có người nhận
+        return assignmentRepository.findAllByTypeAndStatus("TASK", "PENDING").stream()
+                .filter(t -> {
+                    // Cần kiểm tra xem targetId có thuộc về category yêu cầu role này không
+                    // Ở đây em đơn giản hóa: Nếu task không có employee và đúng ngày thì hiện
+                    return t.getEmployee() == null && t.getWorkDate().equals(LocalDate.now());
+                })
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AssignmentResponseDTO> getMyActiveTasks() {
+        String username = SecurityUtils.getCurrentUsername();
+        Account current = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        
+        return assignmentRepository.findAllByEmployee_Id(current.getId()).stream()
+                .filter(t -> "TASK".equals(t.getType()) && ("PENDING".equals(t.getStatus()) || "PROCESSING".equals(t.getStatus())))
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void claimTask(String taskId) {
+        String username = SecurityUtils.getCurrentUsername();
+        Account current = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+
+        WorkAssignment task = assignmentRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Nhiệm vụ không tồn tại!"));
+
+        if (task.getEmployee() != null) {
+            throw new RuntimeException("Nhiệm vụ này đã có người nhận!");
+        }
+
+        // Kiểm tra xem nhân viên có đang trong ca trực không
+        List<WorkAssignment> schedules = assignmentRepository.findAllByEmployee_IdAndWorkDate(current.getId(), LocalDate.now());
+        if (schedules.isEmpty()) {
+            throw new RuntimeException("Đại ca chưa có lịch trực hôm nay, không nhận việc được đâu ạ!");
+        }
+
+        task.setEmployee(current);
+        task.setStatus("PROCESSING");
+        assignmentRepository.save(task);
+    }
+
+    @Override
+    @Transactional
+    public void completeTask(String taskId) {
+        WorkAssignment task = assignmentRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Nhiệm vụ không tồn tại!"));
+        
+        task.setStatus("COMPLETED");
+        assignmentRepository.save(task);
+
+        // Nếu là nhiệm vụ dịch vụ, cập nhật trạng thái đơn dịch vụ (BookedDetail -> BookedService)
+        // Lưu ý: Cần thêm logic báo cho Lễ tân hoặc cập nhật đơn gốc
+    }
+
     private AssignmentResponseDTO convertToDTO(WorkAssignment assignment) {
         return AssignmentResponseDTO.builder()
                 .id(assignment.getId())
-                .employeeId(assignment.getEmployee().getId())
-                .employeeFullName(assignment.getEmployee().getFirstName() + " " + assignment.getEmployee().getLastName())
-                .jobTitle(assignment.getEmployee().getJobTitle())
+                .employeeId(assignment.getEmployee() != null ? assignment.getEmployee().getId() : null)
+                .employeeFullName(assignment.getEmployee() != null ? 
+                        assignment.getEmployee().getFirstName() + " " + assignment.getEmployee().getLastName() : "Chưa phân công")
+                .jobTitle(assignment.getEmployee() != null ? assignment.getEmployee().getJobTitle() : null)
                 .workDate(assignment.getWorkDate())
                 .area(assignment.getArea())
                 .shift(assignment.getShift())

@@ -17,4 +17,12 @@ public interface WorkAssignmentService {
     Page<AssignmentResponseDTO> getAssignments(LocalDate start, LocalDate end, Pageable pageable);
     List<AssignmentResponseDTO> getMyAssignments();
     List<AssignmentResponseDTO> getAssignmentsByDate(LocalDate date);
+    
+    // Nhiệm vụ (TASK) nghiệp vụ
+    List<AssignmentResponseDTO> getTasksInPool(String roleName); // Lấy danh sách việc chưa ai nhận của bộ phận
+    List<AssignmentResponseDTO> getMyActiveTasks(); // Lấy việc mình đang làm
+    void claimTask(String taskId); // Nhận việc từ pool
+    void completeTask(String taskId); // Báo hoàn thành việc
+
+    void createTaskFromService(String bookedDetailId, String serviceName, String roomName, String guestName, String requiredRole);
 }

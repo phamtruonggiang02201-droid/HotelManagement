@@ -19,4 +19,10 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
     Page<WorkAssignment> findAllByWorkDateBetween(LocalDate start, LocalDate end, Pageable pageable);
     
     List<WorkAssignment> findAllByEmployee_Id(String employeeId);
+
+    List<WorkAssignment> findAllByTypeAndStatus(String type, String status);
+
+    List<WorkAssignment> findAllByEmployee_Role_RoleNameAndWorkDateAndType(String roleName, LocalDate date, String type);
+
+    java.util.Optional<WorkAssignment> findByTargetId(String targetId);
 }

@@ -3,6 +3,7 @@ package com.example.HM.security;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -15,6 +16,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 @Component
+@RequiredArgsConstructor
 public class CustomAuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
     @Override

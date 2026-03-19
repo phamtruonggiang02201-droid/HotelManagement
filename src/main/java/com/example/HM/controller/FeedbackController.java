@@ -71,12 +71,31 @@ public class FeedbackController {
     // ============ ADMIN: FEEDBACK SUMMARY PAGE ============
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public String feedbackSummary(Model model, @PageableDefault(size = 20) Pageable pageable) {
-        model.addAttribute("feedbacks", feedbackService.getAllFeedbacks(pageable));
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    public String feedbackSummary(Model model, 
+                                 @RequestParam(required = false) Integer rating,
+                                 @PageableDefault(size = 20) Pageable pageable) {
+        model.addAttribute("feedbacks", feedbackService.getAllFeedbacks(rating, pageable));
         model.addAttribute("issues", feedbackService.getAllIssues(pageable));
         model.addAttribute("refunds", feedbackService.getAllRefunds(pageable));
+        model.addAttribute("currentRating", rating);
         return "management/feedback/index";
+    }
+
+    @PostMapping("/api/{id}/reply")
+    @ResponseBody
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    public ResponseEntity<?> replyToFeedback(@PathVariable String id, @RequestBody Map<String, String> body) {
+        try {
+            String reply = body.get("reply");
+            if (reply == null || reply.isBlank()) {
+                throw new RuntimeException("Nội dung phản hồi không được để trống!");
+            }
+            feedbackService.replyToFeedback(id, reply);
+            return ResponseEntity.ok(Map.of("message", "Đã gửi phản hồi thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     // ============ ADMIN: RESOLVE ISSUE ============

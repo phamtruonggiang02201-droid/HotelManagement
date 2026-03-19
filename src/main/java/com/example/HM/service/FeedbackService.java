@@ -13,7 +13,9 @@ public interface FeedbackService {
 
     // Feedback
     Feedback submitFeedback(FeedbackRequest request);
-    Page<Feedback> getAllFeedbacks(Pageable pageable);
+    Page<Feedback> getAllFeedbacks(Integer rating, Pageable pageable);
+    Feedback replyToFeedback(String feedbackId, String reply);
+    Page<Feedback> getFeedbacksByRoomType(String roomTypeId, Pageable pageable);
 
     // Room Issues
     RoomIssueReport reportIssue(RoomIssueRequest request);
