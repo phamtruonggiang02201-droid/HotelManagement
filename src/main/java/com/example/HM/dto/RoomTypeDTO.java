@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @Builder
@@ -19,4 +20,7 @@ public class RoomTypeDTO {
     private BigDecimal price;
     private String roomImage;
     private long availableCount; // number of rooms available for this type
+    private List<String> galleryImages;
+    private Double averageRating;
+    private Long reviewCount;
 }

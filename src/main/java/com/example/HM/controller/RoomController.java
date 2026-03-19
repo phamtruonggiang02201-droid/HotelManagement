@@ -27,12 +27,19 @@ public class RoomController {
 
     private final RoomService roomService;
     private final RoomTypeService roomTypeService;
+    private final com.example.HM.service.FeedbackService feedbackService;
 
     // --- VIEW ROUTES ---
 
     @GetMapping("/rooms")
     public String guestRoomList() {
         return "room/list";
+    }
+
+    @GetMapping("/rooms/{id}")
+    public String roomDetail(@PathVariable String id, org.springframework.ui.Model model) {
+        model.addAttribute("roomTypeId", id);
+        return "room/detail";
     }
 
     @GetMapping("/reception/rooms")
@@ -51,6 +58,29 @@ public class RoomController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public String roomTypeIndex() {
         return "room-type/index";
+    }
+
+    @GetMapping("/management/room-types/new")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public String roomTypeCreateForm(org.springframework.ui.Model model) {
+        model.addAttribute("mode", "create");
+        return "room-type/detail";
+    }
+
+    @GetMapping("/management/room-types/{id}/edit")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public String roomTypeEditForm(@PathVariable String id, org.springframework.ui.Model model) {
+        model.addAttribute("mode", "edit");
+        model.addAttribute("roomTypeId", id);
+        return "room-type/detail";
+    }
+
+    @GetMapping("/management/room-types/{id}/detail")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public String roomTypeDetailForm(@PathVariable String id, org.springframework.ui.Model model) {
+        model.addAttribute("mode", "view");
+        model.addAttribute("roomTypeId", id);
+        return "room-type/detail";
     }
 
     // --- API ENDPOINTS ---
@@ -94,6 +124,28 @@ public class RoomController {
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("typeName").ascending());
         return ResponseEntity.ok(roomTypeService.searchRoomTypes(keyword, pageable));
+    }
+
+    @GetMapping("/api/room-types/{id}/feedbacks")
+    @ResponseBody
+    public ResponseEntity<Page<com.example.HM.entity.Feedback>> getRoomTypeFeedbacks(
+            @PathVariable String id,
+            @PageableDefault(size = 5) Pageable pageable) {
+        // Ta sử dụng Page trực tiếp nhưng Jackson sẽ xử lý nhờ các @JsonIgnore đã có.
+        // Để an tâm tuyệt đối, ta có thể dùng DTO nhưng hiện tại đã fix Occupant.
+        return ResponseEntity.ok(feedbackService.getFeedbacksByRoomType(id, pageable));
+    }
+
+    @GetMapping("/api/room-types/{id}/rooms")
+    @ResponseBody
+    public ResponseEntity<List<RoomDTO>> getRoomsByRoomType(@PathVariable String id,
+                                                         @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate checkIn,
+                                                         @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate checkOut) {
+        if (checkIn != null && checkOut != null) {
+            return ResponseEntity.ok(roomService.getAvailableRoomsByType(id, checkIn, checkOut));
+        }
+        Page<RoomDTO> rooms = roomService.getRoomsByRoomTypeAndStatus(id, "AVAILABLE", Pageable.unpaged());
+        return ResponseEntity.ok(rooms.getContent());
     }
 
     @PostMapping("/api/rooms")

@@ -16,4 +16,5 @@ public interface RoomService {
     RoomDTO updateRoom(String id, RoomRequest request);
     void deleteRoom(String id);
     Page<RoomDTO> getRoomsByRoomTypeAndStatus(String roomTypeId, String status, Pageable pageable);
+    List<RoomDTO> getAvailableRoomsByType(String typeId, java.time.LocalDate checkIn, java.time.LocalDate checkOut);
 }

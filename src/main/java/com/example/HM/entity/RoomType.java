@@ -7,6 +7,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.FetchType;
 
 @Entity
 @Table(name = "RoomType")
@@ -28,4 +33,7 @@ public class RoomType extends BaseEntity {
 
     @Column(name = "RoomImage", length = 255)
     private String roomImage;
+
+    @OneToMany(mappedBy = "roomType", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<RoomTypeImage> images = new ArrayList<>();
 }

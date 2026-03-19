@@ -117,6 +117,14 @@ public class RoomServiceImpl implements RoomService {
                 .map(this::convertToDTO);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomDTO> getAvailableRoomsByType(String typeId, java.time.LocalDate checkIn, java.time.LocalDate checkOut) {
+        return roomRepository.findAvailableRoomsByType(typeId, checkIn, checkOut).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     private RoomDTO convertToDTO(Room room) {
         return RoomDTO.builder()
                 .id(room.getId())

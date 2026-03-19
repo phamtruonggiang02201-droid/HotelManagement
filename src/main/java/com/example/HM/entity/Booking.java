@@ -24,9 +24,8 @@ public class Booking extends BaseEntity {
     @JoinColumn(name = "GuestID")
     private Guest guest;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "RoomTypeID")
-    private RoomType roomType;
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookedRoom> bookedRooms = new ArrayList<>();
 
     @Column(name = "CheckIn")
     private LocalDate checkIn;
@@ -51,6 +50,12 @@ public class Booking extends BaseEntity {
     @Column(name = "PaymentDate")
     private LocalDateTime paymentDate;
 
+    @Column(name = "PaidAmount", precision = 18, scale = 2)
+    private BigDecimal paidAmount;
+
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
     private List<BookedService> bookedServices = new ArrayList<>();
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Occupant> occupants = new ArrayList<>();
 }

@@ -2,6 +2,7 @@ package com.example.HM.service.impl;
 
 import com.example.HM.dto.RoomTypeDTO;
 import com.example.HM.entity.RoomType;
+import com.example.HM.entity.RoomTypeImage;
 import com.example.HM.repository.RoomRepository;
 import com.example.HM.repository.RoomTypeRepository;
 import com.example.HM.service.RoomTypeService;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,6 +23,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     private final RoomTypeRepository roomTypeRepository;
     private final RoomRepository roomRepository;
+    private final com.example.HM.repository.FeedbackRepository feedbackRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -45,11 +48,6 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         return roomTypeRepository.findById(id)
                 .map(this::convertToDTO)
                 .orElseGet(() -> {
-                    List<String> allIds = roomTypeRepository.findAll().stream()
-                            .map(RoomType::getId)
-                            .collect(Collectors.toList());
-                    System.out.println("DEBUG: RoomType ID not found: " + id);
-                    System.out.println("DEBUG: Available IDs: " + allIds);
                     throw new RuntimeException("Loại phòng không tồn tại! (ID: " + id + ")");
                 });
     }
@@ -76,6 +74,15 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         roomType.setCapacity(dto.getCapacity());
         roomType.setPrice(dto.getPrice());
         roomType.setRoomImage(dto.getRoomImage());
+
+        if (dto.getGalleryImages() != null && !dto.getGalleryImages().isEmpty()) {
+            List<RoomTypeImage> images = dto.getGalleryImages().stream()
+                    .filter(url -> url != null && !url.isBlank())
+                    .map(url -> RoomTypeImage.builder().imageUrl(url).roomType(roomType).build())
+                    .collect(Collectors.toList());
+            roomType.setImages(images);
+        }
+
         return convertToDTO(roomTypeRepository.save(roomType));
     }
 
@@ -103,6 +110,16 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         roomType.setCapacity(dto.getCapacity());
         roomType.setPrice(dto.getPrice());
         roomType.setRoomImage(dto.getRoomImage());
+
+        if (dto.getGalleryImages() != null) {
+            roomType.getImages().clear();
+            List<RoomTypeImage> newImages = dto.getGalleryImages().stream()
+                    .filter(url -> url != null && !url.isBlank())
+                    .map(url -> RoomTypeImage.builder().imageUrl(url).roomType(roomType).build())
+                    .collect(Collectors.toList());
+            roomType.getImages().addAll(newImages);
+        }
+
         return convertToDTO(roomTypeRepository.save(roomType));
     }
 
@@ -120,6 +137,9 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     private RoomTypeDTO convertToDTO(RoomType roomType) {
         long availableCount = roomRepository.countByRoomTypeAndStatus(roomType, "AVAILABLE");
+        long reviewCount = feedbackRepository.countByRoomType_Id(roomType.getId());
+        Double avgRating = feedbackRepository.getAverageRatingByRoomTypeId(roomType.getId());
+        
         return RoomTypeDTO.builder()
                 .id(roomType.getId())
                 .typeName(roomType.getTypeName())
@@ -128,6 +148,11 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                 .price(roomType.getPrice())
                 .roomImage(roomType.getRoomImage())
                 .availableCount(availableCount)
+                .reviewCount(reviewCount)
+                .averageRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0)
+                .galleryImages(roomType.getImages() != null ? 
+                        roomType.getImages().stream().map(RoomTypeImage::getImageUrl).collect(Collectors.toList()) : 
+                        new ArrayList<>())
                 .build();
     }
 }
