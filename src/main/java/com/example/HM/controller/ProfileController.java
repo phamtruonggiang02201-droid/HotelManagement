@@ -18,6 +18,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Collections;
 import java.util.Map;
 
 @Controller
@@ -83,13 +84,14 @@ public class ProfileController {
             CustomUserDetails currentUser = SecurityUtils.getCurrentUserDetails();
             
             CustomUserDetails updatedPrincipal = new CustomUserDetails(
+                accountEntity.getId(),
                 accountEntity.getUsername(),
                 accountEntity.getPassword(),
                 accountEntity.getEmailVerified() != null && accountEntity.getEmailVerified(),
                 true,
                 true,
                 accountEntity.getStatus(),
-                currentUser != null ? currentUser.getAuthorities() : java.util.Collections.emptyList(),
+                currentUser != null ? currentUser.getAuthorities() : Collections.emptyList(),
                 updatedAccount.getFullName(),
                 updatedAccount.getRoleName(),
                 avatarUrl

@@ -2,6 +2,7 @@ package com.example.HM.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "Accounts")
 @Getter
 @Setter
+@RequiredArgsConstructor
 public class Account extends BaseEntity {
 
     @Column(name = "username", length = 50, nullable = false, unique = true)
@@ -78,4 +80,8 @@ public class Account extends BaseEntity {
 
     @Column(name = "email_verified")
     private Boolean emailVerified = false;
+
+    public String getFullName() {
+        return (firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "");
+    }
 }

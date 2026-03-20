@@ -131,33 +131,6 @@ public class DataInitializer {
                 System.out.println(">>> Sample Room Types Created");
             }
 
-            // 6. Init Rooms
-            if (roomRepository.count() == 0) {
-                RoomType std = roomTypeRepository.findByTypeName("Standard").get();
-                RoomType dlx = roomTypeRepository.findByTypeName("Deluxe").get();
-                
-                Room r101 = new Room();
-                r101.setRoomName("P.101");
-                r101.setRoomType(std);
-                r101.setPrice(new java.math.BigDecimal("500000"));
-                r101.setStatus("AVAILABLE");
-                roomRepository.save(r101);
-
-                Room r102 = new Room();
-                r102.setRoomName("P.102");
-                r102.setRoomType(std);
-                r102.setPrice(new java.math.BigDecimal("500000"));
-                r102.setStatus("AVAILABLE");
-                roomRepository.save(r102);
-
-                Room r201 = new Room();
-                r201.setRoomName("P.201");
-                r201.setRoomType(dlx);
-                r201.setPrice(new java.math.BigDecimal("850000"));
-                r201.setStatus("AVAILABLE");
-                roomRepository.save(r201);
-                System.out.println(">>> Sample Rooms Created");
-            }
 
             // 7. Init Service Categories & Services
             if (categoryRepository.count() == 0) {

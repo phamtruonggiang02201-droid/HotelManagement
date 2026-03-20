@@ -4,12 +4,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "Roles")
 @Getter
 @Setter
+@RequiredArgsConstructor
 public class Role extends BaseEntity {
 
     @Column(name = "role_name", length = 50, nullable = false, unique = true)

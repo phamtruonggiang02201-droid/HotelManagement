@@ -17,6 +17,20 @@ public class Feedback extends BaseEntity {
     @Column(name = "Rating")
     private Integer rating;
 
-    @Column(name = "Comment", length = 255)
+    @Column(name = "Comment", length = 1000)
     private String comment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "RoomTypeID")
+    private RoomType roomType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ServiceID")
+    private ExtraService extraService;
+
+    @Column(name = "AdminReply", length = 1000)
+    private String adminReply;
+
+    @Column(name = "RepliedAt")
+    private java.time.LocalDateTime repliedAt;
 }

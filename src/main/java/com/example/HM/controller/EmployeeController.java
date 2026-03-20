@@ -45,8 +45,10 @@ public class EmployeeController {
 
     @GetMapping("/api")
     @ResponseBody
-    public ResponseEntity<Page<EmployeeResponseDTO>> getEmployees(@PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(accountService.getEmployees(pageable));
+    public ResponseEntity<Page<EmployeeResponseDTO>> getEmployees(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(accountService.getEmployees(search, pageable));
     }
 
     @PostMapping("/api")

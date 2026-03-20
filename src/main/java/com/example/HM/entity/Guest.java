@@ -33,4 +33,7 @@ public class Guest extends BaseEntity {
 
     @Column(name = "nationality", length = 50)
     private String nationality;
+
+    @Column(name = "Email", length = 100)
+    private String email;
 }

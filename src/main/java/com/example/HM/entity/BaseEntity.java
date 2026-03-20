@@ -9,6 +9,8 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @MappedSuperclass
 @Getter
 @Setter
+@RequiredArgsConstructor
 public abstract class BaseEntity {
 
     @Id
