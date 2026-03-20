@@ -84,12 +84,12 @@ public class AssignmentController {
         }
     }
 
-    @PatchMapping("/api/{id}/status")
+    @PutMapping("/api/{id}/assign")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @ResponseBody
-    public ResponseEntity<?> updateStatus(@PathVariable String id, @RequestParam String status) {
+    public ResponseEntity<?> assignTask(@PathVariable String id, @RequestParam String employeeId, @RequestParam String shift) {
         try {
-            assignmentService.updateStatus(id, status);
-            return ResponseEntity.ok(Map.of("message", "Cập nhật trạng thái thành công!"));
+            return ResponseEntity.ok(assignmentService.assignTask(id, employeeId, shift));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

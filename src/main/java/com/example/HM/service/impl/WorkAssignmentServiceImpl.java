@@ -132,25 +132,38 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
         // 2. Nếu có nhân viên đang trực, có thể gán cho người đầu tiên hoặc để null cho "Task Pool"
         // Ở đây em chọn để null nếu muốn dùng cơ chế "Nhận việc", hoặc gán nếu đại ca muốn chỉ định
         if (!onDutyStaff.isEmpty()) {
-            // Tạm thời để null để nhân viên tự nhận trong pool của họ
-            // Hoặc gán: task.setEmployee(onDutyStaff.get(0).getEmployee());
+            // Tạm thời gán Ca hiện tại dựa trên giờ hệ thống để dễ hiển thị trên bảng
+            int hour = java.time.LocalTime.now().getHour();
+            String currentShift = "Sáng";
+            if (hour >= 12 && hour < 18) currentShift = "Chiều";
+            else if (hour >= 18 || hour < 6) currentShift = "Tối";
+            task.setShift(currentShift);
         }
 
         assignmentRepository.save(task);
     }
 
     @Override
+    @Transactional
+    public AssignmentResponseDTO assignTask(String taskId, String employeeId, String shift) {
+        WorkAssignment task = assignmentRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ!"));
+        Account employee = accountRepository.findById(employeeId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên!"));
+        task.setEmployee(employee);
+        task.setShift(shift);
+        task.setStatus("PROCESSING");
+        return convertToDTO(assignmentRepository.save(task));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<AssignmentResponseDTO> getTasksInPool(String roleName) {
-        // Lấy danh sách nhiệm vụ của bộ phận chưa có người nhận
+        // Lấy danh sách nhiệm vụ của bộ phận chưa có người nhận trong ngày
         return assignmentRepository.findAllByTypeAndStatus("TASK", "PENDING").stream()
-                .filter(t -> {
-                    // Cần kiểm tra xem targetId có thuộc về category yêu cầu role này không
-                    // Ở đây em đơn giản hóa: Nếu task không có employee và đúng ngày thì hiện
-                    return t.getEmployee() == null && t.getWorkDate().equals(LocalDate.now());
-                })
+                .filter(t -> t.getEmployee() == null && t.getWorkDate().equals(LocalDate.now()))
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
