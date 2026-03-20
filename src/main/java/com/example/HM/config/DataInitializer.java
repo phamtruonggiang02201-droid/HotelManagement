@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @Configuration
 @RequiredArgsConstructor
@@ -37,12 +38,15 @@ public class DataInitializer {
                                      PaymentRepository paymentRepository,
                                      PaymentMethodRepository paymentMethodRepository,
                                      WorkAssignmentRepository assignmentRepository,
+                                     AreaRepository areaRepository,
                                      PasswordEncoder passwordEncoder) {
         return args -> {
             // 0. Init Enumerations
             initEnumerations(enumTypeRepository, enumerationRepository);
             // 0.1 Init Payment Methods
             initPaymentMethods(paymentMethodRepository);
+            // 0.2 Init Areas
+            initAreas(areaRepository);
             // 1. Init Roles
             if (roleRepository.findByRoleName("CUSTOMER").isEmpty()) {
                 Role customer = new Role();
@@ -383,43 +387,47 @@ public class DataInitializer {
 
             // 8. Init Diverse Sample Bookings for Test (Past, Present, Future)
             System.out.println(">>> Starting Data Seeding: Bookings, Payments, Feedbacks... <<<");
-            if (true) { // Luôn chạy khi ở chế độ tạo dữ liệu mẫu
+            if (true) {
                 PaymentMethod cash = paymentMethodRepository.findByMethodName("Tiền mặt").orElse(null);
                 PaymentMethod vnpay = paymentMethodRepository.findByMethodName("VNPay").orElse(null);
                 
-                accountRepository.findByUsername("customer1").ifPresent(acc -> {
-                    // Thêm 50 bookings rải rác trong 6 tháng qua
-                    for (int i = 1; i <= 50; i++) {
-                        LocalDate date = LocalDate.now().minusDays(i * 3);
+                java.util.List<Account> customers = accountRepository.findAll().stream()
+                        .filter(a -> a.getRole().getRoleName().equals("CUSTOMER"))
+                        .collect(Collectors.toList());
+
+                int bookingCount = 0;
+                for (Account acc : customers) {
+                    for (int i = 1; i <= 20; i++) {
+                        bookingCount++;
+                        LocalDate date = LocalDate.now().minusDays(i * 5 + (bookingCount % 10));
                         Booking b = new Booking();
                         b.setAccount(acc);
                         b.setCheckIn(date);
                         b.setCheckOut(date.plusDays(2));
                         
-                        // Random status
-                        if (i < 15) b.setStatus("CHECKED_OUT");
-                        else if (i < 25) b.setStatus("PAID");
-                        else if (i < 35) b.setStatus("CANCELLED");
-                        else if (i < 40) b.setStatus("CHECKED_IN");
-                        else b.setStatus("PAID");
+                        // Mixed status
+                        if (i < 5) b.setStatus("CHECKED_OUT");
+                        else if (i < 10) b.setStatus("PAID");
+                        else if (i < 15) b.setStatus("CANCELLED");
+                        else b.setStatus("CHECKED_OUT");
 
-                        // Create Guest info for each booking so it shows up in UI
+                        // Create Guest info
                         Guest g = new Guest();
-                        g.setFullName(acc.getFirstName() + " " + acc.getLastName() + " " + i);
+                        g.setFullName(acc.getFirstName() + " " + acc.getLastName());
                         g.setEmail(acc.getEmail());
-                        g.setPhone("090" + (1000000 + i));
-                        g.setIdNumber("ID" + (123456789 + i));
+                        g.setPhone("090" + (1000000 + bookingCount));
                         guestRepository.save(g);
                         b.setGuest(g);
 
-                        BigDecimal amount = new BigDecimal(500000 + (long)(Math.random() * 2000000));
-                        b.setTotalAmount(amount);
-                        b.setPaidAmount(b.getStatus().equals("CANCELLED") ? BigDecimal.ZERO : amount);
+                        BigDecimal roomPrice = new BigDecimal(500000 + (long)(Math.random() * 1000000));
+                        b.setTotalAmount(roomPrice);
+                        b.setPaidAmount(b.getStatus().equals("CANCELLED") ? BigDecimal.ZERO : roomPrice);
                         b.setPaymentDate(b.getStatus().equals("CANCELLED") ? null : b.getCheckIn().atTime(10, 0));
                         bookingRepository.save(b);
 
-                        // 8.1 Add BookedRoom details
-                        RoomType rt = roomTypeRepository.findAll().get((int)(Math.random() * 4));
+                        // 8.1 Add BookedRoom
+                        java.util.List<RoomType> allTypes = roomTypeRepository.findAll();
+                        RoomType rt = allTypes.get(bookingCount % allTypes.size());
                         BookedRoom br = new BookedRoom();
                         br.setBooking(b);
                         br.setRoomType(rt);
@@ -427,79 +435,31 @@ public class DataInitializer {
                         br.setPriceAtBooking(rt.getPrice());
                         bookedRoomRepository.save(br);
 
-                        // 8.2 Assign actual rooms for non-cancelled bookings
-                        if (!b.getStatus().equals("CANCELLED") && !b.getStatus().equals("PENDING_PAYMENT")) {
-                            roomRepository.findAll().stream()
-                                .filter(r -> r.getRoomType().getId().equals(rt.getId()) && "AVAILABLE".equals(r.getStatus()))
-                                .findFirst().ifPresent(room -> {
-                                    b.setRooms(java.util.Set.of(room));
-                                    if (b.getStatus().equals("CHECKED_IN")) {
-                                        room.setStatus("OCCUPIED");
-                                    }
-                                    roomRepository.save(room);
-                                    bookingRepository.save(b);
-                                });
-                        }
-
-                        // Lưu Payment nếu đã thanh toán
-                        if (!b.getStatus().equals("CANCELLED") && !b.getStatus().equals("PENDING_PAYMENT")) {
+                        // 8.2 Save Payment
+                        if (!b.getStatus().equals("CANCELLED")) {
                             Payment p = new Payment();
                             p.setBooking(b);
-                            p.setAmount(amount);
+                            p.setAmount(roomPrice);
                             p.setPaymentDate(b.getPaymentDate());
                             p.setPaymentStatus("SUCCESS");
-                            p.setPaymentMethod(i % 2 == 0 ? cash : vnpay);
+                            p.setPaymentMethod(bookingCount % 2 == 0 ? cash : vnpay);
                             paymentRepository.save(p);
-                        }
-
-                        // Thêm Dịch vụ cho mỗi booking (Random 1-3 dịch vụ)
-                        if (!b.getStatus().equals("CANCELLED")) {
-                            BookedService bs = new BookedService();
-                            bs.setBooking(b);
-                            bs.setStatus("DELIVERED");
-                            bs.setTotalAmount(BigDecimal.ZERO);
                             
-                            java.util.List<ExtraService> allServices = extraServiceRepository.findAll();
-                            int numServices = (int)(Math.random() * 3) + 1;
-                            for (int j = 0; j < numServices; j++) {
-                                ExtraService srv = allServices.get((int)(Math.random() * allServices.size()));
-                                BookedDetail detail = new BookedDetail();
-                                detail.setBookedService(bs);
-                                detail.setService(srv);
-                                detail.setQuantity((int)(Math.random() * 2) + 1);
-                                detail.setUnitPrice(srv.getPrice());
-                                
-                                // Random rating cho dịch vụ
-                                detail.setRating((int)(Math.random() * 2) + 4);
-                                detail.setRatingComment("Rất hài lòng " + j);
-                                detail.setRatedAt(b.getCheckOut().atTime(12, 0));
-                                
-                                bs.getDetails().add(detail);
-                                bs.setTotalAmount(bs.getTotalAmount().add(srv.getPrice().multiply(new BigDecimal(detail.getQuantity()))));
+                            // 8.3 Add Sample Refund
+                            if (i == 1 && bookingCount % 3 == 0) {
+                                Refund rf = new Refund();
+                                rf.setBooking(b);
+                                rf.setRefundAmount(roomPrice.multiply(new BigDecimal("0.8")));
+                                rf.setReason("Khách hàng báo bận việc đột xuất");
+                                rf.setStatus(bookingCount % 6 == 0 ? "APPROVED" : "PENDING");
+                                rf.setRequestedAt(LocalDateTime.now().minusDays(1));
+                                if (rf.getStatus().equals("APPROVED")) rf.setProcessedAt(LocalDateTime.now());
+                                refundRepository.save(rf);
                             }
-                            bookedServiceRepository.save(bs);
-                            
-                            // Cập nhật lại tổng tiền booking bao gồm dịch vụ
-                            b.setTotalAmount(b.getTotalAmount().add(bs.getTotalAmount()));
-                            bookingRepository.save(b);
-                        }
-
-                        // Thêm Feedback cho các đơn đã xong
-                        if (b.getStatus().equals("CHECKED_OUT") || b.getStatus().equals("COMPLETED")) {
-                            Feedback f = new Feedback();
-                            f.setBooking(b);
-                            f.setRating((int)(Math.random() * 2) + 4); // 4 or 5 stars
-                            f.setComment("Dịch vụ tuyệt vời tại " + (rt != null ? rt.getTypeName() : "khách sạn") + "! " + i);
-                            
-                            // Link feedback to the room type of the booking
-                            if (rt != null) {
-                                f.setRoomType(rt);
-                            }
-                            feedbackRepository.save(f);
                         }
                     }
-                });
-                System.out.println(">>> 50 Diverse Historical Bookings & Payments Initialized <<<");
+                }
+                System.out.println(">>> Diverse Sample Bookings & Refunds Initialized <<<");
             }
 
             // 8. Init 20 Sample Staff Members
@@ -551,8 +511,18 @@ public class DataInitializer {
                             Booking b = new Booking();
                             b.setAccount(acc);
                             b.setStatus("CHECKED_OUT");
-                            b.setCheckIn(LocalDate.now().minusDays(10 +     index));
+                            b.setCheckIn(LocalDate.now().minusDays(10 + index));
                             b.setCheckOut(LocalDate.now().minusDays(8 + index));
+                            b.setTotalAmount(type.getPrice().multiply(new BigDecimal("2")));
+                            b.setPaidAmount(b.getTotalAmount());
+                            
+                            Guest g = new Guest();
+                            g.setFullName(acc.getFirstName() + " " + acc.getLastName());
+                            g.setEmail(acc.getEmail());
+                            g.setPhone("090" + (2000000 + index));
+                            guestRepository.save(g);
+                            b.setGuest(g);
+                            
                             bookingRepository.save(b);
                             f.setBooking(b);
                         });
@@ -652,6 +622,19 @@ public class DataInitializer {
         type.setEnumTypeId(typeId);
         type.setDescription(description);
         return repo.save(type);
+    }
+
+    private void initAreas(AreaRepository areaRepository) {
+        if (areaRepository.count() == 0) {
+            String[] commonAreas = {"Tầng 1", "Tầng 2", "Tầng 3", "Nhà hàng", "Sảnh chính", "Hồ bơi", "Spa", "Bảo vệ / Cổng"};
+            for (String name : commonAreas) {
+                Area area = new Area();
+                area.setAreaName(name);
+                area.setDescription("Khu vực " + name + " của khách sạn.");
+                areaRepository.save(area);
+            }
+            System.out.println(">>> Areas Initialized Successfully <<<");
+        }
     }
 
     private void createEnum(EnumerationRepository repo, EnumerationType type, String code, String name, int seq) {

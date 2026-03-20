@@ -11,6 +11,15 @@
                 class="bg-transparent border-none outline-none w-full text-sm font-medium">
         </div>
         <div class="flex items-center gap-4 ml-auto">
+            <!-- Language Switcher -->
+            <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                <a href="?lang=vi"
+                    class="px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-all hover:bg-white hover:shadow-sm"
+                    th:classappend="${#locale.language == 'vi'} ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'">🇻🇳 VI</a>
+                <a href="?lang=en"
+                    class="px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-all hover:bg-white hover:shadow-sm"
+                    th:classappend="${#locale.language == 'en'} ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'">🇬🇧 EN</a>
+            </div>
             <div sec:authorize="isAuthenticated()" class="flex items-center gap-3">
                 <div class="text-right hidden sm:block">
                     <p class="text-[10px] text-slate-400 font-medium" th:text="${#authentication.principal.fullName}">
