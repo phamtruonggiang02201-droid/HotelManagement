@@ -5,12 +5,14 @@ import com.example.HM.dto.*;
 import com.example.HM.entity.*;
 import com.example.HM.repository.*;
 import com.example.HM.service.BookingService;
+import com.example.HM.util.ExcelHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -76,6 +78,31 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public ByteArrayInputStream exportBookingsToExcel(java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        List<Booking> bookings;
+        if (startDate != null && endDate != null) {
+            bookings = bookingRepository.findByCheckInBetween(startDate, endDate);
+        } else {
+            bookings = bookingRepository.findAll();
+        }
+
+        String[] headers = { "Mã Booking", "Khách hàng", "Username", "Email", "Check-in", "Check-out", "Tổng tiền", "Số tiền đã trả", "Trạng thái", "Ngày thanh toán" };
+        
+        return ExcelHelper.dataToExcel(bookings, "Bookings", headers, (row, booking) -> {
+            row.createCell(0).setCellValue(booking.getId());
+            row.createCell(1).setCellValue(booking.getGuest() != null ? booking.getGuest().getFullName() : "N/A");
+            row.createCell(2).setCellValue(booking.getAccount() != null ? booking.getAccount().getUsername() : "N/A");
+            row.createCell(3).setCellValue(booking.getAccount() != null ? booking.getAccount().getEmail() : "N/A");
+            row.createCell(4).setCellValue(booking.getCheckIn() != null ? booking.getCheckIn().toString() : "N/A");
+            row.createCell(5).setCellValue(booking.getCheckOut() != null ? booking.getCheckOut().toString() : "N/A");
+            row.createCell(6).setCellValue(booking.getTotalAmount() != null ? booking.getTotalAmount().doubleValue() : 0.0);
+            row.createCell(7).setCellValue(booking.getPaidAmount() != null ? booking.getPaidAmount().doubleValue() : 0.0);
+            row.createCell(8).setCellValue(booking.getStatus());
+            row.createCell(9).setCellValue(booking.getPaymentDate() != null ? booking.getPaymentDate().toString() : "N/A");
+        });
+    }
+
+    @Override
     @Transactional
     public Booking createBooking(BookingRequest request, String accountId) {
         long nights = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
@@ -86,22 +113,6 @@ public class BookingServiceImpl implements BookingService {
         booking.setCheckOut(request.getCheckOut());
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
 
-        if (accountId != null) {
-            Account account = accountRepository.findById(accountId).orElse(null);
-            booking.setAccount(account);
-        }
-
-        // Find or Create Guest
-        Guest guest = guestRepository.findByEmail(request.getGuestEmail())
-                .orElseGet(() -> {
-                    Guest newGuest = new Guest();
-                    newGuest.setFullName(request.getGuestName());
-                    newGuest.setEmail(request.getGuestEmail());
-                    newGuest.setPhone(request.getGuestPhone());
-                    return guestRepository.save(newGuest);
-                });
-        booking.setGuest(guest);
-
         BigDecimal totalRoomAmount = BigDecimal.ZERO;
         List<BookedRoom> bookedRooms = new ArrayList<>();
 
@@ -109,10 +120,28 @@ public class BookingServiceImpl implements BookingService {
             RoomType roomType = roomTypeRepository.findById(selection.getRoomTypeId())
                     .orElseThrow(() -> new RuntimeException("Loại phòng " + selection.getRoomTypeId() + " không tồn tại!"));
 
-            // Check availability: count available rooms of this type
-            long availableCount = roomRepository.findByRoomTypeAndStatus(roomType, "AVAILABLE", Pageable.unpaged()).getTotalElements();
-            if (availableCount < selection.getQuantity()) {
-                throw new RuntimeException("Loại phòng " + roomType.getTypeName() + " không đủ phòng trống (Còn lại: " + availableCount + ")!");
+            // Check availability: count available rooms of this type accurately
+            long totalRooms = roomRepository.countByRoomTypeAndStatusNot(roomType, "MAINTENANCE");
+            java.util.List<Booking> overlaps = bookingRepository.findOverlappingBookingsByType(roomType.getId(), request.getCheckIn(), request.getCheckOut());
+            
+            long maxBooked = 0;
+            for (LocalDate date = request.getCheckIn(); date.isBefore(request.getCheckOut()); date = date.plusDays(1)) {
+                long dailySum = 0;
+                for (Booking b : overlaps) {
+                    if (!date.isBefore(b.getCheckIn()) && date.isBefore(b.getCheckOut())) {
+                        long qty = b.getBookedRooms().stream()
+                                .filter(br -> br.getRoomType().getId().equals(roomType.getId()))
+                                .mapToLong(BookedRoom::getQuantity)
+                                .sum();
+                        dailySum += qty;
+                    }
+                }
+                if (dailySum > maxBooked) maxBooked = dailySum;
+            }
+
+            long currentAvailable = Math.max(0, totalRooms - maxBooked);
+            if (currentAvailable < selection.getQuantity()) {
+                throw new RuntimeException("Loại phòng " + roomType.getTypeName() + " không đủ phòng trống cho giai đoạn này (Còn lại: " + currentAvailable + ")!");
             }
 
             BookedRoom bookedRoom = new BookedRoom();
@@ -124,6 +153,23 @@ public class BookingServiceImpl implements BookingService {
 
             BigDecimal selectionPrice = roomType.getPrice().multiply(BigDecimal.valueOf(selection.getQuantity())).multiply(BigDecimal.valueOf(nights));
             totalRoomAmount = totalRoomAmount.add(selectionPrice);
+        }
+
+        // Find or Create Guest
+        List<Guest> guests = guestRepository.findAllByEmail(request.getGuestEmail());
+        Guest guest;
+        if (!guests.isEmpty()) {
+            guest = guests.get(0);
+        } else {
+            guest = new Guest();
+            guest.setFullName(request.getGuestName());
+            guest.setEmail(request.getGuestEmail());
+            guest.setPhone(request.getGuestPhone());
+            guest = guestRepository.save(guest);
+        }
+        booking.setGuest(guest);
+        if (accountId != null) {
+            accountRepository.findById(accountId).ifPresent(booking::setAccount);
         }
 
         booking.setBookedRooms(bookedRooms);
@@ -154,7 +200,52 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public void updateBookingStatus(String bookingId, String status) {
+    public Booking createWalkInCheckIn(BookingRequest request) {
+        // 1. Tạo Booking cơ bản
+        Booking booking = createBooking(request, null);
+        
+        // 2. Chuyển sang trạng thái đã thanh toán ngay
+        booking.setStatus(BookingStatus.PAID);
+        booking.setPaymentDate(LocalDateTime.now());
+        booking.setPaidAmount(booking.getTotalAmount());
+
+        // 3. Tạo bản ghi Payment
+        Payment payment = new Payment();
+        payment.setBooking(booking);
+        payment.setAmount(booking.getTotalAmount());
+        payment.setPaymentDate(LocalDateTime.now());
+        payment.setPaymentStatus("SUCCESS");
+        payment.setNote("Thanh toán & Check-in tại quầy (Walk-in)");
+        paymentRepository.save(payment);
+
+        // 4. Thực hiện Check-in ngay lập tức cho các phòng đã chọn
+        if (request.getRoomIds() == null || request.getRoomIds().isEmpty()) {
+            throw new RuntimeException("Phải chọn ít nhất một phòng khi thực hiện Check-in tại quầy!");
+        }
+
+        Set<Room> assignedRooms = new HashSet<>();
+        for (String roomId : request.getRoomIds()) {
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new RuntimeException("Phòng " + roomId + " không tồn tại!"));
+
+            if (!"AVAILABLE".equals(room.getStatus())) {
+                throw new RuntimeException("Phòng " + room.getRoomName() + " hiện không khả dụng!");
+            }
+
+            room.setStatus("OCCUPIED");
+            roomRepository.save(room);
+            assignedRooms.add(room);
+        }
+
+        booking.setRooms(assignedRooms);
+        booking.setStatus(BookingStatus.CHECKED_IN);
+        
+        return bookingRepository.save(booking);
+    }
+    
+    @Override
+    @Transactional
+    public void updateBookingStatus(String bookingId, String status, String transactionNo) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
 
@@ -171,6 +262,7 @@ public class BookingServiceImpl implements BookingService {
             payment.setAmount(booking.getTotalAmount());
             payment.setPaymentDate(LocalDateTime.now());
             payment.setPaymentStatus("SUCCESS");
+            payment.setTransactionNo(transactionNo); // Lưu mã giao dịch VNPay
             paymentRepository.save(payment);
         }
 
@@ -366,23 +458,36 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public Page<Booking> getPaidBookings(Pageable pageable) {
+    public Page<Booking> getPaidBookings(java.time.LocalDate date, Pageable pageable) {
+        if (date != null) {
+            return bookingRepository.findByStatusAndCheckIn(BookingStatus.PAID, date, pageable);
+        }
         return bookingRepository.findByStatus(BookingStatus.PAID, pageable);
     }
 
     @Override
-    public Page<Booking> getCheckedInBookings(Pageable pageable) {
+    public Page<Booking> getCheckedInBookings(java.time.LocalDate date, Pageable pageable) {
+        if (date != null) {
+            return bookingRepository.findByStatusAndCheckOut(BookingStatus.CHECKED_IN, date, pageable);
+        }
         return bookingRepository.findByStatus(BookingStatus.CHECKED_IN, pageable);
     }
 
     @Override
     @Transactional
     public void bookService(BookServiceRequest request) {
+        if (request.getQuantity() <= 0) {
+            throw new RuntimeException("Số lượng dịch vụ phải lớn hơn 0!");
+        }
         Booking booking = bookingRepository.findById(request.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
 
         ExtraService service = extraServiceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại!"));
+
+        if (!BookingStatus.CHECKED_IN.equals(booking.getStatus())) {
+            throw new RuntimeException("Chặn đặt dịch vụ! Phòng này đã Check-out hoặc chưa Check-in.");
+        }
 
         // Tìm đơn dịch vụ đang ở trạng thái ORDERED cho phòng này (hoặc chung cho booking nếu không có phòng)
         Optional<BookedService> activeOrderOpt = booking.getBookedServices().stream()
@@ -403,6 +508,9 @@ public class BookingServiceImpl implements BookingService {
                 Room room = roomRepository.findById(request.getRoomId())
                         .orElseThrow(() -> new RuntimeException("Phòng không tồn tại!"));
                 bookedService.setRoom(room);
+            } else if (booking.getRooms() != null && booking.getRooms().size() == 1) {
+                // Nếu không truyền roomId nhưng booking chỉ có 1 phòng duy nhất
+                bookedService.setRoom(booking.getRooms().iterator().next());
             }
             bookedService = bookedServiceRepository.save(bookedService);
             booking.getBookedServices().add(bookedService);
@@ -463,6 +571,15 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public Page<BookedServiceDTO> getAllBookedServices(String keyword, String status, Pageable pageable) {
+        // Luôn sắp xếp đơn mới nhất lên đầu nếu không có sort khác
+        if (pageable.getSort().isUnsorted()) {
+            pageable = org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(), 
+                pageable.getPageSize(), 
+                org.springframework.data.domain.Sort.by("createdAt").descending()
+            );
+        }
+        
         Page<BookedService> bookedPage;
         if (status != null && !status.isEmpty()) {
             bookedPage = bookedServiceRepository.findByStatus(status, pageable);
@@ -498,6 +615,9 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookedServiceDTO updateBookedServiceQuantity(String detailId, int newQuantity) {
+        if (newQuantity <= 0) {
+            throw new RuntimeException("Số lượng dịch vụ phải lớn hơn 0!");
+        }
         BookedDetail detail = bookedDetailRepository.findById(detailId)
                 .orElseThrow(() -> new RuntimeException("Chi tiết dịch vụ không tồn tại!"));
 
@@ -645,6 +765,42 @@ public class BookingServiceImpl implements BookingService {
                 .paidAmount(paidAmount)
                 .balance(balance)
                 .build();
+    }
+
+    @Override
+    public ByteArrayInputStream exportBookedServicesToExcel(String keyword, String status) {
+        List<BookedService> bookedServices;
+        if (keyword != null && !keyword.isEmpty()) {
+            bookedServices = bookedServiceRepository.searchBookedServicesList(keyword);
+            if (status != null && !status.isEmpty()) {
+                bookedServices = bookedServices.stream()
+                        .filter(bs -> bs.getStatus().equals(status))
+                        .collect(java.util.stream.Collectors.toList());
+            }
+        } else if (status != null && !status.isEmpty()) {
+            bookedServices = bookedServiceRepository.findByStatusAll(status);
+        } else {
+            bookedServices = bookedServiceRepository.findAll();
+        }
+        
+        String[] headers = { "Mã đơn", "Khách hàng", "Phòng", "Dịch vụ", "Số lượng", "Tổng tiền", "Trạng thái", "Ngày tạo" };
+        
+        return ExcelHelper.dataToExcel(bookedServices, "ServiceOrders", headers, (row, bs) -> {
+            row.createCell(0).setCellValue(bs.getId().substring(0, 8));
+            row.createCell(1).setCellValue(bs.getBooking().getGuest() != null ? bs.getBooking().getGuest().getFullName() : "Khách vãng lai");
+            row.createCell(2).setCellValue(bs.getRoom() != null ? bs.getRoom().getRoomName() : "N/A");
+            
+            String summary = bs.getDetails().stream()
+                    .map(d -> d.getService().getServiceName() + " (x" + d.getQuantity() + ")")
+                    .collect(Collectors.joining(", "));
+            row.createCell(3).setCellValue(summary);
+            
+            int totalQty = bs.getDetails().stream().mapToInt(BookedDetail::getQuantity).sum();
+            row.createCell(4).setCellValue(totalQty);
+            row.createCell(5).setCellValue(bs.getTotalAmount() != null ? bs.getTotalAmount().doubleValue() : 0.0);
+            row.createCell(6).setCellValue(bs.getStatus());
+            row.createCell(7).setCellValue(bs.getCreatedAt().toString());
+        });
     }
 
     private BookedServiceDTO convertToBookedServiceDTO(BookedService bs) {

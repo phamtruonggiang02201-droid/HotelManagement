@@ -15,12 +15,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayInputStream;
+import java.time.LocalDate;
 import java.util.Map;
 
 @Controller
@@ -86,9 +93,16 @@ public class BookingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
     public ResponseEntity<?> createWalkInBooking(@RequestBody BookingRequest request) {
         try {
-            Booking booking = bookingService.createWalkInBooking(request);
+            // Nếu có danh sách roomIds thì thực hiện gộp Check-in luôn
+            Booking booking;
+            if (request.getRoomIds() != null && !request.getRoomIds().isEmpty()) {
+                booking = bookingService.createWalkInCheckIn(request);
+            } else {
+                booking = bookingService.createWalkInBooking(request);
+            }
+            
             return ResponseEntity.ok(Map.of(
-                "message", "Đã tạo đặt phòng tại quầy thành công!",
+                "message", "Đã tiếp nhận đặt phòng thành công!",
                 "bookingId", booking.getId()
             ));
         } catch (Exception e) {
@@ -180,9 +194,15 @@ public class BookingController {
 
     @GetMapping("/reception")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
-    public String receptionDashboard(Model model, @PageableDefault(size = 10) Pageable pageable) {
-        model.addAttribute("paidBookings", bookingService.getPaidBookings(pageable));
-        model.addAttribute("checkedInBookings", bookingService.getCheckedInBookings(pageable));
+    public String receptionDashboard(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
+            Model model, 
+            @PageableDefault(size = 10) Pageable pageable) {
+        
+        model.addAttribute("paidBookings", bookingService.getPaidBookings(date, pageable));
+        model.addAttribute("checkedInBookings", bookingService.getCheckedInBookings(date, pageable));
+        model.addAttribute("selectedDate", date != null ? date : java.time.LocalDate.now());
+        
         return "booking/reception";
     }
 
@@ -267,5 +287,21 @@ public class BookingController {
         model.addAttribute("summary", bookingService.getCheckoutSummary(bookingId));
         model.addAttribute("booking", bookingService.getBookingById(bookingId));
         return "booking/invoice";
+    }
+
+    @GetMapping("/api/export")
+    @ResponseBody
+    public ResponseEntity<Resource> exportToExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+        String filename = "luxe-stay-bookings.xlsx";
+        ByteArrayInputStream in = bookingService.exportBookingsToExcel(startDate, endDate);
+        InputStreamResource file = new InputStreamResource(in);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 }

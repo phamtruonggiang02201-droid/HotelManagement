@@ -15,13 +15,10 @@ public class RoomIssueReport extends BaseEntity {
     @JoinColumn(name = "RoomID")
     private Room room;
 
-    @Column(name = "CreatedBy")
-    private Integer createdBy;
+    @Column(name = "ReportedBy")
+    private String reportedBy;
 
-    @Column(name = "CreatedAt")
-    private LocalDateTime createdAt;
-
-    @Column(name = "Description", length = 255)
+    @Column(name = "Description", length = 500)
     private String description;
 
     @Column(name = "Status", length = 20)

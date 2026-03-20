@@ -58,4 +58,7 @@ public class Booking extends BaseEntity {
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Occupant> occupants = new ArrayList<>();
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
+    private List<Payment> payments = new ArrayList<>();
 }

@@ -10,21 +10,23 @@ import com.example.HM.entity.Booking;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 
 public interface BookingService {
     CheckInDataDTO getCheckInData(String bookingId);
     Booking createBooking(BookingRequest request, String accountId);
     Booking createWalkInBooking(BookingRequest request);
-    void updateBookingStatus(String bookingId, String status);
+    Booking createWalkInCheckIn(BookingRequest request); // Phương thức mới gộp Check-in
+    void updateBookingStatus(String bookingId, String status, String transactionNo);
     Page<Booking> getMyBookings(String accountId, Pageable pageable);
     Page<Booking> getAllBookings(Pageable pageable);
     Booking getBookingById(String id);
     void bookService(BookServiceRequest request);
     void checkIn(CheckInRequest request);
     void checkOut(String bookingId);
-    Page<Booking> getPaidBookings(Pageable pageable);
-    Page<Booking> getCheckedInBookings(Pageable pageable);
+    Page<Booking> getPaidBookings(java.time.LocalDate date, Pageable pageable);
+    Page<Booking> getCheckedInBookings(java.time.LocalDate date, Pageable pageable);
     
     // Manage Booked Services
     Page<BookedServiceDTO> getAllBookedServices(String keyword, String status, Pageable pageable);
@@ -35,6 +37,10 @@ public interface BookingService {
     // Quick Order
     void bookServices(String bookingId, String roomId, java.util.Map<String, Integer> serviceQuantities);
     Booking getActiveBookingByRoom(String roomId);
+    
+    // Export
+    ByteArrayInputStream exportBookingsToExcel(java.time.LocalDate startDate, java.time.LocalDate endDate);
+    ByteArrayInputStream exportBookedServicesToExcel(String keyword, String status);
     
     // Checkout Summary
     CheckoutSummaryDTO getCheckoutSummary(String bookingId);
