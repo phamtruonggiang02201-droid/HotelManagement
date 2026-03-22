@@ -22,6 +22,7 @@ public interface WorkAssignmentService {
     List<AssignmentResponseDTO> getTasksInPool(String roleName); // Lấy danh sách việc chưa ai nhận của bộ phận
     List<AssignmentResponseDTO> getMyActiveTasks(); // Lấy việc mình đang làm
     void claimTask(String taskId); // Nhận việc từ pool
+    AssignmentResponseDTO assignTask(String taskId, String employeeId, String shift); // Manager gán việc
     void completeTask(String taskId); // Báo hoàn thành việc
 
     void createTaskFromService(String bookedDetailId, String serviceName, String roomName, String guestName, String requiredRole);

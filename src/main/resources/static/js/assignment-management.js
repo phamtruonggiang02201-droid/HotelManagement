@@ -46,6 +46,7 @@ async function loadAreas() {
         ];
     }
     loadEmployees();
+    populateAreaSelect();
 }
 
 function loadEmployees() {
@@ -67,6 +68,7 @@ function loadAssignments() {
         .then(res => res.json())
         .then(data => {
             renderGrid(data);
+            renderPendingTasks(data);
         })
         .catch(err => console.error(err));
 }
@@ -386,3 +388,147 @@ function applyForWholeWeek() {
             toastService.error('Lỗi khi áp dụng lịch tuần!');
         });
 }
+function populateAreaSelect() {
+    const areaSelect = document.getElementById('area');
+    if (!areaSelect) return;
+    
+    // Lưu lại option đầu tiên
+    const firstOption = areaSelect.options[0];
+    areaSelect.innerHTML = '';
+    areaSelect.appendChild(firstOption);
+    
+    areaCache.forEach(area => {
+        const opt = document.createElement('option');
+        opt.value = area.name;
+        opt.textContent = area.name;
+        areaSelect.appendChild(opt);
+    });
+}
+
+function renderPendingTasks(data) {
+    const tbody = document.getElementById('pending-tasks-body');
+    if (!tbody) return;
+    
+    // Lọc các TASK chưa có người nhận (employeeId null)
+    const pending = data.filter(as => as.type === 'TASK' && !as.employeeId);
+    
+    if (pending.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-8 py-10 text-center text-slate-400 text-sm italic font-medium">Hiện không có nhiệm vụ nào đang chờ.</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    pending.forEach(task => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-50 hover:bg-slate-50/50 transition-all group';
+        tr.innerHTML = `
+            <td class="px-8 py-4">
+                <div class="flex flex-col">
+                    <span class="font-black text-slate-700 text-sm">${task.notes || 'Công việc không tên'}</span>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${task.type}</span>
+                </div>
+            </td>
+            <td class="px-8 py-4">
+                <div class="flex items-center gap-2 text-slate-600 font-bold text-sm">
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-indigo-400"></i>
+                    ${task.area}
+                </div>
+            </td>
+            <td class="px-8 py-4">
+                <span class="text-slate-500 font-medium text-sm">${task.guestName || 'N/A'}</span>
+            </td>
+            <td class="px-8 py-4 text-right">
+                <button onclick="openAssignModalForTask('${task.id}', '${task.area}')" 
+                    class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                    Gán nhân viên
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    lucide.createIcons();
+}
+
+let currentEditingTaskId = null;
+
+function openAssignModalForTask(taskId, areaName) {
+    currentEditingTaskId = taskId;
+    const modal = document.getElementById('assignModal');
+    if (!modal) return;
+    
+    // Fill data
+    const areaSelect = document.getElementById('area');
+    if (areaSelect) areaSelect.value = areaName;
+    
+    const workDateInput = document.getElementById('workDate');
+    if (workDateInput) workDateInput.value = currentDate;
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+        modal.querySelector('.bg-white').classList.remove('scale-95', 'opacity-0');
+    }, 10);
+    lucide.createIcons();
+}
+
+function closeAssignModal() {
+    const modal = document.getElementById('assignModal');
+    if (!modal) return;
+    modal.querySelector('.bg-white').classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        currentEditingTaskId = null;
+    }, 300);
+}
+
+// Bắt sự kiện submit form
+document.getElementById('assignForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const employeeId = document.getElementById('employeeId').value;
+    const workDate = document.getElementById('workDate').value;
+    const area = document.getElementById('area').value;
+    const shift = document.getElementById('shift').value;
+    const notes = document.getElementById('notes').value;
+
+    if (currentEditingTaskId) {
+        // Gán nhân viên cho Task có sẵn
+        fetch(`/management/assignments/api/${currentEditingTaskId}/assign`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `employeeId=${employeeId}&shift=${shift}`
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.id || res.success) {
+                toastService.success("Đã gán nhân viên thành công!");
+                closeAssignModal();
+                loadAssignments();
+            } else {
+                toastService.error(res.message || "Lỗi khi gán!");
+            }
+        });
+    } else {
+        // Tạo phân công mới (SCHEDULE)
+        const formData = {
+            employeeId, workDate, area, shift, notes, type: 'SCHEDULE'
+        };
+        fetch('/management/assignments/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.id) {
+                toastService.success("Đã phân công thành công!");
+                closeAssignModal();
+                loadAssignments();
+            }
+        });
+    }
+});
