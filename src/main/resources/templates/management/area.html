@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main_layout}">
+<head>
+    <title>Quản lý Khu vực - LuxeStay</title>
+</head>
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="w-8 h-[2px] bg-indigo-600"></span>
+                    <span class="text-xs font-black text-indigo-600 uppercase tracking-[0.3em]">Hệ thống vận hành</span>
+                </div>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight">Quản lý Khu vực</h1>
+                <p class="text-slate-400 text-sm mt-2 font-bold uppercase tracking-tighter">Tổ chức phòng theo Tầng, Tòa nhà hoặc Khu vực dịch vụ.</p>
+            </div>
+            <button onclick="openAreaModal()" 
+                    class="inline-flex items-center px-8 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 hover:scale-[1.02] uppercase tracking-widest">
+                <i data-lucide="plus" class="w-5 h-5 mr-3"></i> Thêm Khu vực
+            </button>
+        </div>
+
+        <!-- Table Card -->
+        <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-100">
+                            <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Tên Khu vực</th>
+                            <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Mô tả</th>
+                            <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="area-list" class="divide-y divide-slate-50">
+                        <!-- Content loaded by JS -->
+                        <tr>
+                            <td colspan="3" class="px-10 py-12 text-center text-slate-400 font-bold italic">Đang tải dữ liệu...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Area Modal -->
+        <div id="areaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+            <div class="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 scale-95 opacity-0 transition-all duration-300">
+                <div class="flex justify-between items-center mb-10">
+                    <div>
+                        <h3 id="modalTitle" class="text-2xl font-black text-slate-900">Thêm Khu vực Mới</h3>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Thông tin định danh khu vực</p>
+                    </div>
+                    <button onclick="closeAreaModal()" class="p-3 hover:bg-slate-50 rounded-2xl transition-colors">
+                        <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+                    </button>
+                </div>
+                <form id="areaForm" onsubmit="submitArea(event)" class="space-y-8">
+                    <input type="hidden" id="areaId">
+                    <div class="space-y-3">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tên Khu vực</label>
+                        <input type="text" id="areaName" required
+                               class="w-full px-6 py-4 bg-slate-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 transition-all"
+                               placeholder="Ví dụ: Tầng 1, Khu Tòa A...">
+                    </div>
+                    <div class="space-y-3">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mô tả</label>
+                        <textarea id="description" rows="3"
+                                  class="w-full px-6 py-4 bg-slate-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 transition-all"
+                                  placeholder="Mô tả thêm về khu vực này..."></textarea>
+                    </div>
+                    <div class="flex gap-4 pt-6">
+                        <button type="button" onclick="closeAreaModal()"
+                                class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all">
+                            Hủy bỏ
+                        </button>
+                        <button type="submit" id="submitBtn"
+                                class="flex-[2] px-8 py-4 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200">
+                            Lưu cấu hình
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            document.addEventListener('DOMContentLoaded', loadAreas);
+
+            async function loadAreas() {
+                try {
+                    const res = await fetch('/api/areas');
+                    const areas = await res.json();
+                    const list = document.getElementById('area-list');
+                    if (areas.length === 0) {
+                        list.innerHTML = `<tr><td colspan="3" class="px-10 py-16 text-center text-slate-400 font-bold italic">Chưa có khu vực nào được khởi tạo.</td></tr>`;
+                        return;
+                    }
+                    list.innerHTML = areas.map(area => `
+                        <tr class="hover:bg-slate-50/50 transition-colors group">
+                            <td class="px-10 py-6">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-600 transition-all">
+                                        <i data-lucide="map-pin" class="w-5 h-5 text-indigo-600 group-hover:text-white"></i>
+                                    </div>
+                                    <span class="font-black text-slate-700 text-sm">${area.areaName}</span>
+                                </div>
+                            </td>
+                            <td class="px-10 py-6 text-slate-500 font-bold text-xs">${area.description || 'N/A'}</td>
+                            <td class="px-10 py-6 text-right">
+                                <div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                                    <button onclick="editArea('${area.id}')" class="p-3 hover:bg-amber-50 rounded-xl transition-colors">
+                                        <i data-lucide="edit-3" class="w-4 h-4 text-amber-500"></i>
+                                    </button>
+                                    <button onclick="deleteArea('${area.id}')" class="p-3 hover:bg-rose-50 rounded-xl transition-colors">
+                                        <i data-lucide="trash-2" class="w-4 h-4 text-rose-500"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                    lucide.createIcons();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function openAreaModal(area = null) {
+                const modal = document.getElementById('areaModal');
+                const modalContent = modal.querySelector('.bg-white');
+                document.getElementById('modalTitle').textContent = area ? 'Chỉnh sửa Khu vực' : 'Thêm Khu vực Mới';
+                document.getElementById('areaId').value = area ? area.id : '';
+                document.getElementById('areaName').value = area ? area.areaName : '';
+                document.getElementById('description').value = area ? area.description : '';
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            }
+
+            function closeAreaModal() {
+                const modal = document.getElementById('areaModal');
+                const modalContent = modal.querySelector('.bg-white');
+                modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 300);
+            }
+
+            async function submitArea(event) {
+                event.preventDefault();
+                const btn = document.getElementById('submitBtn');
+                const data = {
+                    id: document.getElementById('areaId').value || null,
+                    areaName: document.getElementById('areaName').value,
+                    description: document.getElementById('description').value
+                };
+
+                btn.disabled = true;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = 'Đang xử lý...';
+
+                try {
+                    const res = await fetch('/api/areas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (res.ok) {
+                        closeAreaModal();
+                        loadAreas();
+                    } else {
+                        alert('Có lỗi xảy ra!');
+                    }
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            }
+
+            async function editArea(id) {
+                const res = await fetch('/api/areas/' + id);
+                const area = await res.json();
+                openAreaModal(area);
+            }
+
+            async function deleteArea(id) {
+                if (!confirm('Đại ca có chắc muốn xóa khu vực này không?')) return;
+                try {
+                    const res = await fetch('/api/areas/' + id, { method: 'DELETE' });
+                    if (res.ok) {
+                        loadAreas();
+                    } else {
+                        const msg = await res.text();
+                        alert(msg || 'Không thể xóa!');
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

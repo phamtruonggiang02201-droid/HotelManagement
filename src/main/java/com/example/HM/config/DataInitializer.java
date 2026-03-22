@@ -303,8 +303,39 @@ public class DataInitializer {
                 }
             });
 
-            // 6.2 Init SAMPLE SCHEDULE for TODAY
+            // 6.2 Init SAMPLE SCHEDULE for TODAY & TOMORROW
             LocalDate today = LocalDate.now();
+            LocalDate tomorrow = today.plusDays(1);
+            
+            String[] testShifts = {"Sáng", "Chiều", "Tối"};
+            String[] testAreas = {"Sảnh chính", "Nhà hàng", "Tầng 1", "Hồ bơi"};
+            String[] usernames = {"admin", "reception", "staff1", "staff2", "staff3"};
+
+            for (int j = 0; j < usernames.length; j++) {
+                final int userIdx = j;
+                final String username = usernames[userIdx];
+                accountRepository.findByUsername(username).ifPresent(acc -> {
+                    // Seed for Today
+                    if (assignmentRepository.findAllByEmployee_IdAndWorkDate(acc.getId(), today).isEmpty()) {
+                        WorkAssignment wa = new WorkAssignment();
+                        wa.setEmployee(acc); wa.setWorkDate(today); 
+                        wa.setArea(testAreas[userIdx % testAreas.length]); 
+                        wa.setShift(testShifts[userIdx % testShifts.length]);
+                        wa.setType("SCHEDULE"); wa.setStatus("PENDING");
+                        assignmentRepository.save(wa);
+                    }
+                    // Seed for Tomorrow
+                    if (assignmentRepository.findAllByEmployee_IdAndWorkDate(acc.getId(), tomorrow).isEmpty()) {
+                        WorkAssignment wa = new WorkAssignment();
+                        wa.setEmployee(acc); wa.setWorkDate(tomorrow); 
+                        wa.setArea(testAreas[(userIdx + 1) % testAreas.length]); 
+                        wa.setShift(testShifts[(userIdx + 1) % testShifts.length]);
+                        wa.setType("SCHEDULE"); wa.setStatus("PENDING");
+                        assignmentRepository.save(wa);
+                    }
+                });
+            }
+
             accountRepository.findByUsername("chef_nguyen").ifPresent(acc -> {
                 if (assignmentRepository.findAllByEmployee_IdAndWorkDate(acc.getId(), today).isEmpty()) {
                     WorkAssignment wa = new WorkAssignment();

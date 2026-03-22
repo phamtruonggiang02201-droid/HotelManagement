@@ -14,4 +14,7 @@ public class Constants {
     public static final String REGEX_PHONE = "^[0-9]{10,11}$";
     public static final String REGEX_ID_NUMBER = "^[a-zA-Z0-9]{8,20}$";
     public static final String REGEX_NATIONALITY = "^[\\p{L} ]{2,30}$";
+    
+    public static final int MAX_PASSWORD_HISTORY = 5;
 }
+
