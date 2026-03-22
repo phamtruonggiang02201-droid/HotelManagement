@@ -6,6 +6,7 @@ import com.example.HM.entity.Account;
 import com.example.HM.entity.WorkAssignment;
 import com.example.HM.repository.AccountRepository;
 import com.example.HM.repository.WorkAssignmentRepository;
+import com.example.HM.security.CustomUserDetails;
 import com.example.HM.security.SecurityUtils;
 import com.example.HM.service.WorkAssignmentService;
 import lombok.RequiredArgsConstructor;
@@ -28,28 +29,43 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
     @Override
     @Transactional
     public AssignmentResponseDTO assignWork(AssignmentRequest request) {
+        System.out.println("BE: assignWork started for employeeId: " + request.getEmployeeId() + " on date: " + request.getWorkDate());
         Account employee = accountRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Nhân viên không tồn tại!"));
 
         LocalDate workDate = LocalDate.parse(request.getWorkDate());
+        System.out.println("BE: Parsed workDate: " + workDate);
         
-        // Kiểm tra xem nhân viên đã có lịch trực nào trong ngày này chưa
+        // CĐC: Nếu đã có lịch trực trong ngày này, thì cập nhật thay vì báo lỗi
         List<WorkAssignment> existing = assignmentRepository.findAllByEmployee_IdAndWorkDate(employee.getId(), workDate);
+        System.out.println("BE: Found existing assignments: " + existing.size());
+        
+        WorkAssignment assignment;
         if (!existing.isEmpty()) {
-            WorkAssignment current = existing.get(0);
-            throw new RuntimeException("Nhân viên " + employee.getFirstName() + " " + employee.getLastName() + 
-                " đã có lịch trực (" + current.getShift() + " tại " + current.getArea() + ") vào ngày này!");
+            assignment = existing.get(0);
+            System.out.println("BE: Updating existing assignment ID: " + assignment.getId());
+        } else {
+            assignment = new WorkAssignment();
+            assignment.setEmployee(employee);
+            assignment.setWorkDate(workDate);
+            assignment.setType("SCHEDULE");
+            assignment.setStatus("PENDING");
+            System.out.println("BE: Creating new assignment");
         }
-
-        WorkAssignment assignment = new WorkAssignment();
-        assignment.setEmployee(employee);
-        assignment.setWorkDate(workDate);
+        
         assignment.setArea(request.getArea());
         assignment.setShift(request.getShift());
         assignment.setNotes(request.getNotes());
-        assignment.setStatus("PENDING");
 
-        return convertToDTO(assignmentRepository.save(assignment));
+        try {
+            WorkAssignment saved = assignmentRepository.save(assignment);
+            System.out.println("BE: Assignment saved successfully. ID: " + saved.getId());
+            return convertToDTO(saved);
+        } catch (Exception e) {
+            System.err.println("BE ERROR: Failed to save assignment: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     @Override
@@ -86,18 +102,29 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponseDTO> getAssignments(LocalDate start, LocalDate end, Pageable pageable) {
-        return assignmentRepository.findAllByWorkDateBetween(start, end, pageable)
-                .map(this::convertToDTO);
+        CustomUserDetails details = SecurityUtils.getCurrentUserDetails();
+        if (details == null) return Page.empty();
+
+        // Kiểm tra role: Nếu là ADMIN hoặc MANAGER thì lấy tất cả, ngược lại chỉ lấy của mình
+        boolean isPrivileged = details.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
+
+        if (isPrivileged) {
+            return assignmentRepository.findAllByWorkDateBetween(start, end, pageable)
+                    .map(this::convertToDTO);
+        } else {
+            return assignmentRepository.findAllByEmployee_IdAndWorkDateBetween(details.getId(), start, end, pageable)
+                    .map(this::convertToDTO);
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AssignmentResponseDTO> getMyAssignments() {
-        String username = SecurityUtils.getCurrentUsername();
-        Account current = accountRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        String userId = SecurityUtils.getCurrentUserId();
+        if (userId == null) return List.of();
         
-        return assignmentRepository.findAllByEmployee_Id(current.getId()).stream()
+        return assignmentRepository.findAllByEmployee_Id(userId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -215,6 +242,98 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
 
         // Nếu là nhiệm vụ dịch vụ, cập nhật trạng thái đơn dịch vụ (BookedDetail -> BookedService)
         // Lưu ý: Cần thêm logic báo cho Lễ tân hoặc cập nhật đơn gốc
+    }
+
+    @Override
+    @Transactional
+    public int applyWeek(LocalDate sourceDate) {
+        System.out.println("BE: applyWeek started for sourceDate: " + sourceDate);
+        List<WorkAssignment> sourceAssignments = assignmentRepository.findAllByWorkDate(sourceDate);
+        if (sourceAssignments.isEmpty()) {
+            System.out.println("BE: No source assignments found for " + sourceDate);
+            return 0;
+        }
+
+        int dayOfWeek = sourceDate.getDayOfWeek().getValue(); // 1 (Mon) to 7 (Sun)
+        int daysToCopy = 7 - dayOfWeek;
+        System.out.println("BE: Days to copy: " + daysToCopy);
+
+        if (daysToCopy <= 0) {
+            return 0;
+        }
+
+        int totalApplied = 0;
+        for (int i = 1; i <= daysToCopy; i++) {
+            LocalDate targetDate = sourceDate.plusDays(i);
+            System.out.println("BE: Copying to " + targetDate);
+            
+            for (WorkAssignment sourceAs : sourceAssignments) {
+                if (sourceAs.getEmployee() == null) continue;
+
+                List<WorkAssignment> existing = assignmentRepository.findAllByEmployee_IdAndWorkDate(
+                        sourceAs.getEmployee().getId(), targetDate);
+                
+                WorkAssignment targetAs;
+                if (!existing.isEmpty()) {
+                    targetAs = existing.get(0);
+                } else {
+                    targetAs = new WorkAssignment();
+                    targetAs.setEmployee(sourceAs.getEmployee());
+                    targetAs.setWorkDate(targetDate);
+                    targetAs.setType("SCHEDULE");
+                    targetAs.setStatus("PENDING");
+                }
+                
+                targetAs.setArea(sourceAs.getArea());
+                targetAs.setShift(sourceAs.getShift());
+                targetAs.setNotes(sourceAs.getNotes());
+                
+                assignmentRepository.save(targetAs);
+                totalApplied++;
+            }
+        }
+        
+        System.out.println("BE: Total assignments applied to week: " + totalApplied);
+        return totalApplied;
+    }
+
+    @Override
+    @Transactional
+    public int copyToNextDay(LocalDate sourceDate) {
+        System.out.println("BE: copyToNextDay started for sourceDate: " + sourceDate);
+        List<WorkAssignment> sourceAssignments = assignmentRepository.findAllByWorkDate(sourceDate);
+        if (sourceAssignments.isEmpty()) {
+            return 0;
+        }
+
+        LocalDate targetDate = sourceDate.plusDays(1);
+        int totalApplied = 0;
+        
+        for (WorkAssignment sourceAs : sourceAssignments) {
+            if (sourceAs.getEmployee() == null) continue;
+
+            List<WorkAssignment> existing = assignmentRepository.findAllByEmployee_IdAndWorkDate(
+                    sourceAs.getEmployee().getId(), targetDate);
+            
+            WorkAssignment targetAs;
+            if (!existing.isEmpty()) {
+                targetAs = existing.get(0);
+            } else {
+                targetAs = new WorkAssignment();
+                targetAs.setEmployee(sourceAs.getEmployee());
+                targetAs.setWorkDate(targetDate);
+                targetAs.setType("SCHEDULE");
+                targetAs.setStatus("PENDING");
+            }
+            
+            targetAs.setArea(sourceAs.getArea());
+            targetAs.setShift(sourceAs.getShift());
+            targetAs.setNotes(sourceAs.getNotes());
+            
+            assignmentRepository.save(targetAs);
+            totalApplied++;
+        }
+        return totalApplied;
     }
 
     private AssignmentResponseDTO convertToDTO(WorkAssignment assignment) {

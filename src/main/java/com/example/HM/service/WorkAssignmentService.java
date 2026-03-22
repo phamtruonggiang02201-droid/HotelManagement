@@ -26,4 +26,8 @@ public interface WorkAssignmentService {
     void completeTask(String taskId); // Báo hoàn thành việc
 
     void createTaskFromService(String bookedDetailId, String serviceName, String roomName, String guestName, String requiredRole);
+    
+    // Gán lịch hàng loạt
+    int applyWeek(LocalDate sourceDate);
+    int copyToNextDay(LocalDate sourceDate);
 }

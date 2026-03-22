@@ -1,5 +1,19 @@
+function formatDateLocal(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseDateLocal(dateStr) {
+    if (!dateStr) return new Date();
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return new Date();
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
 const now = new Date();
-let currentDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+let currentDate = formatDateLocal(now);
 const shifts = ["Sáng", "Chiều", "Tối"];
 let employeeCache = [];
 let areaCache = []; // Load từ DB thay vì hardcode
@@ -55,6 +69,21 @@ function loadEmployees() {
         .then(data => {
             // Lấy tất cả nhân viên, không lọc cứng theo role
             employeeCache = data.content || [];
+            
+            // Populate select trong modal gán việc
+            const empSelect = document.getElementById('employeeId');
+            if (empSelect) {
+                const firstOpt = empSelect.options[0];
+                empSelect.innerHTML = '';
+                empSelect.appendChild(firstOpt);
+                employeeCache.forEach(emp => {
+                    const opt = document.createElement('option');
+                    opt.value = emp.id;
+                    opt.textContent = emp.fullName + (emp.jobTitle ? ` (${emp.jobTitle})` : '');
+                    empSelect.appendChild(opt);
+                });
+            }
+
             loadAssignments();
         })
         .catch(err => {
@@ -279,17 +308,16 @@ function deleteAssignment(id) {
 // ===== ĐIỀU HƯỚNG NGÀY =====
 
 function changeDate(days) {
-    const date = new Date(currentDate);
+    const date = parseDateLocal(currentDate);
     date.setDate(date.getDate() + days);
-    currentDate = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    currentDate = formatDateLocal(date);
     const filterDate = document.getElementById('filter-date');
     if (filterDate) filterDate.value = currentDate;
     loadAssignments();
 }
 
 function setToToday() {
-    const today = new Date();
-    currentDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    currentDate = formatDateLocal(new Date());
     const filterDate = document.getElementById('filter-date');
     if (filterDate) filterDate.value = currentDate;
     loadAssignments();
@@ -298,95 +326,51 @@ function setToToday() {
 // ===== SAO CHÉP LỊCH =====
 
 function copyToNextDay() {
-    fetch(`/management/assignments/api/by-date?date=${currentDate}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.length === 0) {
-                toastService.error('Ngày hiện tại chưa có phân công nào để sao chép!');
-                return;
-            }
+    if (!confirm(`Sao chép toàn bộ phân công của ngày ${currentDate} sang ngày mai?`)) return;
 
-            const next = new Date(currentDate);
+    fetch(`/management/assignments/api/copy-next-day?date=${currentDate}`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            toastService.success(`Đã sao chép thành công ${res.count} phân công sang ngày mai!`);
+            // Chuyển sang ngày mai để xem kết quả
+            const next = parseDateLocal(currentDate);
             next.setDate(next.getDate() + 1);
-            const nextDateStr = next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') + '-' + String(next.getDate()).padStart(2, '0');
-
-            if (!confirm(`Sao chép toàn bộ phân công ngày ${currentDate} sang ngày ${nextDateStr}?`)) return;
-
-            const promises = data.map(as => {
-                const formData = {
-                    employeeId: as.employeeId,
-                    workDate: nextDateStr,
-                    area: as.area,
-                    shift: as.shift,
-                    notes: as.notes || ""
-                };
-                return fetch('/management/assignments/api', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                }).then(res => res.json());
-            });
-
-            Promise.all(promises).then(results => {
-                const successCount = results.filter(r => r.id).length;
-                toastService.success(`Đã sao chép thành công ${successCount} phân công sang ngày mai!`);
-                currentDate = nextDateStr;
-                const filterDate = document.getElementById('filter-date');
-                if (filterDate) filterDate.value = currentDate;
-                loadAssignments();
-            });
-        })
-        .catch(err => {
-            console.error(err);
-            toastService.error('Lỗi khi sao chép lịch trực!');
-        });
+            currentDate = formatDateLocal(next);
+            const filterDate = document.getElementById('filter-date');
+            if (filterDate) filterDate.value = currentDate;
+            loadAssignments();
+        } else {
+            toastService.error(res.message || 'Lỗi khi sao chép lịch!');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        toastService.error('Lỗi khi kết nối để sao chép lịch!');
+    });
 }
 
 function applyForWholeWeek() {
-    fetch(`/management/assignments/api/by-date?date=${currentDate}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.length === 0) {
-                toastService.error('Ngày hiện tại chưa có phân công nào để áp dụng!');
-                return;
-            }
+    if (!confirm(`Áp dụng toàn bộ lịch trực của ngày ${currentDate} cho tất cả các ngày còn lại trong tuần (đến Chủ Nhật)?`)) return;
 
-            if (!confirm(`Áp dụng toàn bộ lịch trực này cho 7 ngày tiếp theo?`)) return;
-
-            const promises = [];
-            for (let i = 1; i <= 7; i++) {
-                const day = new Date(currentDate);
-                day.setDate(day.getDate() + i);
-                const dayStr = day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0');
-
-                data.forEach(as => {
-                    const formData = {
-                        employeeId: as.employeeId,
-                        workDate: dayStr,
-                        area: as.area,
-                        shift: as.shift,
-                        notes: as.notes || ""
-                    };
-                    promises.push(
-                        fetch('/management/assignments/api', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(formData)
-                        }).then(res => res.json())
-                    );
-                });
-            }
-
-            Promise.all(promises).then(results => {
-                const successIds = results.filter(r => r.id).length;
-                toastService.success(`Đã sao chép thành công ${successIds} lượt phân công cho 7 ngày tới!`);
-                loadAssignments();
-            });
-        })
-        .catch(err => {
-            console.error(err);
-            toastService.error('Lỗi khi áp dụng lịch tuần!');
-        });
+    fetch(`/management/assignments/api/apply-week?date=${currentDate}`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            toastService.success(`Đã áp dụng thành công cho cả tuần (Tổng cộng ${res.count} lượt phân công mới/cập nhật)!`);
+            loadAssignments();
+        } else {
+            toastService.error(res.message || 'Lỗi khi áp dụng lịch tuần!');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        toastService.error('Đã xảy ra lỗi kết nối khi áp dụng lịch tuần!');
+    });
 }
 function populateAreaSelect() {
     const areaSelect = document.getElementById('area');

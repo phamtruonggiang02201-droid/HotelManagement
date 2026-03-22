@@ -75,11 +75,12 @@
 
         <script th:inline="javascript">
             let currentStartDate = new Date();
+            currentStartDate.setHours(0,0,0,0);
             // Adjust to Monday of current week
             const day = currentStartDate.getDay();
             const diff = currentStartDate.getDate() - day + (day === 0 ? -6 : 1);
             currentStartDate.setDate(diff);
-            currentStartDate.setHours(0,0,0,0);
+
 
             let allAssignments = [];
 
@@ -89,17 +90,31 @@
             });
 
             function loadMySchedule() {
-                fetch('/management/assignments/api/my')
+                // Lấy 7 ngày của tuần hiện tại
+                const start = formatDateLocal(currentStartDate);
+                const end = new Date(currentStartDate);
+                end.setDate(end.getDate() + 6);
+                const endStr = formatDateLocal(end);
+
+                fetch(`/management/assignments/api?start=${start}&end=${endStr}&size=100`)
                     .then(res => res.json())
                     .then(data => {
-                        allAssignments = data;
+                        // API trả về Page, lấy content
+                        allAssignments = data.content || [];
                         renderCurrentWeek();
                     });
             }
 
             function changeWeek(weeks) {
                 currentStartDate.setDate(currentStartDate.getDate() + (weeks * 7));
-                renderCurrentWeek();
+                loadMySchedule(); // Cần load lại dữ liệu từ API cho dải ngày mới
+            }
+
+            function formatDateLocal(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
             }
 
             function renderCurrentWeek() {
@@ -123,7 +138,7 @@
                 for (let i = 0; i < 7; i++) {
                     const targetDate = new Date(currentStartDate);
                     targetDate.setDate(targetDate.getDate() + i);
-                    const dateStr = targetDate.toISOString().split('T')[0];
+                    const dateStr = formatDateLocal(targetDate);
                     
                     const cell = document.getElementById(`day-cell-${i}`);
                     const numSpan = cell.querySelector('.day-number');

@@ -287,7 +287,8 @@
                 const baseUrl = /*[[@{/feedback/api/issues/}]]*/ '/feedback/api/issues/';
                 const response = await fetch(baseUrl + id + '/resolve', { method: 'PUT' });
                 if (response.ok) {
-                    location.reload();
+                    showToast('Đã xử lý sự cố thành công!', 'success');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
                     const error = await response.json();
                     alert(error.message || 'Có lỗi xảy ra!');
@@ -304,7 +305,8 @@
                 const baseUrl = /*[[@{/feedback/api/refunds/}]]*/ '/feedback/api/refunds/';
                 const response = await fetch(baseUrl + id + '/status?status=' + status, { method: 'PUT' });
                 if (response.ok) {
-                    location.reload();
+                    showToast(status === 'APPROVED' ? 'Duyệt thành công' : 'Từ chối thành công', 'success');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
                     const error = await response.json();
                     alert(error.message || 'Có lỗi xảy ra!');
