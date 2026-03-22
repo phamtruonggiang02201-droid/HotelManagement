@@ -20,4 +20,6 @@ public class RoomDTO {
     private BigDecimal price;
     private String roomImage;
     private RoomTypeDTO roomType;
+    private String areaId;
+    private String areaName;
 }

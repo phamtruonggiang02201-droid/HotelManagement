@@ -3,6 +3,7 @@ package com.example.HM.repository;
 import com.example.HM.entity.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,13 @@ import java.util.List;
 public interface BookingRepository extends JpaRepository<Booking, String> {
     Page<Booking> findByAccount_Id(String accountId, Pageable pageable);
     Page<Booking> findByStatus(String status, Pageable pageable);
+    @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.checkIn = :checkIn")
+    Page<Booking> findByStatusAndCheckIn(String status, java.time.LocalDate checkIn, Pageable pageable);
+
+    @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.checkOut = :checkOut")
+    Page<Booking> findByStatusAndCheckOut(String status, java.time.LocalDate checkOut, Pageable pageable);
+
+    List<Booking> findByCheckInBetween(java.time.LocalDate startDate, java.time.LocalDate endDate);
 
     @Query("SELECT DISTINCT b FROM Booking b LEFT JOIN FETCH b.rooms")
     List<Booking> findAllWithRooms();
@@ -34,4 +42,17 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
            "WHERE b.createdAt BETWEEN :startDate AND :endDate " +
            "GROUP BY br.roomType.typeName ORDER BY COUNT(DISTINCT b) DESC")
     List<Object[]> countBookingsByRoomType(java.time.LocalDateTime startDate, java.time.LocalDateTime endDate);
+
+    @Query("SELECT COUNT(DISTINCT r) FROM Booking b JOIN b.rooms r " +
+           "WHERE b.status = 'CHECKED_IN' AND :date BETWEEN b.checkIn AND b.checkOut")
+    Long countOccupiedRoomsAtDate(java.time.LocalDate date);
+
+    @Query("SELECT b FROM Booking b JOIN b.bookedRooms br WHERE " +
+           "br.roomType.id = :typeId AND " +
+           "b.status NOT IN ('CANCELLED') AND " +
+           "b.checkIn < :checkOut AND b.checkOut > :checkIn")
+    List<Booking> findOverlappingBookingsByType(
+            @Param("typeId") String typeId,
+            @Param("checkIn") java.time.LocalDate checkIn,
+            @Param("checkOut") java.time.LocalDate checkOut);
 }

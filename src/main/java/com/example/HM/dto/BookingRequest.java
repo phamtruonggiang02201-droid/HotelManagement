@@ -18,4 +18,5 @@ public class BookingRequest {
     private String guestName;
     private String guestEmail;
     private String guestPhone;
+    private List<String> roomIds; // Dùng cho Walk-in gộp Check-in
 }

@@ -7,4 +7,5 @@ public class RoomRequest {
     private String roomName;
     private String roomTypeId;
     private String status;
+    private String areaId;
 }

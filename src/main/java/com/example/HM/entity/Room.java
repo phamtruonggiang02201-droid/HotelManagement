@@ -14,6 +14,10 @@ public class Room extends BaseEntity {
     @JoinColumn(name = "RoomTypeID", nullable = false)
     private RoomType roomType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "area_id")
+    private Area area;
+
     @Column(name = "Status", length = 20)
     private String status; // AVAILABLE, OCCUPIED, MAINTENANCE
 
