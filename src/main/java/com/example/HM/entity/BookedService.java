@@ -1,5 +1,6 @@
 package com.example.HM.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,20 +13,21 @@ import java.time.LocalDateTime;
 @Setter
 public class BookedService extends BaseEntity {
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "BookingID", nullable = false)
     private Booking booking;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ServiceID", nullable = false)
-    private ExtraService service;
-
-    @Column(name = "Quantity")
-    private Integer quantity;
+    @JoinColumn(name = "RoomID")
+    private Room room;
 
     @Column(name = "Status", length = 20)
     private String status;
 
-    @Column(name = "UnitPrice", precision = 18, scale = 2)
-    private BigDecimal unitPrice;
+    @Column(name = "TotalAmount", precision = 18, scale = 2)
+    private BigDecimal totalAmount;
+
+    @OneToMany(mappedBy = "bookedService", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<BookedDetail> details = new java.util.ArrayList<>();
 }

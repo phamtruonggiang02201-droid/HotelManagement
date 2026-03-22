@@ -52,8 +52,18 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                 .orElseGet(() -> {
                     throw new RuntimeException("Loại phòng không tồn tại! (ID: " + id + ")");
                 });
-    }
+    public ByteArrayInputStream exportRoomTypesToExcel() {
+        List<RoomType> roomTypes = roomTypeRepository.findAll();
+        String[] headers = { "ID", "Tên loại phòng", "Giá cơ bản", "Số lượng phòng", "Mô tả" };
 
+        return ExcelHelper.dataToExcel(roomTypes, "RoomTypes", headers, (row, rt) -> {
+            row.createCell(0).setCellValue(rt.getId());
+            row.createCell(1).setCellValue(rt.getTypeName());
+            row.createCell(2).setCellValue(rt.getPrice() != null ? rt.getPrice().doubleValue() : 0.0);
+            row.createCell(3).setCellValue(0); // RoomType entity doesn't have totalCount field
+            row.createCell(4).setCellValue(rt.getDescription());
+        });
+    }
     @Override
     @Transactional
     public RoomTypeDTO createRoomType(RoomTypeDTO dto) {
@@ -228,4 +238,25 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                         new ArrayList<>())
                 .build();
     }
+    public void importRoomTypesFromExcel(MultipartFile file) {
+        try {
+            List<RoomType> roomTypes = ExcelHelper.excelToData(file.getInputStream(), "RoomTypes", row -> {
+                String typeName = ExcelHelper.getCellValueAsString(row.getCell(1));
+                if (typeName.isEmpty()) return null;
+
+                RoomType rt = new RoomType();
+                rt.setTypeName(typeName);
+                rt.setPrice(new java.math.BigDecimal(ExcelHelper.getCellValueAsString(row.getCell(2))));
+                rt.setDescription(ExcelHelper.getCellValueAsString(row.getCell(4)));
+                return rt;
+            });
+
+            // Skip existing names
+            roomTypes.removeIf(rt -> roomTypeRepository.findAll().stream().anyMatch(existing -> existing.getTypeName().equalsIgnoreCase(rt.getTypeName())));
+            roomTypeRepository.saveAll(roomTypes);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not store the data: " + e.getMessage());
+        }
+    }
+
 }

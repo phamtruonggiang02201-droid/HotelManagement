@@ -1,57 +1,65 @@
 package com.example.HM.service.impl;
 
-import com.example.HM.common.Constants;
-import com.example.HM.dto.*;
+import com.example.HM.constant.Constants;
+import com.example.HM.dto.AccountDTO;
+import com.example.HM.dto.AdminAccountRequest;
+import com.example.HM.dto.EmployeeResponseDTO;
+import com.example.HM.dto.UserRegisterDTO;
+import com.example.HM.dto.UpdateProfileRequest;
+import com.example.HM.dto.ChangePasswordRequest;
 import com.example.HM.entity.Account;
 import com.example.HM.entity.Role;
 import com.example.HM.repository.AccountRepository;
 import com.example.HM.repository.RoleRepository;
+import com.example.HM.security.SecurityUtils;
 import com.example.HM.service.AccountService;
 import com.example.HM.service.EmailService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.example.HM.security.SecurityUtils;
+import com.example.HM.util.ExcelHelper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import java.util.Random;
-import java.time.LocalDate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
 
-    @Autowired
-    private AccountRepository accountRepository;
-
-    @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private EmailService emailService;
+    private final AccountRepository accountRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AccountDTO> getAllAccounts(Pageable pageable) {
+    public Page<AccountDTO> getAllAccounts(String search, Pageable pageable) {
+        if (search != null && !search.trim().isEmpty()) {
+            return accountRepository.searchAllAccounts(search.trim(), pageable)
+                    .map(this::convertToDTO);
+        }
         return accountRepository.findAll(pageable)
                 .map(this::convertToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<EmployeeResponseDTO> getEmployees(Pageable pageable) {
+    public Page<EmployeeResponseDTO> getEmployees(String search, Pageable pageable) {
         List<String> employeeRoles = List.of("ADMIN", "MANAGER", "RECEPTION");
+        if (search != null && !search.trim().isEmpty()) {
+            return accountRepository.searchEmployees(search.trim(), employeeRoles, pageable)
+                    .map(this::convertToEmployeeDTO);
+        }
         return accountRepository.findAllByRole_RoleNameIn(employeeRoles, pageable)
                 .map(this::convertToEmployeeDTO);
     }
@@ -86,9 +94,9 @@ public class AccountServiceImpl implements AccountService {
         }
 
         account.setEmailVerified(true); // Admin created accounts are verified by default
-        account.setStatus(true); 
+        account.setStatus(true);
         account.setJobTitle(request.getJobTitle());
-        
+
         // Map personal info
         if (request.getPhone() != null) account.setPhone(request.getPhone());
         if (request.getDob() != null && !request.getDob().isEmpty()) {
@@ -112,9 +120,9 @@ public class AccountServiceImpl implements AccountService {
 
         // Send Email to Employee
         emailService.sendEmployeeCredentialsEmail(
-                saved.getEmail(), 
-                saved.getUsername(), 
-                randomPassword, 
+                saved.getEmail(),
+                saved.getUsername(),
+                randomPassword,
                 request.getFullName()
         );
 
@@ -123,7 +131,7 @@ public class AccountServiceImpl implements AccountService {
 
     private String generateRandomPassword() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&";
-        Random rnd = new Random();
+        SecureRandom rnd = new SecureRandom();
         StringBuilder sb = new StringBuilder(10);
         for (int i = 0; i < 10; i++)
             sb.append(chars.charAt(rnd.nextInt(chars.length())));
@@ -138,13 +146,13 @@ public class AccountServiceImpl implements AccountService {
 
         // Validation
         validateAdminAccountRequest(request, false);
-        
+
         // Custom check for email/username uniqueness if changed
         if (!account.getUsername().equals(request.getUsername()) && accountRepository.existsByUsername(request.getUsername())) {
-             throw new RuntimeException("Tên đăng nhập đã tồn tại!");
+            throw new RuntimeException("Tên đăng nhập đã tồn tại!");
         }
         if (!account.getEmail().equals(request.getEmail()) && accountRepository.existsByEmail(request.getEmail())) {
-             throw new RuntimeException("Email đã được sử dụng!");
+            throw new RuntimeException("Email đã được sử dụng!");
         }
 
         account.setUsername(request.getUsername());
@@ -386,12 +394,15 @@ public class AccountServiceImpl implements AccountService {
     public void deleteAccount(String id) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        accountRepository.delete(account);
+
+        account.setStatus(false);
+        accountRepository.save(account);
     }
+
 
     @Override
     @Transactional
-    public AccountDTO register(RegisterRequest request) {
+    public AccountDTO register(UserRegisterDTO request) {
         // 1. Validation
         validateRequest(request);
 
@@ -407,7 +418,7 @@ public class AccountServiceImpl implements AccountService {
         account.setUsername(request.getUsername());
         account.setPassword(passwordEncoder.encode(request.getPassword()));
         account.setEmail(request.getEmail());
-        
+
         // Split full name into first/last name (User requested style)
         // Full Name: "Nguyễn Đức Minh" -> firstName: "Nguyễn", lastName: "Đức Minh"
         String fullName = request.getFullName().trim();
@@ -419,11 +430,12 @@ public class AccountServiceImpl implements AccountService {
             account.setFirstName(fullName);
             account.setLastName("");
         }
-        
+
         account.setEmailVerified(false);
         account.setVerificationToken(UUID.randomUUID().toString());
         account.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusMinutes(10)); // Hết hạn nhanh sau 10 phút
         account.setStatus(false); // Mặc định KHÓA tài khoản cho đến khi verify email
+        account.setPhone(request.getPhone());
 
         // 3. Set Role (Default: CUSTOMER)
         Role customerRole = roleRepository.findByRoleName("CUSTOMER")
@@ -435,8 +447,8 @@ public class AccountServiceImpl implements AccountService {
         // 4. Send Verification Email
         String verifyUrl = "http://localhost:8080/verify-email?token=" + saved.getVerificationToken();
         emailService.sendRegistrationEmail(
-                saved.getEmail(), 
-                saved.getUsername(), 
+                saved.getEmail(),
+                saved.getUsername(),
                 request.getFullName(),
                 verifyUrl
         );
@@ -449,14 +461,14 @@ public class AccountServiceImpl implements AccountService {
     public boolean verifyEmail(String token) {
         Account account = accountRepository.findByVerificationToken(token)
                 .orElse(null);
-        
+
         if (account == null) {
             return false;
         }
 
         // Kiểm tra hết hạn token
-        if (account.getVerificationTokenExpiry() != null && 
-            account.getVerificationTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
+        if (account.getVerificationTokenExpiry() != null &&
+                account.getVerificationTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
             return false;
         }
 
@@ -509,12 +521,12 @@ public class AccountServiceImpl implements AccountService {
     public void updateProfile(UpdateProfileRequest request) {
         String username = SecurityUtils.getCurrentUsername();
         if (username == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này!");
-        
+
         Account account = findAccountEntity(username);
-        
+
         if (request.getFullName() != null) {
             String trimmedFullName = request.getFullName().trim();
-            if (!Pattern.matches(   Constants.REGEX_FULLNAME, trimmedFullName)) {
+            if (!Pattern.matches(Constants.REGEX_FULLNAME, trimmedFullName)) {
                 throw new RuntimeException("Họ tên chỉ được chứa chữ cái và khoảng trắng (2-50 ký tự)!");
             }
 
@@ -527,11 +539,12 @@ public class AccountServiceImpl implements AccountService {
                 account.setLastName("");
             }
         }
-        
+
         if (request.getIdNumber() != null) account.setIdNumber(request.getIdNumber());
         if (request.getIdType() != null) account.setIdType(request.getIdType());
         if (request.getNationality() != null) account.setNationality(request.getNationality());
-        
+        if (request.getPhone() != null) account.setPhone(request.getPhone());
+
         accountRepository.save(account);
     }
 
@@ -542,15 +555,15 @@ public class AccountServiceImpl implements AccountService {
         if (username == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này!");
 
         Account account = findAccountEntity(username);
-        
+
         if (!passwordEncoder.matches(request.getOldPassword(), account.getPassword())) {
             throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
         }
-        
+
         if (!Pattern.matches(Constants.REGEX_PASSWORD, request.getNewPassword())) {
             throw new RuntimeException("Mật khẩu mới không đúng định dạng (tối thiểu 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt)!");
         }
-        
+
         account.setPassword(passwordEncoder.encode(request.getNewPassword()));
         accountRepository.save(account);
     }
@@ -576,7 +589,7 @@ public class AccountServiceImpl implements AccountService {
     public void updateAvatar(String avatarUrl) {
         String username = SecurityUtils.getCurrentUsername();
         if (username == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này!");
-        
+
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
         account.setAvatar(avatarUrl);
@@ -612,7 +625,7 @@ public class AccountServiceImpl implements AccountService {
         accountRepository.save(account);
     }
 
-    private void validateRequest(RegisterRequest request) {
+    private void validateRequest(UserRegisterDTO request) {
         if (!Pattern.matches(Constants.REGEX_FULLNAME, request.getFullName())) {
             throw new RuntimeException("Họ tên chỉ được chứa chữ cái và khoảng trắng (2-50 ký tự)!");
         }
@@ -630,6 +643,66 @@ public class AccountServiceImpl implements AccountService {
         }
     }
 
+    @Override
+    public ByteArrayInputStream exportAccountsToExcel() {
+        List<Account> accounts = accountRepository.findAll();
+        String[] headers = { "ID", "Username", "Email", "Full Name", "Phone", "Role", "Status" };
+        
+        return ExcelHelper.dataToExcel(accounts, "Accounts", headers, (row, acc) -> {
+            row.createCell(0).setCellValue(acc.getId());
+            row.createCell(1).setCellValue(acc.getUsername());
+            row.createCell(2).setCellValue(acc.getEmail());
+            row.createCell(3).setCellValue(acc.getFullName());
+            row.createCell(4).setCellValue(acc.getPhone() != null ? acc.getPhone() : "");
+            row.createCell(5).setCellValue(acc.getRole() != null ? acc.getRole().getRoleName() : "N/A");
+            row.createCell(6).setCellValue(acc.getStatus());
+        });
+    }
+
+    @Override
+    @Transactional
+    public void importAccountsFromExcel(MultipartFile file) {
+        try {
+            List<Account> accounts = ExcelHelper.excelToData(file.getInputStream(), "Accounts", row -> {
+                String username = ExcelHelper.getCellValueAsString(row.getCell(1));
+                if (username.isEmpty()) return null;
+                
+                Account acc = new Account();
+                acc.setUsername(username);
+                acc.setEmail(ExcelHelper.getCellValueAsString(row.getCell(2)));
+                String fullName = ExcelHelper.getCellValueAsString(row.getCell(3));
+                if (fullName != null && !fullName.isEmpty()) {
+                    String[] parts = fullName.trim().split("\\s+", 2);
+                    if (parts.length > 1) {
+                        acc.setFirstName(parts[0]);
+                        acc.setLastName(parts[1]);
+                    } else {
+                        acc.setFirstName("");
+                        acc.setLastName(parts[0]);
+                    }
+                }
+                acc.setPhone(ExcelHelper.getCellValueAsString(row.getCell(4)));
+                
+                // Default values
+                acc.setPassword(passwordEncoder.encode("123456aA@"));
+                acc.setStatus(true);
+                acc.setEmailVerified(true);
+                
+                String roleName = ExcelHelper.getCellValueAsString(row.getCell(5));
+                Role role = roleRepository.findByRoleName(roleName.isEmpty() ? "ROLE_USER" : roleName).orElse(null);
+                acc.setRole(role);
+                
+                return acc;
+            });
+            
+            // Filter out existing usernames
+            accounts.removeIf(acc -> accountRepository.existsByUsername(acc.getUsername()));
+            accountRepository.saveAll(accounts);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not store the data: " + e.getMessage());
+        }
+    }
+
     private AccountDTO convertToDTO(Account account) {
         if (account == null) return null;
         return AccountDTO.builder()
@@ -638,8 +711,8 @@ public class AccountServiceImpl implements AccountService {
                 .email(account.getEmail())
                 .firstName(account.getFirstName())
                 .lastName(account.getLastName())
-                .fullName((account.getFirstName() != null ? account.getFirstName() : "") + " " + 
-                         (account.getLastName() != null ? account.getLastName() : ""))
+                .fullName((account.getFirstName() != null ? account.getFirstName() : "") + " " +
+                        (account.getLastName() != null ? account.getLastName() : ""))
                 .avatar(account.getAvatar())
                 .roleName(account.getRole() != null ? account.getRole().getRoleName() : null)
                 .roleDescription(account.getRole() != null ? account.getRole().getDescription() : null)
@@ -650,6 +723,7 @@ public class AccountServiceImpl implements AccountService {
                 .nationality(account.getNationality())
                 .createdAt(account.getCreatedAt())
                 .jobTitle(account.getJobTitle())
+                .phone(account.getPhone())
                 .build();
     }
 
@@ -659,8 +733,8 @@ public class AccountServiceImpl implements AccountService {
                 .id(account.getId())
                 .username(account.getUsername())
                 .email(account.getEmail())
-                .fullName((account.getFirstName() != null ? account.getFirstName() : "") + " " + 
-                         (account.getLastName() != null ? account.getLastName() : ""))
+                .fullName((account.getFirstName() != null ? account.getFirstName() : "") + " " +
+                        (account.getLastName() != null ? account.getLastName() : ""))
                 .phone(account.getPhone())
                 .address(account.getAddress())
                 .jobTitle(account.getJobTitle())

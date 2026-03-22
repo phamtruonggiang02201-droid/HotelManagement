@@ -3,6 +3,7 @@ package com.example.HM.dto;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -12,11 +13,13 @@ public class BookedServiceDTO {
     private String id;
     private String bookingId;
     private String guestName;
-    private String roomNames; // Các phòng khách đang ở
+    private String roomId;
+    private String roomName;
     private String serviceName;
-    private Integer quantity;
-    private BigDecimal unitPrice;
+    private String status; // Trạng thái của detail (PENDING, PROCESSING, COMPLETED)
+    private String staffName; // Tên nhân viên đang xử lý
+    private Integer totalQuantity;
     private BigDecimal totalAmount;
-    private String status; // ORDERED, DELIVERED, CANCELLED, COMPLETED
     private LocalDateTime createdAt;
+    private List<BookedDetailDTO> details;
 }

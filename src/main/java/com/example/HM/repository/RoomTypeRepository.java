@@ -17,12 +17,5 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, String> {
     boolean existsByTypeNameAndIdNot(String typeName, String id);
 
     // Search and Pagination
-    @org.springframework.data.jpa.repository.Query("SELECT rt FROM RoomType rt WHERE " +
-           "(:keyword IS NULL OR :keyword = '' OR LOWER(rt.typeName) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
-           "(:typeId IS NULL OR :typeId = '' OR rt.id = :typeId)")
-    Page<RoomType> searchRoomTypes(@org.springframework.data.repository.query.Param("keyword") String keyword, 
-                                 @org.springframework.data.repository.query.Param("typeId") String typeId, 
-                                 Pageable pageable);
-
     Page<RoomType> findByTypeNameContainingIgnoreCase(String keyword, Pageable pageable);
 }

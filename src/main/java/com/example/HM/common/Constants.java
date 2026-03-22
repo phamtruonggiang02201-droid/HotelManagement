@@ -1,4 +1,4 @@
-package com.example.HM.common;
+package com.example.HM.constant;
 
 public class Constants {
     public static final String DEFAULT_PAGE_NUMBER = "0";
