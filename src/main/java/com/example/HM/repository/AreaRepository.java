@@ -7,6 +7,7 @@ import java.util.List;
 
 @Repository
 public interface AreaRepository extends JpaRepository<Area, String> {
-    List<Area> findByParentAreaIsNull(); // Lấy danh sách khu vực cấp cao nhất
-    List<Area> findByParentArea_Id(String parentId);
+    List<Area> findByParentAreaIsNullOrderByAreaNameAsc(); // Lấy danh sách khu vực cấp cao nhất, sắp xếp theo tên
+    List<Area> findByParentArea_IdOrderByAreaNameAsc(String parentId);
+    List<Area> findAllByOrderByAreaNameAsc();
 }

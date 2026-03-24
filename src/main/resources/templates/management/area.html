@@ -83,7 +83,32 @@
             </div>
         </div>
 
-        <script th:inline="javascript">
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden items-center justify-center p-4">
+            <div class="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 scale-95 opacity-0 transition-all duration-300" id="deleteModalContent">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-14 h-14 bg-rose-100 text-rose-500 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="alert-octagon" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900">Xác nhận Xóa</h3>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Cảnh báo hệ thống</p>
+                    </div>
+                </div>
+                <div id="deleteWarningMsg" class="text-slate-600 font-medium mb-10 whitespace-pre-line leading-relaxed text-sm">
+                    Đại ca có chắc chắn muốn xóa khu vực này không?
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="closeDeleteModal()" class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all">Quay lại</button>
+                    <button id="confirmDeleteBtn" class="flex-[2] px-8 py-4 bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-rose-600 transition-all shadow-xl shadow-rose-200">Xác nhận xóa</button>
+                </div>
+            </div>
+        </div>
+    
+    <script th:src="@{/js/toast.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/toast.css}">
+
+    <script th:inline="javascript">
             document.addEventListener('DOMContentLoaded', loadAreas);
 
             async function loadAreas() {
@@ -190,17 +215,87 @@
             }
 
             async function deleteArea(id) {
-                if (!confirm('Đại ca có chắc muốn xóa khu vực này không?')) return;
+                // Bước 1: Hiện modal xác nhận xóa cơ bản
+                openDeleteModal('Đại ca có chắc chắn muốn xóa khu vực này không? Các dữ liệu liên quan có thể bị ảnh hưởng.', 
+                    () => executeDelete(id, false));
+            }
+
+            function openDeleteModal(msg, onConfirm) {
+                const modal = document.getElementById('deleteConfirmModal');
+                const content = document.getElementById('deleteModalContent');
+                const msgElem = document.getElementById('deleteWarningMsg');
+                const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+                if (!modal || !content || !msgElem || !confirmBtn) {
+                    console.error('Modal elements missing');
+                    return;
+                }
+
+                msgElem.innerText = msg;
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                
+                // Reset button state
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = 'Xác nhận xóa';
+                confirmBtn.onclick = onConfirm;
+
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+
+                if (window.lucide) {
+                    lucide.createIcons({ nodes: [modal] });
+                }
+            }
+
+            function closeDeleteModal() {
+                const modal = document.getElementById('deleteConfirmModal');
+                const content = document.getElementById('deleteModalContent');
+                if (!modal || !content) return;
+
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 300);
+            }
+
+            async function executeDelete(id, force) {
+                const confirmBtn = document.getElementById('confirmDeleteBtn');
+                const originalText = confirmBtn.innerText;
+                
+                confirmBtn.disabled = true;
+                confirmBtn.innerText = 'Đang xử lý...';
+
                 try {
-                    const res = await fetch('/api/areas/' + id, { method: 'DELETE' });
+                    const url = `/api/areas/${id}${force ? '?force=true' : ''}`;
+                    const res = await fetch(url, { method: 'DELETE' });
+                    
                     if (res.ok) {
+                        toastService.success('Xóa khu vực thành công!');
+                        closeDeleteModal();
                         loadAreas();
                     } else {
                         const msg = await res.text();
-                        alert(msg || 'Không thể xóa!');
+                        if (msg.includes('Cảnh báo:')) {
+                            // Nếu có cảnh báo phân công tương lai, cập nhật nội dung modal và gắn lại event xóa ép buộc
+                            document.getElementById('deleteWarningMsg').innerText = msg;
+                            confirmBtn.disabled = false;
+                            confirmBtn.innerText = 'Xác nhận xóa (Vẫn xóa)';
+                            confirmBtn.onclick = () => executeDelete(id, true);
+                        } else {
+                            toastService.error(msg || 'Không thể xóa khu vực này!');
+                            closeDeleteModal();
+                        }
                     }
                 } catch (e) {
                     console.error(e);
+                    toastService.error('Lỗi kết nối hệ thống, vui lòng thử lại!');
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerText = originalText;
                 }
             }
         </script>

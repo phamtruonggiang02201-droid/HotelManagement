@@ -16,4 +16,6 @@ public class PaymentDTO {
     private LocalDateTime paymentDate;
     private String paymentStatus;
     private String paymentMethod;
+    private String refundStatus;
+    private String refundId;
 }

@@ -74,11 +74,20 @@ public class FeedbackController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
     public String feedbackSummary(Model model, 
                                  @RequestParam(required = false) Integer rating,
-                                 @PageableDefault(size = 20) Pageable pageable) {
-        model.addAttribute("feedbacks", feedbackService.getAllFeedbacks(rating, pageable));
-        model.addAttribute("issues", feedbackService.getAllIssues(pageable));
-        model.addAttribute("refunds", feedbackService.getAllRefunds(pageable));
+                                 @RequestParam(required = false) String issueStatus,
+                                 @RequestParam(required = false) String refundStatus,
+                                 @PageableDefault(size = 10, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) 
+                                 @org.springframework.beans.factory.annotation.Qualifier("feedback") Pageable fbPageable,
+                                 @PageableDefault(size = 10, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) 
+                                 @org.springframework.beans.factory.annotation.Qualifier("issue") Pageable issuePageable,
+                                 @PageableDefault(size = 10, sort = "requestedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) 
+                                 @org.springframework.beans.factory.annotation.Qualifier("refund") Pageable refundPageable) {
+        model.addAttribute("feedbacks", feedbackService.getAllFeedbacks(rating, fbPageable));
+        model.addAttribute("issues", feedbackService.getAllIssues(issueStatus, issuePageable));
+        model.addAttribute("refunds", feedbackService.getAllRefunds(refundStatus, refundPageable));
         model.addAttribute("currentRating", rating);
+        model.addAttribute("currentIssueStatus", issueStatus);
+        model.addAttribute("currentRefundStatus", refundStatus);
         return "management/feedback/index";
     }
 

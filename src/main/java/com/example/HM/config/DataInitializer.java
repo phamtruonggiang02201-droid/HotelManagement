@@ -464,7 +464,8 @@ public class DataInitializer {
                         br.setRoomType(rt);
                         br.setQuantity(1);
                         br.setPriceAtBooking(rt.getPrice());
-                        bookedRoomRepository.save(br);
+                        b.getBookedRooms().add(br);
+                        bookingRepository.save(b);
 
                         // 8.2 Save Payment
                         if (!b.getStatus().equals("CANCELLED")) {
@@ -491,6 +492,61 @@ public class DataInitializer {
                     }
                 }
                 System.out.println(">>> Diverse Sample Bookings & Refunds Initialized <<<");
+
+                // 8.4 Add 3 PAID Bookings for TODAY
+                Account customer1 = accountRepository.findByUsername("customer1").orElse(null);
+                RoomType deluxeType = roomTypeRepository.findByTypeName("Deluxe").orElse(null);
+
+                if (customer1 != null && deluxeType != null) {
+                    for (int i = 1; i <= 3; i++) {
+                        try {
+                            final int finalI = i;
+                            if (bookingRepository.findAllWithGuest().stream().noneMatch(b -> b.getCheckIn().equals(LocalDate.now()) && b.getGuest() != null && b.getGuest().getFullName() != null && b.getGuest().getFullName().contains("Today " + finalI))) {
+                                Booking b = new Booking();
+                                b.setAccount(customer1);
+                                b.setCheckIn(LocalDate.now());
+                                b.setCheckOut(LocalDate.now().plusDays(2));
+                                b.setStatus("PAID");
+
+                                Guest g = new Guest();
+                                g.setFullName(customer1.getFirstName() + " " + customer1.getLastName() + " (Today " + i + ")");
+                                g.setEmail(customer1.getEmail());
+                                g.setPhone("098800000" + i);
+                                guestRepository.save(g);
+                                b.setGuest(g);
+
+                                BigDecimal amount = deluxeType.getPrice().multiply(new BigDecimal("2"));
+                                b.setTotalAmount(amount);
+                                b.setPaidAmount(amount);
+                                b.setPaymentDate(LocalDateTime.now());
+
+                                BookedRoom br = new BookedRoom();
+                                br.setBooking(b);
+                                br.setRoomType(deluxeType);
+                                br.setQuantity(1);
+                                br.setPriceAtBooking(deluxeType.getPrice());
+                                b.getBookedRooms().add(br);
+
+                                bookingRepository.save(b);
+                                System.out.println(">>> Created TODAY booking #" + i + " with ID: " + b.getId());
+
+                                Payment p = new Payment();
+                                p.setBooking(b);
+                                p.setAmount(amount);
+                                p.setPaymentDate(b.getPaymentDate());
+                                p.setPaymentStatus("SUCCESS");
+                                p.setPaymentMethod(vnpay);
+                                paymentRepository.save(p);
+                            }
+                        } catch (Exception e) {
+                            System.err.println(">>> ERROR creating TODAY booking #" + i + ": " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    }
+                    System.out.println(">>> 3 PAID Bookings for TODAY Initialized <<<");
+                } else {
+                    System.err.println(">>> SKIP TODAY bookings: customer1=" + customer1 + ", deluxeType=" + deluxeType);
+                }
             }
 
             // 8. Init 20 Sample Staff Members

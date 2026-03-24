@@ -27,4 +27,10 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
     List<WorkAssignment> findAllByEmployee_Role_RoleNameAndWorkDateAndType(String roleName, LocalDate date, String type);
 
     java.util.Optional<WorkAssignment> findByTargetId(String targetId);
+
+    List<WorkAssignment> findByAreaAndWorkDateGreaterThanEqual(String area, java.time.LocalDate date);
+    
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM WorkAssignment w WHERE w.area = :area AND w.workDate >= :date")
+    void deleteByAreaAndWorkDateGreaterThanEqual(String area, java.time.LocalDate date);
 }

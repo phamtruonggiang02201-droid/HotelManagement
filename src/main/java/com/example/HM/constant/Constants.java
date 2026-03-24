@@ -16,5 +16,6 @@ public class Constants {
     public static final String REGEX_NATIONALITY = "^[\\p{L} ]{2,30}$";
     
     public static final int MAX_PASSWORD_HISTORY = 5;
+    public static final String ROOT_ADMIN_USERNAME = "admin";
 }
 

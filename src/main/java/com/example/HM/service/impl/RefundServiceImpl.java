@@ -24,10 +24,6 @@ public class RefundServiceImpl implements RefundService {
     @Override
     @Transactional
     public Refund requestRefund(RefundRequest request) {
-        if (refundRepository.existsByBookingId(request.getBookingId())) {
-            throw new RuntimeException("Yêu cầu hoàn tiền cho đơn hàng này đã tồn tại!");
-        }
-
         Booking booking = bookingRepository.findById(request.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
 

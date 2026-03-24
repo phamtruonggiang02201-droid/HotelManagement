@@ -1,5 +1,5 @@
 // TOAST SERVICE
-const toastService = {
+window.toastService = {
     create(type, title, message) {
         let container = document.getElementById('toast-container');
         if (!container) {

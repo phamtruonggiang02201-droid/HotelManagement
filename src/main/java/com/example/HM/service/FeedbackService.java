@@ -19,11 +19,11 @@ public interface FeedbackService {
 
     // Room Issues
     RoomIssueReport reportIssue(RoomIssueRequest request);
-    Page<RoomIssueReport> getAllIssues(Pageable pageable);
+    Page<RoomIssueReport> getAllIssues(String status, Pageable pageable);
     RoomIssueReport resolveIssue(String issueId);
 
     // Refund
     Refund requestRefund(RefundRequest request);
-    Page<Refund> getAllRefunds(Pageable pageable);
+    Page<Refund> getAllRefunds(String status, Pageable pageable);
     Refund updateRefundStatus(String refundId, String status);
 }

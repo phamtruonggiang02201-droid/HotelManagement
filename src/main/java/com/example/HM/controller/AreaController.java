@@ -36,9 +36,9 @@ public class AreaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteArea(@PathVariable String id) {
+    public ResponseEntity<?> deleteArea(@PathVariable String id, @RequestParam(defaultValue = "false") boolean force) {
         try {
-            areaService.deleteArea(id);
+            areaService.deleteArea(id, force);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

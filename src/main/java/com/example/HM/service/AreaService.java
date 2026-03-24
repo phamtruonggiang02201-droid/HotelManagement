@@ -9,4 +9,5 @@ public interface AreaService {
     Area getAreaById(String id);
     Area saveArea(Area area);
     void deleteArea(String id);
+    void deleteArea(String id, boolean force);
 }

@@ -14,15 +14,16 @@ import java.util.List;
 public class AreaServiceImpl implements AreaService {
 
     private final AreaRepository areaRepository;
+    private final com.example.HM.repository.WorkAssignmentRepository workAssignmentRepository;
 
     @Override
     public List<Area> getAllAreas() {
-        return areaRepository.findAll();
+        return areaRepository.findAllByOrderByAreaNameAsc();
     }
 
     @Override
     public List<Area> getRootAreas() {
-        return areaRepository.findByParentAreaIsNull();
+        return areaRepository.findByParentAreaIsNullOrderByAreaNameAsc();
     }
 
     @Override
@@ -42,10 +43,34 @@ public class AreaServiceImpl implements AreaService {
     @Override
     @Transactional
     public void deleteArea(String id) {
+        deleteArea(id, false);
+    }
+
+    @Transactional
+    public void deleteArea(String id, boolean force) {
         Area area = getAreaById(id);
         if (area.getRooms() != null && !area.getRooms().isEmpty()) {
             throw new RuntimeException("Không thể xóa khu vực đang có phòng!");
         }
+
+        List<com.example.HM.entity.WorkAssignment> assignments = workAssignmentRepository
+                .findByAreaAndWorkDateGreaterThanEqual(area.getAreaName(), java.time.LocalDate.now());
+
+        if (!assignments.isEmpty() && !force) {
+            StringBuilder sb = new StringBuilder("Cảnh báo: Đang có phân công công việc trong tương lai tại khu vực này:\n");
+            for (com.example.HM.entity.WorkAssignment wa : assignments) {
+                String empName = wa.getEmployee() != null ? wa.getEmployee().getFullName() : "Chưa gán";
+                sb.append("- Ngày ").append(wa.getWorkDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")))
+                  .append(" đang phân công cho ").append(empName).append("\n");
+            }
+            sb.append("Đại ca có chắc chắn muốn xóa và HỦY toàn bộ lịch trình này không?");
+            throw new RuntimeException(sb.toString());
+        }
+
+        if (force) {
+            workAssignmentRepository.deleteByAreaAndWorkDateGreaterThanEqual(area.getAreaName(), java.time.LocalDate.now());
+        }
+
         areaRepository.deleteById(id);
     }
 }
