@@ -51,15 +51,15 @@ public class DataInitializer {
             }
 
             // 2. Init Admin Account
-            if (accountRepository.findByUsername("admin").isEmpty()) {
+            if (accountRepository.findByUsername("admin123").isEmpty()) {
                 Role adminRole = roleRepository.findByRoleName("ADMIN").get();
                 
                 Account admin = new Account();
-                admin.setUsername("admin");
-                admin.setPassword(passwordEncoder.encode("Admin@123"));
-                admin.setEmail("admin@luxestay.com");
+                admin.setUsername("admin123");
+                admin.setPassword(passwordEncoder.encode("Admin@1231"));
+                admin.setEmail("admin123@luxestay.com");
                 admin.setFirstName("Hệ thống");
-                admin.setLastName("Admin");
+                admin.setLastName("Admin1");
                 admin.setRole(adminRole);
                 admin.setStatus(true);
                 admin.setEmailVerified(true);
@@ -71,43 +71,6 @@ public class DataInitializer {
                 System.out.println(">>> Default Admin Account Created: admin / Admin@123");
             }
 
-            // 3. Init Manager Account
-            if (accountRepository.findByUsername("manager").isEmpty()) {
-                Role managerRole = roleRepository.findByRoleName("MANAGER").get();
-                Account manager = new Account();
-                manager.setUsername("manager");
-                manager.setPassword(passwordEncoder.encode("Manager@123"));
-                manager.setEmail("manager@luxestay.com");
-                manager.setFirstName("Nguyễn");
-                manager.setLastName("Quản Lý");
-                manager.setRole(managerRole);
-                manager.setStatus(true);
-                manager.setEmailVerified(true);
-                manager.setNationality("Việt Nam");
-                manager.setIdType("CCCD");
-                manager.setIdNumber("111111111111");
-                accountRepository.save(manager);
-                System.out.println(">>> Default Manager Account Created: manager / Manager@123");
-            }
-
-            // 4. Init Receptionist Account
-            if (accountRepository.findByUsername("receptionist").isEmpty()) {
-                Role receptionRole = roleRepository.findByRoleName("RECEPTION").get();
-                Account reception = new Account();
-                reception.setUsername("receptionist");
-                reception.setPassword(passwordEncoder.encode("Reception@123"));
-                reception.setEmail("receptionists@luxestay.com");
-                reception.setFirstName("Trần");
-                reception.setLastName("Lễ Tân");
-                reception.setRole(receptionRole);
-                reception.setStatus(true);
-                reception.setEmailVerified(true);
-                reception.setNationality("Việt Nam");
-                reception.setIdType("CCCD");
-                reception.setIdNumber("222222222222");
-                accountRepository.save(reception);
-                System.out.println(">>> Default Receptionist Account Created: receptionist / Reception@123");
-            }
 
             // 5. Init Room Types
             if (roomTypeRepository.count() == 0) {
