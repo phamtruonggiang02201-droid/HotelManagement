@@ -39,6 +39,7 @@ public class BookingServiceImpl implements BookingService {
     private final com.example.HM.service.WorkAssignmentService workAssignmentService;
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public CheckInDataDTO getCheckInData(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
@@ -56,25 +57,26 @@ public class BookingServiceImpl implements BookingService {
                     .filter(r -> r.getRoomType().getId().equals(type.getId()))
                     .collect(Collectors.toList());
 
-            List<CheckInDataDTO.RoomStatusDTO> roomStatuses = roomsOfType.stream()
-                    .map(r -> CheckInDataDTO.RoomStatusDTO.builder()
-                            .id(r.getId())
-                            .roomName(r.getRoomName())
-                            .occupied(occupiedRoomIds.contains(r.getId()))
-                            .build())
-                    .collect(Collectors.toList());
+            List<CheckInDataDTO.RoomStatusDTO> roomStatuses = new ArrayList<>();
+            for (Room r : roomsOfType) {
+                CheckInDataDTO.RoomStatusDTO status = new CheckInDataDTO.RoomStatusDTO();
+                status.setId(r.getId());
+                status.setRoomName(r.getRoomName());
+                status.setOccupied(occupiedRoomIds.contains(r.getId()));
+                roomStatuses.add(status);
+            }
 
-            roomGroups.add(CheckInDataDTO.RoomGroupDTO.builder()
-                    .roomTypeName(type.getTypeName())
-                    .requiredQuantity(br.getQuantity())
-                    .rooms(roomStatuses)
-                    .build());
+            CheckInDataDTO.RoomGroupDTO group = new CheckInDataDTO.RoomGroupDTO();
+            group.setRoomTypeName(type.getTypeName());
+            group.setRequiredQuantity(br.getQuantity());
+            group.setRooms(roomStatuses);
+            roomGroups.add(group);
         }
 
-        return CheckInDataDTO.builder()
-                .booking(booking)
-                .roomGroups(roomGroups)
-                .build();
+        CheckInDataDTO result = new CheckInDataDTO();
+        result.setBooking(booking);
+        result.setRoomGroups(roomGroups);
+        return result;
     }
 
     @Override
@@ -105,6 +107,15 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public Booking createBooking(BookingRequest request, String accountId) {
+        LocalDate today = LocalDate.now();
+        if (request.getCheckIn().isBefore(today)) {
+            throw new RuntimeException("Ngày nhận phòng không được ở quá khứ!");
+        }
+        if (request.getCheckOut().isBefore(request.getCheckIn()) || request.getCheckOut().isEqual(request.getCheckIn())) {
+             // Tuỳ vào business, nếu cho ở cùng ngày thì bỏ isEqual. Ở đây ta giữ logic cũ nhưng chặn quá khứ.
+             // Thường khách sạn check-out phải sau check-in ít nhất 1 ngày.
+        }
+        
         long nights = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
         if (nights <= 0) nights = 1;
 
@@ -114,7 +125,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
 
         BigDecimal totalRoomAmount = BigDecimal.ZERO;
-        List<BookedRoom> bookedRooms = new ArrayList<>();
+        Set<BookedRoom> bookedRooms = new LinkedHashSet<>();
 
         for (RoomSelection selection : request.getRoomSelections()) {
             RoomType roomType = roomTypeRepository.findById(selection.getRoomTypeId())
@@ -281,7 +292,22 @@ public class BookingServiceImpl implements BookingService {
 
         LocalDate today = LocalDate.now();
         if (today.isBefore(booking.getCheckIn())) {
-            throw new RuntimeException("Chưa đến ngày nhận phòng! (Ngày đặt: " + booking.getCheckIn() + ")");
+            // Khách đến sớm: cập nhật ngày check-in thực tế và tính lại tiền
+            booking.setCheckIn(today);
+            
+            long nightsCalculated = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckIn(), booking.getCheckOut());
+            final long nights = (nightsCalculated <= 0) ? 1 : nightsCalculated;
+
+            BigDecimal newTotalRoomAmount = booking.getBookedRooms().stream()
+                    .map(br -> br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(nights)))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal totalServiceAmount = booking.getBookedServices().stream()
+                    .flatMap(bs -> bs.getDetails().stream())
+                    .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            booking.setTotalAmount(newTotalRoomAmount.add(totalServiceAmount));
         }
 
         // Verify total number of assigned rooms matches booking
@@ -409,6 +435,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Page<Booking> getMyBookings(String accountId, Pageable pageable) {
         Page<Booking> bookings = bookingRepository.findByAccount_Id(accountId, pageable);
         
@@ -432,6 +459,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Page<Booking> getAllBookings(Pageable pageable) {
         Page<Booking> bookings = bookingRepository.findAll(pageable);
         // Fill transient fields for display in UI
@@ -458,7 +486,14 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public Page<Booking> getPaidBookings(java.time.LocalDate date, Pageable pageable) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Page<Booking> getPaidBookings(java.time.LocalDate date, String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            if (date != null) {
+                return bookingRepository.findByStatusAndCheckInAndKeyword(BookingStatus.PAID, date, keyword.trim(), pageable);
+            }
+            return bookingRepository.findByStatusAndKeyword(BookingStatus.PAID, keyword.trim(), pageable);
+        }
         if (date != null) {
             return bookingRepository.findByStatusAndCheckIn(BookingStatus.PAID, date, pageable);
         }
@@ -466,7 +501,14 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public Page<Booking> getCheckedInBookings(java.time.LocalDate date, Pageable pageable) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Page<Booking> getCheckedInBookings(java.time.LocalDate date, String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            if (date != null) {
+                return bookingRepository.findByStatusAndCheckOutAndKeyword(BookingStatus.CHECKED_IN, date, keyword.trim(), pageable);
+            }
+            return bookingRepository.findByStatusAndKeyword(BookingStatus.CHECKED_IN, keyword.trim(), pageable);
+        }
         if (date != null) {
             return bookingRepository.findByStatusAndCheckOut(BookingStatus.CHECKED_IN, date, pageable);
         }
@@ -689,6 +731,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public CheckoutSummaryDTO getCheckoutSummary(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
@@ -708,18 +751,24 @@ public class BookingServiceImpl implements BookingService {
         long actualNightsCalc = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckIn(), actualCheckOut);
         final long actualNights = actualNightsCalc <= 0 ? 1 : actualNightsCalc;
 
-        // Lấy thông tin phòng đầu tiên (giả định đơn này đặt các phòng cùng loại hoặc lấy giá trung bình)
-        // Lưu ý: Đơn giản hóa bằng cách lấy giá phòng từ bookedRooms
-        BigDecimal pricePerNight = booking.getBookedRooms().isEmpty() ? BigDecimal.ZERO : booking.getBookedRooms().get(0).getPriceAtBooking();
-        
-        // Tổng tiền phòng dự kiến ban đầu
-        BigDecimal originalRoomPrice = booking.getBookedRooms().stream()
-                .map(br -> br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(originalNights)))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Lấy danh sách các loại phòng và tính toán tiền theo từng loại
+        List<CheckoutSummaryDTO.BookedRoomSummaryDTO> roomSummaries = booking.getBookedRooms().stream()
+                .map(br -> CheckoutSummaryDTO.BookedRoomSummaryDTO.builder()
+                        .roomTypeName(br.getRoomType().getTypeName())
+                        .quantity(br.getQuantity())
+                        .priceAtBooking(br.getPriceAtBooking())
+                        .subTotal(br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(actualNights)))
+                        .build())
+                .collect(Collectors.toList());
 
         // Tổng tiền phòng thực tế
-        BigDecimal actualRoomPrice = booking.getBookedRooms().stream()
-                .map(br -> br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(actualNights)))
+        BigDecimal actualRoomPrice = roomSummaries.stream()
+                .map(CheckoutSummaryDTO.BookedRoomSummaryDTO::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng tiền phòng dự kiến ban đầu (để tính Adjustment)
+        BigDecimal originalRoomPrice = booking.getBookedRooms().stream()
+                .map(br -> br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(originalNights)))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Chênh lệch (số tiền được giảm/thay đổi)
@@ -747,14 +796,13 @@ public class BookingServiceImpl implements BookingService {
         return CheckoutSummaryDTO.builder()
                 .bookingId(booking.getId())
                 .guestName(booking.getGuest() != null ? booking.getGuest().getFullName() : "Khách vãng lai")
-                .roomTypeName(!booking.getBookedRooms().isEmpty() ? booking.getBookedRooms().get(0).getRoomType().getTypeName() : "N/A")
                 .roomNames(booking.getRooms() != null ? booking.getRooms().stream().map(Room::getRoomName).collect(Collectors.joining(", ")) : "N/A")
                 .checkIn(booking.getCheckIn())
                 .checkOut(originalCheckOut)
                 .actualCheckOut(actualCheckOut)
                 .totalNights(originalNights)
                 .actualNights(actualNights)
-                .roomPricePerNight(pricePerNight)
+                .bookedRooms(roomSummaries) // Trả về danh sách chi tiết
                 .totalRoomPrice(actualRoomPrice)
                 .roomPriceAdjustment(roomPriceAdjustment)
                 .services(serviceDTOs)
@@ -808,29 +856,32 @@ public class BookingServiceImpl implements BookingService {
                 .map(d -> {
                     String staffName = "Chưa có";
                     String itemStatus = "PENDING";
+                    String assignmentId = null;
                     
                     Optional<WorkAssignment> assignment = workAssignmentRepository.findByTargetId(d.getId());
                     if (assignment.isPresent()) {
                         WorkAssignment wa = assignment.get();
                         itemStatus = wa.getStatus();
+                        assignmentId = wa.getId();
                         if (wa.getEmployee() != null) {
                             staffName = wa.getEmployee().getFullName();
                         }
                     }
 
-                    return BookedDetailDTO.builder()
-                        .id(d.getId())
-                        .serviceId(d.getService().getId())
-                        .serviceName(d.getService().getServiceName())
-                        .quantity(d.getQuantity())
-                        .unitPrice(d.getUnitPrice())
-                        .subTotal(d.getUnitPrice().multiply(BigDecimal.valueOf(d.getQuantity())))
-                        .status(itemStatus)
-                        .staffName(staffName)
-                        .rating(d.getRating())
-                        .ratingComment(d.getRatingComment())
-                        .ratedAt(d.getRatedAt())
-                        .build();
+                    BookedDetailDTO detailDto = new BookedDetailDTO();
+                    detailDto.setId(d.getId());
+                    detailDto.setServiceId(d.getService().getId());
+                    detailDto.setServiceName(d.getService().getServiceName());
+                    detailDto.setQuantity(d.getQuantity());
+                    detailDto.setUnitPrice(d.getUnitPrice());
+                    detailDto.setSubTotal(d.getUnitPrice().multiply(BigDecimal.valueOf(d.getQuantity())));
+                    detailDto.setStatus(itemStatus);
+                    detailDto.setStaffName(staffName);
+                    detailDto.setAssignmentId(assignmentId);
+                    detailDto.setRating(d.getRating());
+                    detailDto.setRatingComment(d.getRatingComment());
+                    detailDto.setRatedAt(d.getRatedAt());
+                    return detailDto;
                 })
                 .collect(Collectors.toList());
 
@@ -842,28 +893,104 @@ public class BookingServiceImpl implements BookingService {
                 .mapToInt(BookedDetail::getQuantity)
                 .sum();
 
-        return BookedServiceDTO.builder()
-                .id(bs.getId())
-                .bookingId(bs.getBooking().getId())
-                .guestName(bs.getBooking().getGuest() != null ? bs.getBooking().getGuest().getFullName() : "Khách vãng lai")
-                .roomId(bs.getRoom() != null ? bs.getRoom().getId() : null)
-                .roomName(bs.getRoom() != null ? bs.getRoom().getRoomName() : "N/A")
-                .serviceName(serviceSummary)
-                .totalQuantity(totalQty)
-                .status(bs.getStatus())
-                .totalAmount(bs.getTotalAmount())
-                .createdAt(bs.getCreatedAt())
-                .details(detailDTOs)
-                .build();
+        BookedServiceDTO dto = new BookedServiceDTO();
+        dto.setId(bs.getId());
+        dto.setBookingId(bs.getBooking().getId());
+        dto.setGuestName(bs.getBooking().getGuest() != null ? bs.getBooking().getGuest().getFullName() : "Khách vãng lai");
+        dto.setRoomId(bs.getRoom() != null ? bs.getRoom().getId() : null);
+        dto.setRoomName(bs.getRoom() != null ? bs.getRoom().getRoomName() : "N/A");
+        dto.setServiceName(serviceSummary);
+        dto.setTotalQuantity(totalQty);
+        dto.setStatus(bs.getStatus());
+        dto.setTotalAmount(bs.getTotalAmount());
+        dto.setCreatedAt(bs.getCreatedAt());
+        dto.setDetails(detailDTOs);
+        return dto;
     }
 
     private OccupantDTO convertToOccupantDTO(Occupant occ) {
-        return OccupantDTO.builder()
-                .roomId(occ.getRoom() != null ? occ.getRoom().getId() : null)
-                .roomName(occ.getRoom() != null ? occ.getRoom().getRoomName() : "N/A")
-                .fullName(occ.getFullName())
-                .idNumber(occ.getIdNumber())
-                .phone(occ.getPhone())
-                .build();
+        OccupantDTO dto = new OccupantDTO();
+        dto.setRoomId(occ.getRoom() != null ? occ.getRoom().getId() : null);
+        dto.setRoomName(occ.getRoom() != null ? occ.getRoom().getRoomName() : "N/A");
+        dto.setFullName(occ.getFullName());
+        dto.setIdNumber(occ.getIdNumber());
+        dto.setPhone(occ.getPhone());
+        return dto;
+    }
+    @Override
+    @Transactional
+    public void cancelBooking(String bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
+        
+        if (BookingStatus.CHECKED_IN.equals(booking.getStatus()) || 
+            BookingStatus.CHECKED_OUT.equals(booking.getStatus()) ||
+            BookingStatus.COMPLETED.equals(booking.getStatus())) {
+            throw new RuntimeException("Không thể hủy đơn đã Check-in hoặc đã hoàn thành!");
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        // Giải phóng phòng nếu đã gán (thường chưa gán trước check-in nhưng để an toàn)
+        if (booking.getRooms() != null) {
+            booking.getRooms().forEach(room -> {
+                room.setStatus("AVAILABLE");
+                roomRepository.save(room);
+            });
+            booking.getRooms().clear();
+        }
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public Booking updateBooking(String id, BookingRequest request) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
+
+        if (!BookingStatus.PENDING_PAYMENT.equals(booking.getStatus()) && !BookingStatus.PAID.equals(booking.getStatus())) {
+            throw new RuntimeException("Chỉ có thể chỉnh sửa các đơn hàng chưa Check-in!");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (request.getCheckIn().isBefore(today)) {
+            throw new RuntimeException("Ngày nhận phòng không được ở quá khứ!");
+        }
+
+        long nights = java.time.temporal.ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
+        if (nights <= 0) nights = 1;
+
+        booking.setCheckIn(request.getCheckIn());
+        booking.setCheckOut(request.getCheckOut());
+
+        // Cập nhật thông tin khách
+        if (booking.getGuest() != null) {
+            if (request.getGuestName() != null) booking.getGuest().setFullName(request.getGuestName());
+            if (request.getGuestPhone() != null) booking.getGuest().setPhone(request.getGuestPhone());
+            guestRepository.save(booking.getGuest());
+        }
+
+        BigDecimal totalRoomAmount = BigDecimal.ZERO;
+        
+        // Xóa bookedRooms cũ và tạo mới để căn chỉnh theo request
+        if (request.getRoomSelections() != null && !request.getRoomSelections().isEmpty()) {
+            booking.getBookedRooms().clear(); 
+            
+            for (RoomSelection selection : request.getRoomSelections()) {
+                RoomType roomType = roomTypeRepository.findById(selection.getRoomTypeId())
+                        .orElseThrow(() -> new RuntimeException("Loại phòng " + selection.getRoomTypeId() + " không tồn tại!"));
+
+                BookedRoom bookedRoom = new BookedRoom();
+                bookedRoom.setBooking(booking);
+                bookedRoom.setRoomType(roomType);
+                bookedRoom.setQuantity(selection.getQuantity());
+                bookedRoom.setPriceAtBooking(roomType.getPrice());
+                
+                totalRoomAmount = totalRoomAmount.add(roomType.getPrice().multiply(BigDecimal.valueOf(selection.getQuantity())).multiply(BigDecimal.valueOf(nights)));
+                booking.getBookedRooms().add(bookedRoom);
+            }
+            booking.setTotalAmount(totalRoomAmount);
+        }
+
+        return bookingRepository.save(booking);
     }
 }

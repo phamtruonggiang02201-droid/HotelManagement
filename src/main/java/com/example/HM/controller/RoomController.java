@@ -110,6 +110,12 @@ public class RoomController {
         return ResponseEntity.ok(roomService.getRoomStatusByDate(date));
     }
 
+    @GetMapping("/api/rooms/{id}")
+    @ResponseBody
+    public ResponseEntity<RoomDTO> getRoomById(@PathVariable String id) {
+        return ResponseEntity.ok(roomService.getRoomById(id));
+    }
+
     @GetMapping("/api/rooms/stats")
     @ResponseBody
     public ResponseEntity<com.example.HM.dto.RoomStatsDTO> getRoomStats(
@@ -268,8 +274,8 @@ public class RoomController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> importRoomTypes(@RequestParam("file") MultipartFile file) {
         try {
-            roomTypeService.importRoomTypesFromExcel(file);
-            return ResponseEntity.ok(Map.of("message", "Nhập dữ liệu loại phòng thành công!"));
+            String result = roomTypeService.importRoomTypesFromExcel(file);
+            return ResponseEntity.ok(Map.of("message", result));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "Lỗi nhập liệu: " + e.getMessage()));
         }
@@ -294,10 +300,21 @@ public class RoomController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> importRooms(@RequestParam("file") MultipartFile file) {
         try {
-            roomService.importRoomsFromExcel(file);
-            return ResponseEntity.ok(Map.of("message", "Nhập dữ liệu phòng thành công!"));
+            String result = roomService.importRoomsFromExcel(file);
+            return ResponseEntity.ok(Map.of("message", result));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "Lỗi nhập liệu: " + e.getMessage()));
+        }
+    }
+    @PostMapping("/api/rooms/assign-area")
+    @ResponseBody
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> assignDefaultArea() {
+        try {
+            roomService.assignDefaultAreaToOldRooms();
+            return ResponseEntity.ok(Map.of("message", "Đã gán khu vực mặc định cho các phòng cũ!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 }

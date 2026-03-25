@@ -5,11 +5,7 @@ import com.example.HM.dto.BookingRequest;
 import com.example.HM.dto.CheckInRequest;
 import com.example.HM.entity.Booking;
 import com.example.HM.security.SecurityUtils;
-import com.example.HM.service.AccountService;
-import com.example.HM.service.BookingService;
-import com.example.HM.service.HotelService;
-import com.example.HM.service.RoomService;
-import com.example.HM.service.VNPayService;
+import com.example.HM.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -40,11 +36,46 @@ public class BookingController {
     private final AccountService accountService;
     private final HotelService hotelService;
     private final RoomService roomService;
+    private final RoomTypeService roomTypeService;
+
+    @GetMapping("/edit/{id}")
+    public String editBookingForm(@PathVariable String id, Model model) {
+        Booking booking = bookingService.getBookingById(id);
+        if (booking == null) return "redirect:/bookings/my-bookings";
+        
+        model.addAttribute("booking", booking);
+        model.addAttribute("roomTypes", roomTypeService.getAllRoomTypes(org.springframework.data.domain.Pageable.unpaged()).getContent());
+        return "booking/edit";
+    }
+
+    @PostMapping("/api/edit/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateBooking(@PathVariable String id, @RequestBody BookingRequest request) {
+        try {
+            bookingService.updateBooking(id, request);
+            return ResponseEntity.ok(Map.of("message", "Cập nhật đặt phòng thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/cancel/{id}")
+    @ResponseBody
+    public ResponseEntity<?> cancelBooking(@PathVariable String id) {
+        try {
+            bookingService.cancelBooking(id);
+            return ResponseEntity.ok(Map.of("message", "Hủy đặt phòng thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 
     @GetMapping("/new")
     public String bookingForm(
             @RequestParam(required = false) String roomTypeId,
             @RequestParam(required = false) String roomId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
             Model model) {
         
         if ((roomTypeId == null || roomTypeId.isBlank()) && (roomId == null || roomId.isBlank())) {
@@ -53,6 +84,8 @@ public class BookingController {
 
         model.addAttribute("roomTypeId", roomTypeId);
         model.addAttribute("roomId", roomId);
+        model.addAttribute("checkIn", checkIn);
+        model.addAttribute("checkOut", checkOut);
 
         try {
             if (SecurityUtils.isAuthenticated()) {
@@ -111,7 +144,7 @@ public class BookingController {
     }
 
     @GetMapping("/my-bookings")
-    public String myBookings(Model model, @PageableDefault(size = 10, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+    public String myBookings(Model model, @PageableDefault(size = 10, sort = "checkIn", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         String accountId = SecurityUtils.getCurrentUserId();
         if (accountId == null) {
             return "redirect:/login";
@@ -196,12 +229,17 @@ public class BookingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
     public String receptionDashboard(
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
+            @RequestParam(required = false) String keyword,
             Model model, 
-            @PageableDefault(size = 10) Pageable pageable) {
+            @org.springframework.beans.factory.annotation.Qualifier("paid") @PageableDefault(size = 5, sort = "checkIn", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable paidPageable,
+            @org.springframework.beans.factory.annotation.Qualifier("checked") @PageableDefault(size = 5, sort = "checkIn", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable checkedPageable) {
         
-        model.addAttribute("paidBookings", bookingService.getPaidBookings(date, pageable));
-        model.addAttribute("checkedInBookings", bookingService.getCheckedInBookings(date, pageable));
+        model.addAttribute("paidBookings", bookingService.getPaidBookings(date, keyword, paidPageable));
+        model.addAttribute("checkedInBookings", bookingService.getCheckedInBookings(date, keyword, checkedPageable));
         model.addAttribute("selectedDate", date != null ? date : java.time.LocalDate.now());
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("services", hotelService.getAllServices(Pageable.unpaged()).getContent());
+        model.addAttribute("categories", hotelService.getAllCategories(Pageable.unpaged()).getContent());
         
         return "booking/reception";
     }

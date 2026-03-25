@@ -26,4 +26,9 @@ public class BookedRoom extends BaseEntity {
 
     @Column(name = "PriceAtBooking", precision = 18, scale = 2, nullable = false)
     private BigDecimal priceAtBooking;
+
+    // Explicit getters for compiler issues
+    public RoomType getRoomType() { return roomType; }
+    public Integer getQuantity() { return quantity; }
+    public BigDecimal getPriceAtBooking() { return priceAtBooking; }
 }
