@@ -2,13 +2,15 @@ package com.example.HM.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "Services")
+@Table(name = "services")
 @Getter
 @Setter
+@RequiredArgsConstructor
 public class ExtraService extends BaseEntity {
 
     @Column(name = "ServiceName", length = 100)

@@ -52,7 +52,23 @@
                         </div>
                     </div>
 
-                    <div class="mt-10 pt-10 border-t border-slate-50 space-y-4">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8 space-y-3">
+                        <a th:href="@{/api/payment/history}" 
+                           class="w-full flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                            <i data-lucide="credit-card" class="w-4 h-4"></i>
+                            Lịch sử thanh toán
+                        </a>
+                        <a th:href="@{/bookings/my-bookings}" 
+                           class="w-full flex items-center justify-center gap-2 bg-slate-50 text-slate-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all border border-slate-100">
+                            <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                            Lịch sử đặt phòng
+                        </a>
+                    </div>
+
+                    <div class="mt-8 pt-8 border-t border-slate-50 space-y-4">
                         <div class="flex items-center justify-between text-left">
                             <span
                                 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Username</span>
@@ -94,6 +110,11 @@
                                 liên lạc</label>
                             <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100"
                                 th:text="${account.email}">ndminh.work@gmail.com</div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Số điện thoại</label>
+                            <div class="bg-slate-50 p-5 rounded-3xl font-bold text-slate-700 border border-slate-100"
+                                th:text="${account.phone ?: 'Chưa cập nhật'}">0912345678</div>
                         </div>
                         <div class="space-y-1">
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Quốc
@@ -163,6 +184,11 @@
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Họ và
                             tên</label>
                         <input type="text" name="fullName" th:value="${account.fullName}" required
+                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Số điện thoại</label>
+                        <input type="tel" name="phone" th:value="${account.phone}" placeholder="Nhập số điện thoại"
                             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-100 font-bold transition-all">
                     </div>
                     <div class="grid grid-cols-2 gap-4">

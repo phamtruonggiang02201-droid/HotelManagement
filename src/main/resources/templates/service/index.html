@@ -9,64 +9,126 @@
 <body>
     <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
         <section id="manage-services-section" class="active">
-            <div class="flex justify-between items-center mb-12">
+            <div class="flex justify-between items-center mb-10">
                 <div>
-                    <h1 class="text-3xl font-black text-slate-900">Quản lý Dịch vụ</h1>
-                    <p class="text-slate-500 font-medium">Quản lý danh mục và bảng giá dịch vụ bổ sung.</p>
+                    <h1 class="text-4xl font-black text-slate-900 mb-2">Quản lý Dịch vụ</h1>
+                    <p class="text-slate-500 font-medium">Theo dõi, cập nhật và thiết lập trạng thái kinh doanh dịch vụ.</p>
                 </div>
-                <button onclick="openServiceModal()"
-                    class="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-rose-600/20 hover:scale-105 transition-all">
-                    + Thêm dịch vụ mới
-                </button>
+                <div class="flex gap-4">
+                    <div class="flex gap-2">
+                        <a th:href="@{/api/services/export}" 
+                           class="bg-emerald-600 text-white px-6 py-4 rounded-[20px] font-black shadow-lg shadow-emerald-600/10 hover:bg-emerald-700 transition-all flex items-center gap-2">
+                            <i data-lucide="file-down" class="w-5 h-5"></i>
+                            <span class="hidden lg:inline">Xuất Excel</span>
+                        </a>
+                        <button onclick="document.getElementById('import-service-input').click()"
+                           class="bg-slate-100 text-slate-700 px-6 py-4 rounded-[20px] font-black hover:bg-slate-200 transition-all flex items-center gap-2">
+                            <i data-lucide="file-up" class="w-5 h-5"></i>
+                            <span class="hidden lg:inline">Nhập Excel</span>
+                        </button>
+                        <input type="file" id="import-service-input" class="hidden" accept=".xlsx, .xls" onchange="handleImportServices(this)">
+                    </div>
+                    <button onclick="openServiceModal()"
+                        class="bg-rose-600 text-white px-8 py-5 rounded-[24px] font-black shadow-xl shadow-rose-600/20 hover:scale-105 transition-all flex items-center gap-3">
+                        <i data-lucide="plus-circle" class="w-6 h-6"></i>
+                        Thêm dịch vụ mới
+                    </button>
+                </div>
             </div>
 
-            <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead
-                        class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <tr>
-                            <th class="px-8 py-6">Tên Dịch vụ</th>
-                            <th class="px-8 py-6">Danh mục</th>
-                            <th class="px-8 py-6">Giá (VNĐ)</th>
-                            <th class="px-8 py-6 text-right">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody id="service-manage-tbody" class="divide-y divide-slate-50 font-medium text-slate-600">
-                        <!-- Data will be loaded via AJAX -->
-                    </tbody>
-                </table>
+            <!-- Search Bar -->
+            <div class="mb-8 flex gap-4">
+                <div class="relative flex-1 max-w-md">
+                    <i data-lucide="search" class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                    <input type="text" id="service-search-input" placeholder="Tìm kiếm dịch vụ..."
+                        class="w-full bg-white border border-slate-100 pl-14 pr-6 py-5 rounded-[24px] outline-none focus:ring-4 focus:ring-rose-500/10 shadow-sm transition-all font-bold">
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[48px] border border-slate-100 overflow-hidden shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50/50 border-b border-slate-100 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                            <tr>
+                                <th class="px-10 py-8">Thông tin dịch vụ</th>
+                                <th class="px-10 py-8">Danh mục</th>
+                                <th class="px-10 py-8">Đơn giá</th>
+                                <th class="px-10 py-8">Trạng thái</th>
+                                <th class="px-10 py-8 text-right">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="service-manage-tbody" class="divide-y divide-slate-50 font-bold text-slate-600">
+                            <!-- Data will be loaded via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div id="service-pagination" class="flex justify-center items-center gap-2 mt-10">
+                <!-- Pagination buttons will be rendered here -->
             </div>
         </section>
 
         <!-- Service Manage Modal -->
-        <div id="service-manage-modal" class="modal">
-            <div class="bg-white w-full max-xl rounded-[56px] p-12 relative shadow-2xl">
-                <button onclick="toggleModal('service-manage-modal', false)"
-                    class="absolute top-8 right-8 text-slate-400"><i data-lucide="x" class="w-8 h-8"></i></button>
-                <h2 id="service-modal-title" class="text-3xl font-black mb-8 text-slate-900">Thêm dịch vụ mới</h2>
-                <form id="service-form" class="space-y-6">
-                    <input type="hidden" id="service-id">
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Tên dịch vụ</label>
-                        <input type="text" id="service-name-input" required placeholder="Tên dịch vụ..."
-                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-rose-500">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Danh mục</label>
-                        <select id="service-category-id" required
-                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-rose-500 appearance-none">
-                            <!-- Loaded via AJAX -->
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Giá dịch vụ</label>
-                        <input type="number" id="service-price-input" required placeholder="VNĐ"
-                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-rose-500">
-                    </div>
-                    <button type="submit"
-                        class="w-full bg-rose-600 text-white py-6 rounded-[28px] font-black shadow-xl shadow-rose-600/20 mt-4">
-                        Lưu dịch vụ
+        <div id="service-manage-modal" class="modal bg-slate-900/60 backdrop-blur-md hidden items-center justify-center p-4">
+            <div class="bg-white w-full max-w-2xl rounded-[56px] overflow-hidden relative shadow-2xl transform transition-all">
+                <div class="p-12 border-b border-slate-50 bg-slate-50/30">
+                    <button onclick="toggleModal('service-manage-modal', false)"
+                        class="absolute top-10 right-10 text-slate-400 hover:text-rose-600 transition-colors">
+                        <i data-lucide="x" class="w-8 h-8"></i>
                     </button>
+                    <h2 id="service-modal-title" class="text-4xl font-black text-slate-900 uppercase tracking-tight">Thêm dịch vụ mới</h2>
+                </div>
+                
+                <form id="service-form" class="p-12 space-y-8">
+                    <input type="hidden" id="service-id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-4">Tên dịch vụ</label>
+                            <input type="text" id="service-name-input" required placeholder="Ví dụ: Buffet sáng cao cấp"
+                                class="w-full bg-slate-50 border border-slate-100 p-6 rounded-[24px] outline-none focus:ring-4 focus:ring-rose-500/10 transition-all font-bold text-slate-900">
+                        </div>
+                        <div class="space-y-3">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-4">Danh mục</label>
+                            <div class="relative">
+                                <select id="service-category-id" required
+                                    class="w-full bg-slate-50 border border-slate-100 p-6 rounded-[24px] outline-none focus:ring-4 focus:ring-rose-500/10 appearance-none font-bold text-slate-900 cursor-pointer">
+                                    <!-- Loaded via AJAX -->
+                                </select>
+                                <i data-lucide="chevron-down" class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-4">Giá dịch vụ (VNĐ)</label>
+                            <div class="relative">
+                                <input type="number" id="service-price-input" required placeholder="0"
+                                    class="w-full bg-slate-50 border border-slate-100 p-6 pl-14 rounded-[24px] outline-none focus:ring-4 focus:ring-rose-500/10 transition-all font-bold text-slate-900">
+                                <span class="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black">₫</span>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-4">Trạng thái hoạt động</label>
+                            <div class="flex items-center h-[76px] px-6 bg-slate-50 rounded-[24px] border border-slate-100">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="service-active-input" class="sr-only peer" checked>
+                                    <div class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
+                                    <span class="ml-4 text-xs font-black text-slate-600 uppercase tracking-widest peer-checked:text-emerald-600">Hoạt động</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6">
+                        <button type="submit"
+                            class="w-full bg-rose-600 text-white py-8 rounded-[32px] font-black text-xl shadow-2xl shadow-rose-600/30 hover:scale-[1.02] active:scale-95 transition-all">
+                            Lưu cấu hình dịch vụ
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -74,9 +136,45 @@
         <script th:src="@{/js/management.js}"></script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                loadServicesForManage();
+                loadServicesWithPagination();
                 loadServiceCategories();
+
+                const searchInput = document.getElementById('service-search-input');
+                let debounceTimer;
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => loadServicesWithPagination(0, searchInput.value), 300);
+                });
             });
+
+            async function handleImportServices(input) {
+                if (!input.files || input.files.length === 0) return;
+                
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                toastService.info("Đang xử lý nhập dữ liệu dịch vụ...");
+                
+                try {
+                    const response = await fetch('/api/services/import', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        toastService.success(result.message);
+                        loadServicesWithPagination(); // Reload list
+                    } else {
+                        toastService.error(result.message);
+                    }
+                } catch (error) {
+                    toastService.error("Có lỗi xảy ra khi nhập dữ liệu.");
+                } finally {
+                    input.value = ''; // Reset input
+                }
+            }
         </script>
     </div>
 </body>

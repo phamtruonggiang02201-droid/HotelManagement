@@ -8,4 +8,5 @@ public class ServiceRequest {
     private String serviceName;
     private BigDecimal price;
     private String categoryId;
+    private Boolean isActive;
 }

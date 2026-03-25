@@ -39,6 +39,12 @@
                         <span th:text="${feedback.booking.guest != null ? #strings.substring(feedback.booking.guest.fullName, 0, 1) : feedback.booking.account.firstName.substring(0, 1)}">G</span>
                     </div>
                     <div>
+                        <div th:if="${feedback.roomType != null or feedback.extraService != null}" 
+                             class="mb-3 flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full w-fit">
+                            <i data-lucide="tag" class="w-3 h-3"></i>
+                            <span class="text-[9px] font-black uppercase tracking-tighter" 
+                                  th:text="${feedback.roomType != null ? feedback.roomType.typeName : feedback.extraService.serviceName}">Loại phòng/Dịch vụ</span>
+                        </div>
                         <h4 class="font-black text-slate-900 text-lg mb-1" 
                             th:text="${feedback.booking.guest != null ? feedback.booking.guest.fullName : feedback.booking.account.firstName + ' ' + feedback.booking.account.lastName}">Tên khách</h4>
                         <div class="flex items-center gap-2">

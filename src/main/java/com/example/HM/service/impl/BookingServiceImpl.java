@@ -1,24 +1,24 @@
 package com.example.HM.service.impl;
 
 import com.example.HM.constant.BookingStatus;
-import com.example.HM.dto.BookServiceRequest;
-import com.example.HM.dto.BookingRequest;
-import com.example.HM.dto.CheckInRequest;
+import com.example.HM.dto.*;
 import com.example.HM.entity.*;
 import com.example.HM.repository.*;
 import com.example.HM.service.BookingService;
+import com.example.HM.util.ExcelHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -31,53 +31,232 @@ public class BookingServiceImpl implements BookingService {
     private final RoomTypeRepository roomTypeRepository;
     private final ExtraServiceRepository extraServiceRepository;
     private final BookedServiceRepository bookedServiceRepository;
+    private final BookedRoomRepository bookedRoomRepository;
+    private final OccupantRepository occupantRepository;
+    private final BookedDetailRepository bookedDetailRepository;
+    private final PaymentRepository paymentRepository;
+    private final WorkAssignmentRepository workAssignmentRepository;
+    private final com.example.HM.service.WorkAssignmentService workAssignmentService;
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public CheckInDataDTO getCheckInData(String bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
+
+        List<String> occupiedRoomIds = roomRepository.findOccupiedRoomIds(
+                booking.getCheckIn(), booking.getCheckOut(), booking.getId());
+
+        List<CheckInDataDTO.RoomGroupDTO> roomGroups = new ArrayList<>();
+
+        for (BookedRoom br : booking.getBookedRooms()) {
+            RoomType type = br.getRoomType();
+            
+            // Get all rooms of this type
+            List<Room> roomsOfType = roomRepository.findAll().stream()
+                    .filter(r -> r.getRoomType().getId().equals(type.getId()))
+                    .collect(Collectors.toList());
+
+            List<CheckInDataDTO.RoomStatusDTO> roomStatuses = new ArrayList<>();
+            for (Room r : roomsOfType) {
+                CheckInDataDTO.RoomStatusDTO status = new CheckInDataDTO.RoomStatusDTO();
+                status.setId(r.getId());
+                status.setRoomName(r.getRoomName());
+                status.setOccupied(occupiedRoomIds.contains(r.getId()));
+                roomStatuses.add(status);
+            }
+
+            CheckInDataDTO.RoomGroupDTO group = new CheckInDataDTO.RoomGroupDTO();
+            group.setRoomTypeName(type.getTypeName());
+            group.setRequiredQuantity(br.getQuantity());
+            group.setRooms(roomStatuses);
+            roomGroups.add(group);
+        }
+
+        CheckInDataDTO result = new CheckInDataDTO();
+        result.setBooking(booking);
+        result.setRoomGroups(roomGroups);
+        return result;
+    }
+
+    @Override
+    public ByteArrayInputStream exportBookingsToExcel(java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        List<Booking> bookings;
+        if (startDate != null && endDate != null) {
+            bookings = bookingRepository.findByCheckInBetween(startDate, endDate);
+        } else {
+            bookings = bookingRepository.findAll();
+        }
+
+        String[] headers = { "Mã Booking", "Khách hàng", "Username", "Email", "Check-in", "Check-out", "Tổng tiền", "Số tiền đã trả", "Trạng thái", "Ngày thanh toán" };
+        
+        return ExcelHelper.dataToExcel(bookings, "Bookings", headers, (row, booking) -> {
+            row.createCell(0).setCellValue(booking.getId());
+            row.createCell(1).setCellValue(booking.getGuest() != null ? booking.getGuest().getFullName() : "N/A");
+            row.createCell(2).setCellValue(booking.getAccount() != null ? booking.getAccount().getUsername() : "N/A");
+            row.createCell(3).setCellValue(booking.getAccount() != null ? booking.getAccount().getEmail() : "N/A");
+            row.createCell(4).setCellValue(booking.getCheckIn() != null ? booking.getCheckIn().toString() : "N/A");
+            row.createCell(5).setCellValue(booking.getCheckOut() != null ? booking.getCheckOut().toString() : "N/A");
+            row.createCell(6).setCellValue(booking.getTotalAmount() != null ? booking.getTotalAmount().doubleValue() : 0.0);
+            row.createCell(7).setCellValue(booking.getPaidAmount() != null ? booking.getPaidAmount().doubleValue() : 0.0);
+            row.createCell(8).setCellValue(booking.getStatus());
+            row.createCell(9).setCellValue(booking.getPaymentDate() != null ? booking.getPaymentDate().toString() : "N/A");
+        });
+    }
 
     @Override
     @Transactional
     public Booking createBooking(BookingRequest request, String accountId) {
-        RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
-                .orElseThrow(() -> new RuntimeException("Loại phòng không tồn tại!"));
-
-        // Check availability: at least one room of this type is AVAILABLE
-        List<Room> availableRooms = roomRepository.findByRoomTypeAndStatus(roomType, "AVAILABLE", Pageable.unpaged()).getContent();
-        if (availableRooms.isEmpty()) {
-            throw new RuntimeException("Loại phòng này hiện không còn phòng trống!");
+        LocalDate today = LocalDate.now();
+        if (request.getCheckIn().isBefore(today)) {
+            throw new RuntimeException("Ngày nhận phòng không được ở quá khứ!");
         }
-
-        // Find or Create Guest
-        Guest guest = guestRepository.findByEmail(request.getGuestEmail())
-                .orElseGet(() -> {
-                    Guest newGuest = new Guest();
-                    newGuest.setFullName(request.getGuestName());
-                    newGuest.setEmail(request.getGuestEmail());
-                    newGuest.setPhone(request.getGuestPhone());
-                    return guestRepository.save(newGuest);
-                });
-
-        long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
-        if (days <= 0) days = 1;
-
-        BigDecimal totalAmount = roomType.getPrice().multiply(BigDecimal.valueOf(days));
+        if (request.getCheckOut().isBefore(request.getCheckIn()) || request.getCheckOut().isEqual(request.getCheckIn())) {
+             // Tuỳ vào business, nếu cho ở cùng ngày thì bỏ isEqual. Ở đây ta giữ logic cũ nhưng chặn quá khứ.
+             // Thường khách sạn check-out phải sau check-in ít nhất 1 ngày.
+        }
+        
+        long nights = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
+        if (nights <= 0) nights = 1;
 
         Booking booking = new Booking();
         booking.setCheckIn(request.getCheckIn());
         booking.setCheckOut(request.getCheckOut());
-        booking.setGuest(guest);
-        booking.setRoomType(roomType);
-        booking.setTotalAmount(totalAmount);
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
 
-        if (accountId != null) {
-            Account account = accountRepository.findById(accountId).orElse(null);
-            booking.setAccount(account);
+        BigDecimal totalRoomAmount = BigDecimal.ZERO;
+        Set<BookedRoom> bookedRooms = new LinkedHashSet<>();
+
+        for (RoomSelection selection : request.getRoomSelections()) {
+            RoomType roomType = roomTypeRepository.findById(selection.getRoomTypeId())
+                    .orElseThrow(() -> new RuntimeException("Loại phòng " + selection.getRoomTypeId() + " không tồn tại!"));
+
+            // Check availability: count available rooms of this type accurately
+            long totalRooms = roomRepository.countByRoomTypeAndStatusNot(roomType, "MAINTENANCE");
+            java.util.List<Booking> overlaps = bookingRepository.findOverlappingBookingsByType(roomType.getId(), request.getCheckIn(), request.getCheckOut());
+            
+            long maxBooked = 0;
+            for (LocalDate date = request.getCheckIn(); date.isBefore(request.getCheckOut()); date = date.plusDays(1)) {
+                long dailySum = 0;
+                for (Booking b : overlaps) {
+                    if (!date.isBefore(b.getCheckIn()) && date.isBefore(b.getCheckOut())) {
+                        long qty = b.getBookedRooms().stream()
+                                .filter(br -> br.getRoomType().getId().equals(roomType.getId()))
+                                .mapToLong(BookedRoom::getQuantity)
+                                .sum();
+                        dailySum += qty;
+                    }
+                }
+                if (dailySum > maxBooked) maxBooked = dailySum;
+            }
+
+            long currentAvailable = Math.max(0, totalRooms - maxBooked);
+            if (currentAvailable < selection.getQuantity()) {
+                throw new RuntimeException("Loại phòng " + roomType.getTypeName() + " không đủ phòng trống cho giai đoạn này (Còn lại: " + currentAvailable + ")!");
+            }
+
+            BookedRoom bookedRoom = new BookedRoom();
+            bookedRoom.setBooking(booking);
+            bookedRoom.setRoomType(roomType);
+            bookedRoom.setQuantity(selection.getQuantity());
+            bookedRoom.setPriceAtBooking(roomType.getPrice());
+            bookedRooms.add(bookedRoom);
+
+            BigDecimal selectionPrice = roomType.getPrice().multiply(BigDecimal.valueOf(selection.getQuantity())).multiply(BigDecimal.valueOf(nights));
+            totalRoomAmount = totalRoomAmount.add(selectionPrice);
         }
+
+        // Find or Create Guest
+        List<Guest> guests = guestRepository.findAllByEmail(request.getGuestEmail());
+        Guest guest;
+        if (!guests.isEmpty()) {
+            guest = guests.get(0);
+        } else {
+            guest = new Guest();
+            guest.setFullName(request.getGuestName());
+            guest.setEmail(request.getGuestEmail());
+            guest.setPhone(request.getGuestPhone());
+            guest = guestRepository.save(guest);
+        }
+        booking.setGuest(guest);
+        if (accountId != null) {
+            accountRepository.findById(accountId).ifPresent(booking::setAccount);
+        }
+
+        booking.setBookedRooms(bookedRooms);
+        booking.setTotalAmount(totalRoomAmount);
 
         return bookingRepository.save(booking);
     }
 
     @Override
     @Transactional
-    public void updateBookingStatus(String bookingId, String status) {
+    public Booking createWalkInBooking(BookingRequest request) {
+        Booking booking = createBooking(request, null);
+        booking.setStatus(BookingStatus.PAID);
+        booking.setPaymentDate(LocalDateTime.now());
+        booking.setPaidAmount(booking.getTotalAmount());
+
+        // Tạo bản ghi Payment
+        Payment payment = new Payment();
+        payment.setBooking(booking);
+        payment.setAmount(booking.getTotalAmount());
+        payment.setPaymentDate(LocalDateTime.now());
+        payment.setPaymentStatus("SUCCESS");
+        payment.setNote("Thanh toán tại quầy (Walk-in)");
+        paymentRepository.save(payment);
+
+        return bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public Booking createWalkInCheckIn(BookingRequest request) {
+        // 1. Tạo Booking cơ bản
+        Booking booking = createBooking(request, null);
+        
+        // 2. Chuyển sang trạng thái đã thanh toán ngay
+        booking.setStatus(BookingStatus.PAID);
+        booking.setPaymentDate(LocalDateTime.now());
+        booking.setPaidAmount(booking.getTotalAmount());
+
+        // 3. Tạo bản ghi Payment
+        Payment payment = new Payment();
+        payment.setBooking(booking);
+        payment.setAmount(booking.getTotalAmount());
+        payment.setPaymentDate(LocalDateTime.now());
+        payment.setPaymentStatus("SUCCESS");
+        payment.setNote("Thanh toán & Check-in tại quầy (Walk-in)");
+        paymentRepository.save(payment);
+
+        // 4. Thực hiện Check-in ngay lập tức cho các phòng đã chọn
+        if (request.getRoomIds() == null || request.getRoomIds().isEmpty()) {
+            throw new RuntimeException("Phải chọn ít nhất một phòng khi thực hiện Check-in tại quầy!");
+        }
+
+        Set<Room> assignedRooms = new HashSet<>();
+        for (String roomId : request.getRoomIds()) {
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new RuntimeException("Phòng " + roomId + " không tồn tại!"));
+
+            if (!"AVAILABLE".equals(room.getStatus())) {
+                throw new RuntimeException("Phòng " + room.getRoomName() + " hiện không khả dụng!");
+            }
+
+            room.setStatus("OCCUPIED");
+            roomRepository.save(room);
+            assignedRooms.add(room);
+        }
+
+        booking.setRooms(assignedRooms);
+        booking.setStatus(BookingStatus.CHECKED_IN);
+        
+        return bookingRepository.save(booking);
+    }
+    
+    @Override
+    @Transactional
+    public void updateBookingStatus(String bookingId, String status, String transactionNo) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
 
@@ -85,6 +264,17 @@ public class BookingServiceImpl implements BookingService {
 
         if (BookingStatus.PAID.equals(status)) {
             booking.setPaymentDate(LocalDateTime.now());
+            // Ghi nhận số tiền đã thanh toán ban đầu (thường là qua VNPay)
+            booking.setPaidAmount(booking.getTotalAmount());
+            
+            // Tự động tạo bản ghi Payment
+            Payment payment = new Payment();
+            payment.setBooking(booking);
+            payment.setAmount(booking.getTotalAmount());
+            payment.setPaymentDate(LocalDateTime.now());
+            payment.setPaymentStatus("SUCCESS");
+            payment.setTransactionNo(transactionNo); // Lưu mã giao dịch VNPay
+            paymentRepository.save(payment);
         }
 
         bookingRepository.save(booking);
@@ -100,7 +290,35 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Chỉ có thể check-in các đơn đã thanh toán!");
         }
 
+        LocalDate today = LocalDate.now();
+        if (today.isBefore(booking.getCheckIn())) {
+            // Khách đến sớm: cập nhật ngày check-in thực tế và tính lại tiền
+            booking.setCheckIn(today);
+            
+            long nightsCalculated = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckIn(), booking.getCheckOut());
+            final long nights = (nightsCalculated <= 0) ? 1 : nightsCalculated;
+
+            BigDecimal newTotalRoomAmount = booking.getBookedRooms().stream()
+                    .map(br -> br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(nights)))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal totalServiceAmount = booking.getBookedServices().stream()
+                    .flatMap(bs -> bs.getDetails().stream())
+                    .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            booking.setTotalAmount(newTotalRoomAmount.add(totalServiceAmount));
+        }
+
+        // Verify total number of assigned rooms matches booking
+        int expectedRooms = booking.getBookedRooms().stream().mapToInt(BookedRoom::getQuantity).sum();
+        if (request.getRoomIds().size() != expectedRooms) {
+            throw new RuntimeException("Số lượng phòng được gán (" + request.getRoomIds().size() + ") không khớp với số lượng đã đặt (" + expectedRooms + ")!");
+        }
+
         Set<Room> assignedRooms = new HashSet<>();
+        Map<String, Integer> typeCounter = new HashMap<>(); // Track count per room type
+
         for (String roomId : request.getRoomIds()) {
             Room room = roomRepository.findById(roomId)
                     .orElseThrow(() -> new RuntimeException("Phòng " + roomId + " không tồn tại!"));
@@ -109,18 +327,53 @@ public class BookingServiceImpl implements BookingService {
                 throw new RuntimeException("Phòng " + room.getRoomName() + " hiện không khả dụng!");
             }
 
-            // Verify room belongs to the booked room type
-            if (!room.getRoomType().getId().equals(booking.getRoomType().getId())) {
-                throw new RuntimeException("Phòng " + room.getRoomName() + " không thuộc loại phòng đã đặt!");
-            }
+            String typeId = room.getRoomType().getId();
+            typeCounter.put(typeId, typeCounter.getOrDefault(typeId, 0) + 1);
 
             room.setStatus("OCCUPIED");
             roomRepository.save(room);
             assignedRooms.add(room);
         }
 
+        // Verify assignment matches each RoomType quantity
+        for (BookedRoom br : booking.getBookedRooms()) {
+            int assignedCount = typeCounter.getOrDefault(br.getRoomType().getId(), 0);
+            if (assignedCount != br.getQuantity()) {
+                throw new RuntimeException("Số lượng phòng cho loại '" + br.getRoomType().getTypeName() + "' không khớp! (Đã gán: " + assignedCount + ", Yêu cầu: " + br.getQuantity() + ")");
+            }
+        }
+
         booking.setRooms(assignedRooms);
         booking.setStatus(BookingStatus.CHECKED_IN);
+        
+        // Update Guest info if provided during check-in
+        Guest guest = booking.getGuest();
+        if (guest != null) {
+            if (request.getGuestIdCard() != null && !request.getGuestIdCard().isEmpty()) {
+                guest.setIdNumber(request.getGuestIdCard());
+            }
+            if (request.getGuestFullName() != null && !request.getGuestFullName().isEmpty()) {
+                guest.setFullName(request.getGuestFullName());
+            }
+            guestRepository.save(guest);
+        }
+
+        // Save Occupants (Room Recipients)
+        if (request.getOccupants() != null && !request.getOccupants().isEmpty()) {
+            for (OccupantDTO occDto : request.getOccupants()) {
+                Room room = roomRepository.findById(occDto.getRoomId())
+                        .orElseThrow(() -> new RuntimeException("Phòng không tồn tại: " + occDto.getRoomId()));
+                
+                Occupant occupant = new Occupant();
+                occupant.setBooking(booking);
+                occupant.setRoom(room);
+                occupant.setFullName(occDto.getFullName());
+                occupant.setIdNumber(occDto.getIdNumber());
+                occupant.setPhone(occDto.getPhone());
+                occupantRepository.save(occupant);
+            }
+        }
+
         bookingRepository.save(booking);
     }
 
@@ -134,6 +387,28 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Chỉ có thể check-out các đơn đã check-in!");
         }
 
+        LocalDate today = LocalDate.now();
+        
+        // Tính toán lại số đêm ở thực tế (tối thiểu 1 đêm nếu checkout cùng ngày checkin)
+        long actualNightsCalc = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckIn(), today);
+        long actualNights = actualNightsCalc <= 0 ? 1 : actualNightsCalc;
+
+        // Tính toán lại tổng tiền phòng
+        BigDecimal actualRoomPrice = booking.getBookedRooms().stream()
+                .map(br -> br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(actualNights)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tính tổng tiền dịch vụ hiện tại
+        BigDecimal totalServiceAmount = booking.getBookedServices().stream()
+                .flatMap(bs -> bs.getDetails().stream())
+                .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Cập nhật lại thông tin booking
+        booking.setCheckOut(today);
+        booking.setTotalAmount(actualRoomPrice.add(totalServiceAmount));
+        booking.setStatus(BookingStatus.CHECKED_OUT);
+
         // Release all assigned rooms
         if (booking.getRooms() != null) {
             booking.getRooms().forEach(room -> {
@@ -142,18 +417,67 @@ public class BookingServiceImpl implements BookingService {
             });
         }
 
-        booking.setStatus(BookingStatus.CHECKED_OUT);
+        // --- NEW: Tự động tạo nhiệm vụ dọn phòng khi check-out ---
+        if (booking.getRooms() != null) {
+            String guestName = (booking.getGuest() != null) ? booking.getGuest().getFullName() : "Khách";
+            booking.getRooms().forEach(room -> {
+                workAssignmentService.createTaskFromService(
+                    null, // Không có detailId cho việc dọn phòng
+                    "Dọn phòng " + room.getRoomName(),
+                    room.getRoomName(),
+                    guestName,
+                    "ROLE_HOUSEKEEPING"
+                );
+            });
+        }
+
         bookingRepository.save(booking);
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Page<Booking> getMyBookings(String accountId, Pageable pageable) {
-        return bookingRepository.findByAccountId(accountId, pageable);
+        Page<Booking> bookings = bookingRepository.findByAccount_Id(accountId, pageable);
+        
+        // Fill transient fields for display in UI
+        bookings.forEach(booking -> {
+            booking.getBookedServices().forEach(bs -> {
+                bs.getDetails().forEach(detail -> {
+                    workAssignmentRepository.findByTargetId(detail.getId()).ifPresent(wa -> {
+                        detail.setServiceStatus(wa.getStatus());
+                        if (wa.getEmployee() != null) {
+                            detail.setStaffName(wa.getEmployee().getFullName());
+                        } else {
+                            detail.setStaffName("Đang chờ nhân viên...");
+                        }
+                    });
+                });
+            });
+        });
+        
+        return bookings;
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Page<Booking> getAllBookings(Pageable pageable) {
-        return bookingRepository.findAll(pageable);
+        Page<Booking> bookings = bookingRepository.findAll(pageable);
+        // Fill transient fields for display in UI
+        bookings.forEach(booking -> {
+            booking.getBookedServices().forEach(bs -> {
+                bs.getDetails().forEach(detail -> {
+                    workAssignmentRepository.findByTargetId(detail.getId()).ifPresent(wa -> {
+                        detail.setServiceStatus(wa.getStatus());
+                        if (wa.getEmployee() != null) {
+                            detail.setStaffName(wa.getEmployee().getFullName());
+                        } else {
+                            detail.setStaffName("Đang chờ...");
+                        }
+                    });
+                });
+            });
+        });
+        return bookings;
     }
 
     @Override
@@ -162,35 +486,511 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public Page<Booking> getPaidBookings(Pageable pageable) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Page<Booking> getPaidBookings(java.time.LocalDate date, String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            if (date != null) {
+                return bookingRepository.findByStatusAndCheckInAndKeyword(BookingStatus.PAID, date, keyword.trim(), pageable);
+            }
+            return bookingRepository.findByStatusAndKeyword(BookingStatus.PAID, keyword.trim(), pageable);
+        }
+        if (date != null) {
+            return bookingRepository.findByStatusAndCheckIn(BookingStatus.PAID, date, pageable);
+        }
         return bookingRepository.findByStatus(BookingStatus.PAID, pageable);
     }
 
     @Override
-    public Page<Booking> getCheckedInBookings(Pageable pageable) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Page<Booking> getCheckedInBookings(java.time.LocalDate date, String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            if (date != null) {
+                return bookingRepository.findByStatusAndCheckOutAndKeyword(BookingStatus.CHECKED_IN, date, keyword.trim(), pageable);
+            }
+            return bookingRepository.findByStatusAndKeyword(BookingStatus.CHECKED_IN, keyword.trim(), pageable);
+        }
+        if (date != null) {
+            return bookingRepository.findByStatusAndCheckOut(BookingStatus.CHECKED_IN, date, pageable);
+        }
         return bookingRepository.findByStatus(BookingStatus.CHECKED_IN, pageable);
     }
 
     @Override
     @Transactional
     public void bookService(BookServiceRequest request) {
+        if (request.getQuantity() <= 0) {
+            throw new RuntimeException("Số lượng dịch vụ phải lớn hơn 0!");
+        }
         Booking booking = bookingRepository.findById(request.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
 
         ExtraService service = extraServiceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại!"));
 
-        BookedService bookedService = new BookedService();
-        bookedService.setBooking(booking);
-        bookedService.setService(service);
-        bookedService.setQuantity(request.getQuantity());
-        bookedService.setUnitPrice(service.getPrice());
-        bookedService.setStatus("ORDERED");
+        if (!BookingStatus.CHECKED_IN.equals(booking.getStatus())) {
+            throw new RuntimeException("Chặn đặt dịch vụ! Phòng này đã Check-out hoặc chưa Check-in.");
+        }
 
+        // Tìm đơn dịch vụ đang ở trạng thái ORDERED cho phòng này (hoặc chung cho booking nếu không có phòng)
+        Optional<BookedService> activeOrderOpt = booking.getBookedServices().stream()
+                .filter(bs -> "ORDERED".equals(bs.getStatus()))
+                .filter(bs -> (request.getRoomId() == null && bs.getRoom() == null) || 
+                             (request.getRoomId() != null && bs.getRoom() != null && bs.getRoom().getId().equals(request.getRoomId())))
+                .findFirst();
+
+        BookedService bookedService;
+        if (activeOrderOpt.isPresent()) {
+            bookedService = activeOrderOpt.get();
+        } else {
+            bookedService = new BookedService();
+            bookedService.setBooking(booking);
+            bookedService.setStatus("ORDERED");
+            bookedService.setTotalAmount(BigDecimal.ZERO);
+            if (request.getRoomId() != null) {
+                Room room = roomRepository.findById(request.getRoomId())
+                        .orElseThrow(() -> new RuntimeException("Phòng không tồn tại!"));
+                bookedService.setRoom(room);
+            } else if (booking.getRooms() != null && booking.getRooms().size() == 1) {
+                // Nếu không truyền roomId nhưng booking chỉ có 1 phòng duy nhất
+                bookedService.setRoom(booking.getRooms().iterator().next());
+            }
+            bookedService = bookedServiceRepository.save(bookedService);
+            booking.getBookedServices().add(bookedService);
+        }
+
+        // Kiểm tra xem món này đã có trong đơn chưa
+        Optional<BookedDetail> existingDetail = bookedService.getDetails().stream()
+                .filter(d -> d.getService().getId().equals(service.getId()))
+                .findFirst();
+
+        if (existingDetail.isPresent()) {
+            BookedDetail detail = existingDetail.get();
+            detail.setQuantity(detail.getQuantity() + request.getQuantity());
+        } else {
+            BookedDetail detail = new BookedDetail();
+            detail.setBookedService(bookedService);
+            detail.setService(service);
+            detail.setQuantity(request.getQuantity());
+            detail.setUnitPrice(service.getPrice());
+            bookedService.getDetails().add(detail);
+        }
+
+        // Cập nhật tổng tiền của đơn
+        BigDecimal orderTotal = bookedService.getDetails().stream()
+                .map(d -> d.getUnitPrice().multiply(BigDecimal.valueOf(d.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        bookedService.setTotalAmount(orderTotal);
         bookedServiceRepository.save(bookedService);
 
+        // Cập nhật tổng tiền của Booking (phòng + tất cả dịch vụ)
+        // Lưu ý: Booking totalAmount ở đây thường là tiền phòng + các dịch vụ đã BOOKED.
+        // Cần tính toán lại hoặc cộng dồn. Ở đây em cộng dồn phần chênh lệch cho đơn giản.
         BigDecimal serviceTotal = service.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
-        booking.setTotalAmount(booking.getTotalAmount().add(serviceTotal));
+        BigDecimal currentTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
+        booking.setTotalAmount(currentTotal.add(serviceTotal));
         bookingRepository.save(booking);
+
+        // --- NEW: Tự động tạo nhiệm vụ cho bộ phận chuyên trách ---
+        if (service.getCategory() != null && service.getCategory().getRequiredRole() != null) {
+            String guestName = (booking.getGuest() != null) ? booking.getGuest().getFullName() : "Khách";
+            String roomName = (bookedService.getRoom() != null) ? bookedService.getRoom().getRoomName() : "N/A";
+            
+            // Tìm detail vừa tạo/cập nhật để lấy ID
+            bookedService.getDetails().stream()
+                .filter(d -> d.getService().getId().equals(service.getId()))
+                .findFirst()
+                .ifPresent(detail -> {
+                    workAssignmentService.createTaskFromService(
+                        detail.getId(), 
+                        service.getServiceName(), 
+                        roomName, 
+                        guestName, 
+                        service.getCategory().getRequiredRole()
+                    );
+                });
+        }
+    }
+
+    @Override
+    public Page<BookedServiceDTO> getAllBookedServices(String keyword, String status, Pageable pageable) {
+        // Luôn sắp xếp đơn mới nhất lên đầu nếu không có sort khác
+        if (pageable.getSort().isUnsorted()) {
+            pageable = org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(), 
+                pageable.getPageSize(), 
+                org.springframework.data.domain.Sort.by("createdAt").descending()
+            );
+        }
+        
+        Page<BookedService> bookedPage;
+        if (status != null && !status.isEmpty()) {
+            bookedPage = bookedServiceRepository.findByStatus(status, pageable);
+        } else if (keyword != null && !keyword.isEmpty()) {
+            bookedPage = bookedServiceRepository.searchBookedServices(keyword, pageable);
+        } else {
+            bookedPage = bookedServiceRepository.findAll(pageable);
+        }
+        return bookedPage.map(this::convertToBookedServiceDTO);
+    }
+
+    @Override
+    @Transactional
+    public BookedServiceDTO updateBookedServiceStatus(String id, String status) {
+        BookedService bookedService = bookedServiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Đơn dịch vụ không tồn tại!"));
+        
+        String oldStatus = bookedService.getStatus();
+        
+        // Nếu chuyển sang CANCELLED thì trừ tiền trong Booking
+        if ("CANCELLED".equals(status) && !"CANCELLED".equals(oldStatus)) {
+            Booking booking = bookedService.getBooking();
+            BigDecimal orderTotal = bookedService.getTotalAmount() != null ? bookedService.getTotalAmount() : BigDecimal.ZERO;
+            BigDecimal currentTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
+            booking.setTotalAmount(currentTotal.subtract(orderTotal));
+            bookingRepository.save(booking);
+        }
+        
+        bookedService.setStatus(status);
+        return convertToBookedServiceDTO(bookedServiceRepository.save(bookedService));
+    }
+
+    @Override
+    @Transactional
+    public BookedServiceDTO updateBookedServiceQuantity(String detailId, int newQuantity) {
+        if (newQuantity <= 0) {
+            throw new RuntimeException("Số lượng dịch vụ phải lớn hơn 0!");
+        }
+        BookedDetail detail = bookedDetailRepository.findById(detailId)
+                .orElseThrow(() -> new RuntimeException("Chi tiết dịch vụ không tồn tại!"));
+
+        BookedService bookedService = detail.getBookedService();
+
+        if (!"ORDERED".equals(bookedService.getStatus())) {
+            throw new RuntimeException("Chỉ có thể chỉnh sửa đơn hàng ở trạng thái 'Mới đặt'!");
+        }
+
+        int oldQuantity = detail.getQuantity();
+        BigDecimal unitPrice = detail.getUnitPrice();
+        BigDecimal amountDiff = unitPrice.multiply(BigDecimal.valueOf(newQuantity - oldQuantity));
+
+        detail.setQuantity(newQuantity);
+        bookedDetailRepository.save(detail);
+
+        // Cập nhật tổng tiền của đơn (BookedService)
+        BigDecimal newOrderTotal = bookedService.getDetails().stream()
+                .map(d -> d.getUnitPrice().multiply(BigDecimal.valueOf(d.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        bookedService.setTotalAmount(newOrderTotal);
+        bookedServiceRepository.save(bookedService);
+
+        // Cập nhật tổng tiền của Booking
+        Booking booking = bookedService.getBooking();
+        BigDecimal currentTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
+        booking.setTotalAmount(currentTotal.add(amountDiff));
+        bookingRepository.save(booking);
+
+        return convertToBookedServiceDTO(bookedService);
+    }
+
+    @Override
+    @Transactional
+    public void bookServices(String bookingId, String roomId, Map<String, Integer> serviceQuantities) {
+        if (serviceQuantities == null || serviceQuantities.isEmpty()) return;
+
+        for (Map.Entry<String, Integer> entry : serviceQuantities.entrySet()) {
+            BookServiceRequest request = new BookServiceRequest();
+            request.setBookingId(bookingId);
+            request.setRoomId(roomId);
+            request.setServiceId(entry.getKey());
+            request.setQuantity(entry.getValue());
+            bookService(request);
+        }
+    }
+
+    @Override
+    public Booking getActiveBookingByRoom(String roomId) {
+        return bookingRepository.findActiveBookingByRoom(roomId)
+                .orElseThrow(() -> new RuntimeException("Phòng hiện không có khách hoặc chưa Check-in!"));
+    }
+
+    @Override
+    @Transactional
+    public void rateBookedDetail(String id, int rating, String comment) {
+        BookedDetail detail = bookedDetailRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Món dịch vụ không tồn tại!"));
+        
+        if (!"DELIVERED".equals(detail.getBookedService().getStatus())) {
+            throw new RuntimeException("Chỉ có thể đánh giá dịch vụ sau khi đã nhận!");
+        }
+
+        detail.setRating(rating);
+        detail.setRatingComment(comment);
+        detail.setRatedAt(LocalDateTime.now());
+        
+        bookedDetailRepository.save(detail);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public CheckoutSummaryDTO getCheckoutSummary(String bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
+
+        LocalDate today = LocalDate.now();
+        LocalDate originalCheckOut = booking.getCheckOut();
+        
+        // Tính số đêm dự kiến ban đầu
+        long originalNightsCalc = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckIn(), originalCheckOut);
+        final long originalNights = originalNightsCalc <= 0 ? 1 : originalNightsCalc;
+
+        // Tính số đêm thực tế (đến ngày hôm nay)
+        // Nếu trả phòng sớm hơn dự kiến, sử dụng ngày hôm nay
+        LocalDate actualCheckOut = today.isBefore(originalCheckOut) ? today : originalCheckOut;
+        if (actualCheckOut.isBefore(booking.getCheckIn())) actualCheckOut = booking.getCheckIn();
+        
+        long actualNightsCalc = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckIn(), actualCheckOut);
+        final long actualNights = actualNightsCalc <= 0 ? 1 : actualNightsCalc;
+
+        // Lấy danh sách các loại phòng và tính toán tiền theo từng loại
+        List<CheckoutSummaryDTO.BookedRoomSummaryDTO> roomSummaries = booking.getBookedRooms().stream()
+                .map(br -> CheckoutSummaryDTO.BookedRoomSummaryDTO.builder()
+                        .roomTypeName(br.getRoomType().getTypeName())
+                        .quantity(br.getQuantity())
+                        .priceAtBooking(br.getPriceAtBooking())
+                        .subTotal(br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(actualNights)))
+                        .build())
+                .collect(Collectors.toList());
+
+        // Tổng tiền phòng thực tế
+        BigDecimal actualRoomPrice = roomSummaries.stream()
+                .map(CheckoutSummaryDTO.BookedRoomSummaryDTO::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng tiền phòng dự kiến ban đầu (để tính Adjustment)
+        BigDecimal originalRoomPrice = booking.getBookedRooms().stream()
+                .map(br -> br.getPriceAtBooking().multiply(BigDecimal.valueOf(br.getQuantity())).multiply(BigDecimal.valueOf(originalNights)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Chênh lệch (số tiền được giảm/thay đổi)
+        BigDecimal roomPriceAdjustment = actualRoomPrice.subtract(originalRoomPrice);
+
+        List<BookedServiceDTO> serviceDTOs = booking.getBookedServices().stream()
+                .map(this::convertToBookedServiceDTO)
+                .collect(Collectors.toList());
+
+        BigDecimal totalServiceAmount = serviceDTOs.stream()
+                .map(BookedServiceDTO::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng tiền thực tế = Tiền phòng thực tế + Tiền dịch vụ
+        BigDecimal totalAmount = actualRoomPrice.add(totalServiceAmount);
+        BigDecimal originalTotalAmount = originalRoomPrice.add(totalServiceAmount);
+        
+        BigDecimal paidAmount = booking.getPaidAmount() != null ? booking.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal balance = totalAmount.subtract(paidAmount);
+
+        List<OccupantDTO> occupantDTOs = booking.getOccupants() != null ? 
+                booking.getOccupants().stream().map(this::convertToOccupantDTO).collect(Collectors.toList()) : 
+                new ArrayList<>();
+
+        return CheckoutSummaryDTO.builder()
+                .bookingId(booking.getId())
+                .guestName(booking.getGuest() != null ? booking.getGuest().getFullName() : "Khách vãng lai")
+                .roomNames(booking.getRooms() != null ? booking.getRooms().stream().map(Room::getRoomName).collect(Collectors.joining(", ")) : "N/A")
+                .checkIn(booking.getCheckIn())
+                .checkOut(originalCheckOut)
+                .actualCheckOut(actualCheckOut)
+                .totalNights(originalNights)
+                .actualNights(actualNights)
+                .bookedRooms(roomSummaries) // Trả về danh sách chi tiết
+                .totalRoomPrice(actualRoomPrice)
+                .roomPriceAdjustment(roomPriceAdjustment)
+                .services(serviceDTOs)
+                .totalServiceAmount(totalServiceAmount)
+                .occupants(occupantDTOs)
+                .totalAmount(totalAmount)
+                .originalTotalAmount(originalTotalAmount)
+                .paidAmount(paidAmount)
+                .balance(balance)
+                .build();
+    }
+
+    @Override
+    public ByteArrayInputStream exportBookedServicesToExcel(String keyword, String status) {
+        List<BookedService> bookedServices;
+        if (keyword != null && !keyword.isEmpty()) {
+            bookedServices = bookedServiceRepository.searchBookedServicesList(keyword);
+            if (status != null && !status.isEmpty()) {
+                bookedServices = bookedServices.stream()
+                        .filter(bs -> bs.getStatus().equals(status))
+                        .collect(java.util.stream.Collectors.toList());
+            }
+        } else if (status != null && !status.isEmpty()) {
+            bookedServices = bookedServiceRepository.findByStatusAll(status);
+        } else {
+            bookedServices = bookedServiceRepository.findAll();
+        }
+        
+        String[] headers = { "Mã đơn", "Khách hàng", "Phòng", "Dịch vụ", "Số lượng", "Tổng tiền", "Trạng thái", "Ngày tạo" };
+        
+        return ExcelHelper.dataToExcel(bookedServices, "ServiceOrders", headers, (row, bs) -> {
+            row.createCell(0).setCellValue(bs.getId().substring(0, 8));
+            row.createCell(1).setCellValue(bs.getBooking().getGuest() != null ? bs.getBooking().getGuest().getFullName() : "Khách vãng lai");
+            row.createCell(2).setCellValue(bs.getRoom() != null ? bs.getRoom().getRoomName() : "N/A");
+            
+            String summary = bs.getDetails().stream()
+                    .map(d -> d.getService().getServiceName() + " (x" + d.getQuantity() + ")")
+                    .collect(Collectors.joining(", "));
+            row.createCell(3).setCellValue(summary);
+            
+            int totalQty = bs.getDetails().stream().mapToInt(BookedDetail::getQuantity).sum();
+            row.createCell(4).setCellValue(totalQty);
+            row.createCell(5).setCellValue(bs.getTotalAmount() != null ? bs.getTotalAmount().doubleValue() : 0.0);
+            row.createCell(6).setCellValue(bs.getStatus());
+            row.createCell(7).setCellValue(bs.getCreatedAt().toString());
+        });
+    }
+
+    private BookedServiceDTO convertToBookedServiceDTO(BookedService bs) {
+        List<BookedDetailDTO> detailDTOs = bs.getDetails().stream()
+                .map(d -> {
+                    String staffName = "Chưa có";
+                    String itemStatus = "PENDING";
+                    String assignmentId = null;
+                    
+                    Optional<WorkAssignment> assignment = workAssignmentRepository.findByTargetId(d.getId());
+                    if (assignment.isPresent()) {
+                        WorkAssignment wa = assignment.get();
+                        itemStatus = wa.getStatus();
+                        assignmentId = wa.getId();
+                        if (wa.getEmployee() != null) {
+                            staffName = wa.getEmployee().getFullName();
+                        }
+                    }
+
+                    BookedDetailDTO detailDto = new BookedDetailDTO();
+                    detailDto.setId(d.getId());
+                    detailDto.setServiceId(d.getService().getId());
+                    detailDto.setServiceName(d.getService().getServiceName());
+                    detailDto.setQuantity(d.getQuantity());
+                    detailDto.setUnitPrice(d.getUnitPrice());
+                    detailDto.setSubTotal(d.getUnitPrice().multiply(BigDecimal.valueOf(d.getQuantity())));
+                    detailDto.setStatus(itemStatus);
+                    detailDto.setStaffName(staffName);
+                    detailDto.setAssignmentId(assignmentId);
+                    detailDto.setRating(d.getRating());
+                    detailDto.setRatingComment(d.getRatingComment());
+                    detailDto.setRatedAt(d.getRatedAt());
+                    return detailDto;
+                })
+                .collect(Collectors.toList());
+
+        String serviceSummary = bs.getDetails().stream()
+                .map(d -> d.getService().getServiceName())
+                .collect(Collectors.joining(", "));
+        
+        Integer totalQty = bs.getDetails().stream()
+                .mapToInt(BookedDetail::getQuantity)
+                .sum();
+
+        BookedServiceDTO dto = new BookedServiceDTO();
+        dto.setId(bs.getId());
+        dto.setBookingId(bs.getBooking().getId());
+        dto.setGuestName(bs.getBooking().getGuest() != null ? bs.getBooking().getGuest().getFullName() : "Khách vãng lai");
+        dto.setRoomId(bs.getRoom() != null ? bs.getRoom().getId() : null);
+        dto.setRoomName(bs.getRoom() != null ? bs.getRoom().getRoomName() : "N/A");
+        dto.setServiceName(serviceSummary);
+        dto.setTotalQuantity(totalQty);
+        dto.setStatus(bs.getStatus());
+        dto.setTotalAmount(bs.getTotalAmount());
+        dto.setCreatedAt(bs.getCreatedAt());
+        dto.setDetails(detailDTOs);
+        return dto;
+    }
+
+    private OccupantDTO convertToOccupantDTO(Occupant occ) {
+        OccupantDTO dto = new OccupantDTO();
+        dto.setRoomId(occ.getRoom() != null ? occ.getRoom().getId() : null);
+        dto.setRoomName(occ.getRoom() != null ? occ.getRoom().getRoomName() : "N/A");
+        dto.setFullName(occ.getFullName());
+        dto.setIdNumber(occ.getIdNumber());
+        dto.setPhone(occ.getPhone());
+        return dto;
+    }
+    @Override
+    @Transactional
+    public void cancelBooking(String bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
+        
+        if (BookingStatus.CHECKED_IN.equals(booking.getStatus()) || 
+            BookingStatus.CHECKED_OUT.equals(booking.getStatus()) ||
+            BookingStatus.COMPLETED.equals(booking.getStatus())) {
+            throw new RuntimeException("Không thể hủy đơn đã Check-in hoặc đã hoàn thành!");
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        // Giải phóng phòng nếu đã gán (thường chưa gán trước check-in nhưng để an toàn)
+        if (booking.getRooms() != null) {
+            booking.getRooms().forEach(room -> {
+                room.setStatus("AVAILABLE");
+                roomRepository.save(room);
+            });
+            booking.getRooms().clear();
+        }
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public Booking updateBooking(String id, BookingRequest request) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
+
+        if (!BookingStatus.PENDING_PAYMENT.equals(booking.getStatus()) && !BookingStatus.PAID.equals(booking.getStatus())) {
+            throw new RuntimeException("Chỉ có thể chỉnh sửa các đơn hàng chưa Check-in!");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (request.getCheckIn().isBefore(today)) {
+            throw new RuntimeException("Ngày nhận phòng không được ở quá khứ!");
+        }
+
+        long nights = java.time.temporal.ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
+        if (nights <= 0) nights = 1;
+
+        booking.setCheckIn(request.getCheckIn());
+        booking.setCheckOut(request.getCheckOut());
+
+        // Cập nhật thông tin khách
+        if (booking.getGuest() != null) {
+            if (request.getGuestName() != null) booking.getGuest().setFullName(request.getGuestName());
+            if (request.getGuestPhone() != null) booking.getGuest().setPhone(request.getGuestPhone());
+            guestRepository.save(booking.getGuest());
+        }
+
+        BigDecimal totalRoomAmount = BigDecimal.ZERO;
+        
+        // Xóa bookedRooms cũ và tạo mới để căn chỉnh theo request
+        if (request.getRoomSelections() != null && !request.getRoomSelections().isEmpty()) {
+            booking.getBookedRooms().clear(); 
+            
+            for (RoomSelection selection : request.getRoomSelections()) {
+                RoomType roomType = roomTypeRepository.findById(selection.getRoomTypeId())
+                        .orElseThrow(() -> new RuntimeException("Loại phòng " + selection.getRoomTypeId() + " không tồn tại!"));
+
+                BookedRoom bookedRoom = new BookedRoom();
+                bookedRoom.setBooking(booking);
+                bookedRoom.setRoomType(roomType);
+                bookedRoom.setQuantity(selection.getQuantity());
+                bookedRoom.setPriceAtBooking(roomType.getPrice());
+                
+                totalRoomAmount = totalRoomAmount.add(roomType.getPrice().multiply(BigDecimal.valueOf(selection.getQuantity())).multiply(BigDecimal.valueOf(nights)));
+                booking.getBookedRooms().add(bookedRoom);
+            }
+            booking.setTotalAmount(totalRoomAmount);
+        }
+
+        return bookingRepository.save(booking);
     }
 }

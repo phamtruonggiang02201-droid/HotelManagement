@@ -8,72 +8,73 @@
 
 <body>
     <div layout:fragment="content">
-        <!-- HERO SECTION -->
+        <!-- HERO SECTION (Dynamic Slider) -->
         <section id="hero" class="min-h-screen pt-32 pb-20 hero-gradient relative overflow-hidden flex items-center">
-            <div class="max-w-[1400px] mx-auto px-10 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
-                <div>
-                    <span
-                        class="inline-block bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 shadow-sm">Premium
-                        Experience</span>
-                    <h1 class="text-6xl md:text-8xl font-black text-slate-900 leading-[1.1] mb-8">Nơi thời gian
-                        <br><span
-                            class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">ngừng
-                            đọng</span>
-                    </h1>
-                    <p class="text-slate-500 text-lg font-medium leading-relaxed max-w-lg mb-12">Khám phá không gian
-                        nghỉ dưỡng tuyệt vời nhất với dịch vụ chuẩn 5 sao quốc tế tại LuxeStay.</p>
-
-                    <div class="flex flex-wrap gap-4">
-                        <a th:href="@{/dashboard}" sec:authorize="isAuthenticated()"
-                            class="bg-indigo-600 text-white px-12 py-5 rounded-2xl font-black hover:bg-slate-900 transition-all shadow-xl shadow-indigo-600/30">Vào
-                            Dashboard</a>
-                        <a th:href="@{/register}" sec:authorize="!isAuthenticated()"
-                            class="bg-indigo-600 text-white px-12 py-5 rounded-2xl font-black hover:bg-slate-900 transition-all shadow-xl shadow-indigo-600/30">Đặt
-                            phòng ngay</a>
-                        <a href="#rooms"
-                            class="bg-white text-slate-900 border-2 border-slate-100 px-12 py-5 rounded-2xl font-black hover:bg-slate-50 transition-all">Xem
-                            các phòng</a>
-                    </div>
-
-                    <div class="mt-16 flex items-center gap-12">
-                        <div>
-                            <p class="text-3xl font-black text-slate-900">500+</p>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phòng cao cấp</p>
+            <div id="hero-slider-container" class="w-full relative z-10">
+                <!-- Fallback Slide (if no sliders configured) -->
+                <div th:if="${#lists.isEmpty(sliders)}"
+                    class="max-w-[1400px] mx-auto px-10 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                    <div>
+                        <span
+                            class="inline-block bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 shadow-sm">Premium
+                            Experience</span>
+                        <h1 class="text-6xl md:text-8xl font-black text-slate-900 leading-[1.1] mb-8">Nơi thời gian
+                            <br><span
+                                class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">ngừng
+                                đọng</span>
+                        </h1>
+                        <p class="text-slate-500 text-lg font-medium leading-relaxed max-w-lg mb-12">Khám phá không gian
+                            nghỉ dưỡng tuyệt vời nhất với dịch vụ chuẩn 5 sao quốc tế tại LuxeStay.</p>
+                        <div class="flex flex-wrap gap-4">
+                            <a th:href="@{/register}" sec:authorize="!isAuthenticated()"
+                                class="bg-indigo-600 text-white px-12 py-5 rounded-2xl font-black hover:bg-slate-900 transition-all shadow-xl shadow-indigo-600/30">Bắt
+                                đầu ngay</a>
                         </div>
-                        <div class="w-px h-10 bg-slate-200"></div>
-                        <div>
-                            <p class="text-3xl font-black text-slate-900">12+</p>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dịch vụ Spa</p>
+                    </div>
+                    <div class="relative rounded-[64px] overflow-hidden shadow-2xl aspect-square lg:aspect-[4/5]">
+                        <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&q=80&w=1200"
+                            class="w-full h-full object-cover">
+                    </div>
+                </div>
+
+                <!-- Dynamic Slides -->
+                <div th:unless="${#lists.isEmpty(sliders)}" class="slider-wrapper relative">
+                    <div th:each="s, iter : ${sliders}" th:id="'slide-' + ${iter.index}"
+                        class="slide-item absolute inset-0 opacity-0 transition-opacity duration-1000 flex items-center"
+                        th:classappend="${iter.index == 0} ? 'active !relative !opacity-100' : ''">
+                        <div class="max-w-[1400px] mx-auto px-10 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                            <div class="animate-in slide-in-from-left duration-700">
+                                <span
+                                    class="inline-block bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 shadow-sm">LuxeStay
+                                    Experience</span>
+                                <h1 class="text-6xl md:text-8xl font-black text-slate-900 leading-[1.1] mb-8"
+                                    th:text="${s.title}">Tiêu đề Slider</h1>
+                                <p class="text-slate-500 text-lg font-medium leading-relaxed max-w-lg mb-12"
+                                    th:text="${s.subtitle}">Mô tả ngắn cho slider này.</p>
+                                <div class="flex flex-wrap gap-4">
+                                    <a th:href="@{/register}" sec:authorize="!isAuthenticated()"
+                                        class="bg-indigo-600 text-white px-12 py-5 rounded-2xl font-black hover:bg-slate-900 transition-all shadow-xl shadow-indigo-600/30">Đặt
+                                        phòng ngay</a>
+                                </div>
+                            </div>
+                            <div
+                                class="relative rounded-[64px] overflow-hidden shadow-2xl aspect-square lg:aspect-[4/5] animate-in zoom-in duration-700">
+                                <img th:src="${s.imageUrl}" class="w-full h-full object-cover">
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="relative">
-                    <div class="absolute -inset-4 bg-indigo-600/10 blur-3xl rounded-full"></div>
-                    <div class="relative rounded-[64px] overflow-hidden shadow-2xl aspect-square lg:aspect-[4/5]">
-                        <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&q=80&w=1200"
-                            class="w-full h-full object-cover">
-                        <div
-                            class="absolute bottom-10 left-10 right-10 bg-white/10 backdrop-blur-xl p-8 rounded-[40px] border border-white/20">
-                            <div class="flex items-center gap-4 mb-4">
-                                <div class="flex -space-x-3">
-                                    <div
-                                        class="w-10 h-10 rounded-full border-2 border-white bg-slate-200 overflow-hidden">
-                                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100"
-                                            class="w-full h-full object-cover">
-                                    </div>
-                                    <div
-                                        class="w-10 h-10 rounded-full border-2 border-white bg-slate-300 overflow-hidden">
-                                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"
-                                            class="w-full h-full object-cover">
-                                    </div>
-                                </div>
-                                <p class="text-white text-xs font-bold uppercase tracking-widest">1k+ Khách đã đặt</p>
-                            </div>
-                            <p class="text-white text-xl font-bold italic leading-tight">"Một trải nghiệm tuyệt vời,
-                                nhân viên vô cùng chuyên nghiệp!"</p>
-                        </div>
-                    </div>
+                <!-- Slider Controls -->
+                <div th:unless="${#lists.isEmpty(sliders)}" class="absolute bottom-4 left-10 flex gap-4 z-20">
+                    <button onclick="prevSlide()"
+                        class="w-12 h-12 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all">
+                        <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                    </button>
+                    <button onclick="nextSlide()"
+                        class="w-12 h-12 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all">
+                        <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                    </button>
                 </div>
             </div>
 
@@ -172,42 +173,89 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                    <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
+                    <!-- Guest View: Images Only -->
+                    <th:block sec:authorize="!isAuthenticated()">
                         <div
-                            class="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                            <i data-lucide="waves" class="w-8 h-8"></i>
+                            class="group relative aspect-[4/5] rounded-[56px] overflow-hidden shadow-sm hover:shadow-2xl transition-all">
+                            <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecee?auto=format&fit=crop&q=80&w=800"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                            <div
+                                class="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-slate-900/60 to-transparent">
+                                <p class="text-white text-lg font-black uppercase tracking-widest">Hồ bơi vô cực</p>
+                            </div>
                         </div>
-                        <h3 class="text-xl font-bold mb-4">Hồ bơi vô cực</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed">View trực diện biển xanh, không gian thư giãn
-                            tuyệt đối.</p>
-                    </div>
+                        <div
+                            class="group relative aspect-[4/5] rounded-[56px] overflow-hidden shadow-sm hover:shadow-2xl transition-all">
+                            <img src="https://images.unsplash.com/photo-1550966841-3ee322849881?auto=format&fit=crop&q=80&w=800"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                            <div
+                                class="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-slate-900/60 to-transparent">
+                                <p class="text-white text-lg font-black uppercase tracking-widest">Nhà hàng 5 sao</p>
+                            </div>
+                        </div>
+                        <div
+                            class="group relative aspect-[4/5] rounded-[56px] overflow-hidden shadow-sm hover:shadow-2xl transition-all">
+                            <img src="https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&q=80&w=800"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                            <div
+                                class="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-slate-900/60 to-transparent">
+                                <p class="text-white text-lg font-black uppercase tracking-widest">Spa & Wellness</p>
+                            </div>
+                        </div>
+                        <div
+                            class="group relative aspect-[4/5] rounded-[56px] overflow-hidden shadow-sm hover:shadow-2xl transition-all">
+                            <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=800"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                            <div
+                                class="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-slate-900/60 to-transparent">
+                                <p class="text-white text-lg font-black uppercase tracking-widest">Đưa đón sân bay</p>
+                            </div>
+                        </div>
+                    </th:block>
 
-                    <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
-                        <div
-                            class="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                            <i data-lucide="utensils-crossed" class="w-8 h-8"></i>
+                    <!-- Authenticated View: Full Details -->
+                    <th:block sec:authorize="isAuthenticated()">
+                        <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
+                            <div
+                                class="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                                <i data-lucide="waves" class="w-8 h-8"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-4">Hồ bơi vô cực</h3>
+                            <p class="text-slate-400 text-sm leading-relaxed">View trực diện biển xanh, không gian thư
+                                giãn
+                                tuyệt đối.</p>
                         </div>
-                        <h3 class="text-xl font-bold mb-4">Nhà hàng 5 sao</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed">Ẩm thực đa dạng hòa quyện hương vị Á - Âu.</p>
-                    </div>
 
-                    <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
-                        <div
-                            class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                            <i data-lucide="sparkles" class="w-8 h-8"></i>
+                        <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
+                            <div
+                                class="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                                <i data-lucide="utensils-crossed" class="w-8 h-8"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-4">Nhà hàng 5 sao</h3>
+                            <p class="text-slate-400 text-sm leading-relaxed">Ẩm thực đa dạng hòa quyện hương vị Á - Âu.
+                            </p>
                         </div>
-                        <h3 class="text-xl font-bold mb-4">Spa & Wellness</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed">Liệu trình chăm sóc sức khỏe chuyên sâu.</p>
-                    </div>
 
-                    <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
-                        <div
-                            class="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                            <i data-lucide="plane" class="w-8 h-8"></i>
+                        <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
+                            <div
+                                class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                                <i data-lucide="sparkles" class="w-8 h-8"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-4">Spa & Wellness</h3>
+                            <p class="text-slate-400 text-sm leading-relaxed">Liệu trình chăm sóc sức khỏe chuyên sâu.
+                            </p>
                         </div>
-                        <h3 class="text-xl font-bold mb-4">Đưa đón sân bay</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed">Dịch vụ xe sang đưa đón tận nơi an toàn.</p>
-                    </div>
+
+                        <div class="bg-white p-12 rounded-[56px] shadow-sm hover:shadow-2xl transition-all group">
+                            <div
+                                class="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                                <i data-lucide="plane" class="w-8 h-8"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-4">Đưa đón sân bay</h3>
+                            <p class="text-slate-400 text-sm leading-relaxed">Dịch vụ xe sang đưa đón tận nơi an toàn.
+                            </p>
+                        </div>
+                    </th:block>
                 </div>
             </div>
         </section>
@@ -237,6 +285,31 @@
             </div>
         </section>
     </div>
+    <script layout:fragment="script">
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide-item');
+
+        function showSlide(index) {
+            if (slides.length === 0) return;
+
+            slides[currentSlide].classList.remove('active', '!relative', '!opacity-100');
+            currentSlide = (index + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active', '!relative', '!opacity-100');
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        // Auto slide
+        if (slides.length > 1) {
+            setInterval(nextSlide, 5000);
+        }
+    </script>
 </body>
 
 </html>
