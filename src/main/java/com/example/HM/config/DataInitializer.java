@@ -99,11 +99,11 @@ public class DataInitializer {
             // 2. Init Default Accounts
             if (accountRepository.findByUsername("admin").isEmpty() && adminRole != null) {
                 Account admin = new Account();
-                admin.setUsername("admin");
-                admin.setPassword(passwordEncoder.encode("Admin@123"));
-                admin.setEmail("admin@luxestay.com");
+                admin.setUsername("admin123");
+                admin.setPassword(passwordEncoder.encode("Admin@1231"));
+                admin.setEmail("admin123@luxestay.com");
                 admin.setFirstName("Hệ thống");
-                admin.setLastName("Admin");
+                admin.setLastName("Admin1");
                 admin.setRole(adminRole);
                 admin.setStatus(true);
                 admin.setEmailVerified(true);
