@@ -23,4 +23,7 @@ public class Room extends BaseEntity {
 
     @Column(name = "RoomName", length = 100)
     private String roomName;
+
+    // Explicit getter for compiler issues
+    public RoomType getRoomType() { return roomType; }
 }

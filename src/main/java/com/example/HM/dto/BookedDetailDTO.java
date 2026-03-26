@@ -19,5 +19,6 @@ public class BookedDetailDTO {
     private String ratingComment;
     private String status; // Trạng thái xử lý: PENDING, PROCESSING, COMPLETED
     private String staffName; // Tên nhân viên phục vụ
+    private String assignmentId; // ID của WorkAssignment liên quan
     private LocalDateTime ratedAt;
 }

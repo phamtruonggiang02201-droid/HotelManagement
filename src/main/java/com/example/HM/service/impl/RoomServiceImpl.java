@@ -21,6 +21,7 @@ import com.example.HM.util.ExcelHelper;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -135,7 +136,7 @@ public class RoomServiceImpl implements RoomService {
                 .orElseThrow(() -> new RuntimeException("Loại phòng không hợp lệ!"));
 
         Room room = new Room();
-        room.setRoomName(request.getRoomName());
+        room.setRoomName(request.getRoomName().trim());
         room.setRoomType(roomType);
         room.setStatus(request.getStatus() != null ? request.getStatus() : "AVAILABLE");
         if (request.getAreaId() != null && !request.getAreaId().isBlank()) {
@@ -161,9 +162,9 @@ public class RoomServiceImpl implements RoomService {
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
                 .orElseThrow(() -> new RuntimeException("Loại phòng không hợp lệ!"));
 
-        room.setRoomName(request.getRoomName());
+        room.setRoomName(request.getRoomName().trim());
         room.setRoomType(roomType);
-        room.setStatus(request.getStatus());
+        room.setStatus(request.getStatus() != null ? request.getStatus() : room.getStatus());
         if (request.getAreaId() != null && !request.getAreaId().isBlank()) {
             areaRepository.findById(request.getAreaId()).ifPresent(room::setArea);
         } else {
@@ -262,14 +263,14 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     @Transactional
-    public void importRoomsFromExcel(MultipartFile file) {
+    public String importRoomsFromExcel(MultipartFile file) {
         try {
-            List<Room> rooms = ExcelHelper.excelToData(file.getInputStream(), "Rooms", row -> {
+            List<Room> allRooms = ExcelHelper.excelToData(file.getInputStream(), "Rooms", row -> {
                 String roomName = ExcelHelper.getCellValueAsString(row.getCell(1));
-                if (roomName.isEmpty()) return null;
+                if (roomName == null || roomName.trim().isEmpty()) return null;
                 
                 Room r = new Room();
-                r.setRoomName(roomName);
+                r.setRoomName(roomName.trim());
                 
                 String typeName = ExcelHelper.getCellValueAsString(row.getCell(2));
                 RoomType rt = roomTypeRepository.findAll().stream()
@@ -281,12 +282,22 @@ public class RoomServiceImpl implements RoomService {
                 r.setStatus(ExcelHelper.getCellValueAsString(row.getCell(3)));
                 return r;
             });
+
+            int duplicateCount = 0;
+            List<Room> toSave = new ArrayList<>();
+            for (Room r : allRooms) {
+                if (roomRepository.existsByRoomName(r.getRoomName())) {
+                    duplicateCount++;
+                } else {
+                    toSave.add(r);
+                }
+            }
             
-            // Skip existing names
-            rooms.removeIf(r -> roomRepository.existsByRoomName(r.getRoomName()));
-            roomRepository.saveAll(rooms);
+            roomRepository.saveAll(toSave);
+            return String.format("Nhập dữ liệu thành công! Đã thêm %d phòng mới. Bỏ qua %d phòng do trùng tên.", 
+                    toSave.size(), duplicateCount);
         } catch (IOException e) {
-            throw new RuntimeException("Could not store the data: " + e.getMessage());
+            throw new RuntimeException("Lỗi đọc file Excel: " + e.getMessage());
         }
     }
 
@@ -305,5 +316,23 @@ public class RoomServiceImpl implements RoomService {
                 .areaId(room.getArea() != null ? room.getArea().getId() : null)
                 .areaName(room.getArea() != null ? room.getArea().getAreaName() : null)
                 .build();
+    }
+    @Override
+    @Transactional
+    public void assignDefaultAreaToOldRooms() {
+        List<Room> roomsWithoutArea = roomRepository.findAll().stream()
+                .filter(r -> r.getArea() == null)
+                .collect(Collectors.toList());
+        
+        if (roomsWithoutArea.isEmpty()) return;
+
+        Area defaultArea = areaRepository.findAll().stream()
+                .findFirst()
+                .orElse(null);
+
+        if (defaultArea != null) {
+            roomsWithoutArea.forEach(r -> r.setArea(defaultArea));
+            roomRepository.saveAll(roomsWithoutArea);
+        }
     }
 }
