@@ -29,4 +29,9 @@ public interface BookedServiceRepository extends JpaRepository<BookedService, St
     @Query("SELECT bs FROM BookedService bs WHERE bs.status = :status")
     List<BookedService> findByStatusAll(@Param("status") String status);
 
+    @Query("SELECT s.serviceName as name, SUM(d.quantity) as count " +
+           "FROM BookedService bs JOIN bs.details d JOIN d.service s " +
+           "WHERE bs.status = 'DELIVERED' " +
+           "GROUP BY s.serviceName ORDER BY SUM(d.quantity) DESC")
+    List<Object[]> getTopServices(Pageable pageable);
 }
