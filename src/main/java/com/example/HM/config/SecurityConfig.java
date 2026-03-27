@@ -37,7 +37,8 @@ public class SecurityConfig {
                                 "/forgot-password", "/reset-password", "/api/forgot-password", "/api/reset-password",
                                 "/services/quick-order", "/api/public/**").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
-                .requestMatchers("/api/payment/**").permitAll()
+                .requestMatchers("/api/payment/vnpay-return", "/api/payment/vnpay-ipn").permitAll()
+                .requestMatchers("/api/payment/create-vnpay").authenticated()
                 // Room & Service APIs
                 .requestMatchers(HttpMethod.GET, "/api/rooms/**", "/api/services/**", "/api/categories/**", "/api/enumerations/**", "/api/areas/**").permitAll()
                 .requestMatchers("/api/rooms/**", "/api/services/**", "/api/areas/**").hasAnyRole("ADMIN", "MANAGER")
