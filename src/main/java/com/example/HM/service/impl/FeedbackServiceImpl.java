@@ -3,16 +3,8 @@ package com.example.HM.service.impl;
 import com.example.HM.dto.FeedbackRequest;
 import com.example.HM.dto.RefundRequest;
 import com.example.HM.dto.RoomIssueRequest;
-import com.example.HM.entity.Booking;
-import com.example.HM.entity.Feedback;
-import com.example.HM.entity.Refund;
-import com.example.HM.entity.Room;
-import com.example.HM.entity.RoomIssueReport;
-import com.example.HM.repository.BookingRepository;
-import com.example.HM.repository.FeedbackRepository;
-import com.example.HM.repository.RefundRepository;
-import com.example.HM.repository.RoomIssueReportRepository;
-import com.example.HM.repository.RoomRepository;
+import com.example.HM.entity.*;
+import com.example.HM.repository.*;
 import com.example.HM.service.FeedbackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -31,6 +24,9 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final RefundRepository refundRepository;
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
+    private final RoomTypeRepository roomTypeRepository;
+    private final ExtraServiceRepository extraServiceRepository;
+    private final PaymentRepository paymentRepository;
 
     // ======================== FEEDBACK ========================
 
@@ -47,21 +43,58 @@ public class FeedbackServiceImpl implements FeedbackService {
         Booking booking = bookingRepository.findById(request.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
 
-        if (feedbackRepository.existsByBookingId(request.getBookingId())) {
-            throw new RuntimeException("Bạn đã gửi đánh giá cho đơn này rồi!");
+        java.util.Optional<Feedback> existingFeedback = java.util.Optional.empty();
+        RoomType roomType = null;
+        ExtraService service = null;
+
+        if (request.getRoomTypeId() != null && !request.getRoomTypeId().isBlank()) {
+            roomType = roomTypeRepository.findById(request.getRoomTypeId()).orElse(null);
+            if (roomType != null) {
+                existingFeedback = feedbackRepository.findByBookingAndRoomType(booking, roomType);
+            }
+        } else if (request.getServiceId() != null && !request.getServiceId().isBlank()) {
+            service = extraServiceRepository.findById(request.getServiceId()).orElse(null);
+            if (service != null) {
+                existingFeedback = feedbackRepository.findByBookingAndExtraService(booking, service);
+            }
         }
 
-        Feedback feedback = new Feedback();
+        Feedback feedback = existingFeedback.orElse(new Feedback());
         feedback.setBooking(booking);
         feedback.setRating(request.getRating());
         feedback.setComment(request.getComment());
+        feedback.setRoomType(roomType);
+        feedback.setExtraService(service);
+
+        // Reset admin reply if user edits feedback? Maybe keep it. 
+        // For now, let's just update the user content.
 
         return feedbackRepository.save(feedback);
     }
 
     @Override
-    public Page<Feedback> getAllFeedbacks(Pageable pageable) {
+    public Page<Feedback> getAllFeedbacks(Integer rating, Pageable pageable) {
+        if (rating != null && rating >= 1 && rating <= 5) {
+            return feedbackRepository.findByRatingOrderByCreatedAtDesc(rating, pageable);
+        }
         return feedbackRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+
+    @Override
+    public Page<Feedback> getFeedbacksByRoomType(String roomTypeId, Pageable pageable) {
+        return feedbackRepository.findByRoomType_IdOrderByCreatedAtDesc(roomTypeId, pageable);
+    }
+
+    @Override
+    @Transactional
+    public Feedback replyToFeedback(String feedbackId, String reply) {
+        Feedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new RuntimeException("Đánh giá không tồn tại!"));
+        
+        feedback.setAdminReply(reply);
+        feedback.setRepliedAt(LocalDateTime.now());
+        
+        return feedbackRepository.save(feedback);
     }
 
     // ======================== ROOM ISSUES ========================
@@ -94,7 +127,10 @@ public class FeedbackServiceImpl implements FeedbackService {
     }
 
     @Override
-    public Page<RoomIssueReport> getAllIssues(Pageable pageable) {
+    public Page<RoomIssueReport> getAllIssues(String status, Pageable pageable) {
+        if (status != null && !status.isBlank()) {
+            return roomIssueReportRepository.findByStatus(status, pageable);
+        }
         return roomIssueReportRepository.findAllByOrderByCreatedAtDesc(pageable);
     }
 
@@ -126,8 +162,13 @@ public class FeedbackServiceImpl implements FeedbackService {
         Booking booking = bookingRepository.findById(request.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Booking không tồn tại!"));
 
-        if (refundRepository.existsByBookingId(request.getBookingId())) {
-            throw new RuntimeException("Bạn đã gửi yêu cầu hoàn tiền cho đơn này rồi!");
+        // Kiểm tra số dư khả dụng để hoàn tiền
+        BigDecimal paidAmount = booking.getPaidAmount() != null ? booking.getPaidAmount() : BigDecimal.ZERO;
+        if (paidAmount.compareTo(request.getAmount()) < 0) {
+            String msg = String.format("Số tiền hoàn trả (%s đ) không được vượt quá số tiền khách đã thanh toán (%s đ)!", 
+                new java.text.DecimalFormat("#,###").format(request.getAmount()),
+                new java.text.DecimalFormat("#,###").format(paidAmount));
+            throw new RuntimeException(msg);
         }
 
         Refund refund = new Refund();
@@ -137,11 +178,18 @@ public class FeedbackServiceImpl implements FeedbackService {
         refund.setStatus("PENDING");
         refund.setRequestedAt(LocalDateTime.now());
 
+        // Tự động tìm giao dịch gần nhất để liên kết
+        paymentRepository.findTopByBookingIdAndPaymentStatusOrderByPaymentDateDesc(booking.getId(), "SUCCESS")
+                .ifPresent(refund::setPayment);
+
         return refundRepository.save(refund);
     }
 
     @Override
-    public Page<Refund> getAllRefunds(Pageable pageable) {
+    public Page<Refund> getAllRefunds(String status, Pageable pageable) {
+        if (status != null && !status.isBlank()) {
+            return refundRepository.findByStatus(status, pageable);
+        }
         return refundRepository.findAllByOrderByRequestedAtDesc(pageable);
     }
 
@@ -153,6 +201,30 @@ public class FeedbackServiceImpl implements FeedbackService {
 
         if (!"PENDING".equals(refund.getStatus())) {
             throw new RuntimeException("Yêu cầu này đã được xử lý!");
+        }
+
+        if (!"APPROVED".equals(status) && !"REJECTED".equals(status)) {
+            throw new RuntimeException("Trạng thái không hợp lệ! Chỉ chấp nhận APPROVED hoặc REJECTED.");
+        }
+
+        if ("APPROVED".equals(status)) {
+            Booking booking = refund.getBooking();
+            
+            // 1. Cập nhật paidAmount trong Booking
+            BigDecimal currentPaid = booking.getPaidAmount() != null ? booking.getPaidAmount() : BigDecimal.ZERO;
+            booking.setPaidAmount(currentPaid.subtract(refund.getRefundAmount()));
+            bookingRepository.save(booking);
+
+            // 2. Tạo bản ghi Payment âm (Phiếu chi)
+            Payment payment = new Payment();
+            payment.setBooking(booking);
+            payment.setAmount(refund.getRefundAmount().negate());
+            payment.setPaymentDate(LocalDateTime.now());
+            payment.setPaymentStatus("REFUNDED");
+            if (refund.getPayment() != null) {
+                payment.setPaymentMethod(refund.getPayment().getPaymentMethod());
+            }
+            paymentRepository.save(payment);
         }
 
         refund.setStatus(status);
