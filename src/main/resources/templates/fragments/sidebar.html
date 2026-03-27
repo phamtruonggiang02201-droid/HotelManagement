@@ -31,16 +31,6 @@
                 <i data-lucide="bed" class="w-5 h-5"></i>
                 <span class="font-medium text-sm" th:text="#{nav.rooms}">Phòng nghỉ</span>
             </a>
-            <a th:href="@{/bookings/new}" th:classappend="${currentUri == '/bookings/new'} ? 'sidebar-item-active' : ''"
-                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
-                <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400"></i>
-                <span class="font-medium text-sm text-indigo-100" th:text="#{nav.bookings}">Đặt phòng</span>
-            </a>
-            <a th:href="@{/feedback}" th:classappend="${currentUri == '/feedback'} ? 'sidebar-item-active' : ''"
-                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
-                <i data-lucide="star" class="w-5 h-5 text-amber-400"></i>
-                <span class="font-medium text-sm">Đánh giá từ khách</span>
-            </a>
             <a th:href="@{/feedback}" th:classappend="${currentUri == '/feedback'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="star" class="w-5 h-5 text-amber-400"></i>
@@ -49,14 +39,8 @@
 
             <!-- Dành cho Khách hàng (CUSTOMER) -->
             <div sec:authorize="hasRole('CUSTOMER')"
-                class="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Dành cho Khách
-                hàng</div>
+                class="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Dành cho Khách hàng</div>
 
-            <a th:href="@{/feedback}" sec:authorize="hasRole('CUSTOMER')"
-                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
-                <i data-lucide="message-square-heart" class="w-5 h-5"></i>
-                <span class="font-medium text-sm">Gửi đánh giá</span>
-            </a>
             <a th:href="@{/bookings/my-bookings}" sec:authorize="hasRole('CUSTOMER')"
                 th:classappend="${currentUri == '/bookings/my-bookings'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
@@ -80,13 +64,13 @@
             <div sec:authorize="hasAnyRole('EMPLOYEE', 'RECEPTION')"
                 class="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nhân sự & Vận hành
             </div>
-            <a th:href="@{/bookings/reception}" sec:authorize="hasAnyRole('RECEPTION', 'ADMIN', 'MANAGER')"
+            <a th:href="@{/bookings/reception}" sec:authorize="hasRole('RECEPTION')"
                 th:classappend="${currentUri == '/bookings/reception'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="log-in" class="w-5 h-5"></i>
                 <span class="font-medium text-sm" th:text="#{nav.reception}">Quản lý Check-in/out</span>
             </a>
-            <a th:href="@{/management/assignments/my-schedule}" 
+            <a th:href="@{/management/assignments/my-schedule}"
                 sec:authorize="hasAnyRole('EMPLOYEE', 'RECEPTION', 'MANAGER')"
                 th:classappend="${currentUri == '/management/assignments/my-schedule'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
@@ -99,16 +83,22 @@
                 <i data-lucide="grid-3x3" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Vận hành phòng</span>
             </a>
-            <a href="#" data-target="guest-requests-section" sec:authorize="hasRole('RECEPTION')"
-                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
-                <i data-lucide="bell-ring" class="w-5 h-5"></i>
-                <span class="font-medium text-sm">Yêu cầu khách hàng</span>
-            </a>
 
             <!-- Dành cho Admin & Manager (ADMIN, MANAGER) -->
+            <a th:href="@{/bookings/admin/history}" sec:authorize="hasRole('RECEPTION')"
+                th:classappend="${currentUri == '/bookings/admin/history'} ? 'sidebar-item-active' : ''"
+                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
+                <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Lịch sử booking</span>
+            </a>
+            <a th:href="@{/api/payment/admin/history}" sec:authorize="hasRole('RECEPTION')"
+                th:classappend="${currentUri == '/api/payment/admin/history'} ? 'sidebar-item-active' : ''"
+                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
+                <i data-lucide="receipt" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Lịch sử thanh toán</span>
+            </a>
             <div sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
-                class="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Hệ thống & Quản
-                trị</div>
+                class="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Hệ thống & Quản trị</div>
             <a th:href="@{/management/room-types}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
                 th:classappend="${currentUri == '/management/room-types'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
@@ -120,6 +110,12 @@
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="door-open" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Quản lý Phòng</span>
+            </a>
+            <a th:href="@{/management/areas}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
+                th:classappend="${currentUri == '/management/areas'} ? 'sidebar-item-active' : ''"
+                class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
+                <i data-lucide="map" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Quản lý Khu vực (Area)</span>
             </a>
             <a th:href="@{/feedback/summary}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
                 th:classappend="${currentUri == '/feedback/summary'} ? 'sidebar-item-active' : ''"
@@ -151,13 +147,13 @@
                 <i data-lucide="bar-chart-big" class="w-5 h-5"></i>
                 <span class="font-medium text-sm" th:text="#{nav.statistics}">Doanh thu / Thống kê</span>
             </a>
-            <a th:href="@{/bookings/admin/history}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')"
+            <a th:href="@{/bookings/admin/history}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
                 th:classappend="${currentUri == '/bookings/admin/history'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="clipboard-list" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Lịch sử booking</span>
             </a>
-            <a th:href="@{/api/payment/admin/history}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')"
+            <a th:href="@{/api/payment/admin/history}" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
                 th:classappend="${currentUri == '/api/payment/admin/history'} ? 'sidebar-item-active' : ''"
                 class="nav-link flex items-center gap-3 p-3.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <i data-lucide="receipt" class="w-5 h-5"></i>

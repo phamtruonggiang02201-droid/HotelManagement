@@ -26,12 +26,6 @@
                     class="w-full md:w-1/2 bg-white border border-slate-200 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm">
             </div>
 
-            <!-- Search Bar -->
-            <div class="mb-6">
-                <input type="text" id="room-type-search-input" placeholder="Tìm kiếm theo tên loại phòng..."
-                    class="w-full md:w-1/2 bg-white border border-slate-200 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm">
-            </div>
-
             <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead
@@ -53,69 +47,6 @@
             <!-- Pagination Controls -->
             <div id="room-type-pagination" class="flex justify-center items-center gap-4 mt-8">
                 <!-- Pagination buttons will be rendered here -->
-            </div>
-        </section>
-
-        <!-- Room Type Manage Modal -->
-        <div id="room-type-manage-modal" class="modal">
-            <div class="bg-white w-full max-w-xl rounded-[56px] p-12 relative shadow-2xl">
-                <button onclick="toggleModal('room-type-manage-modal', false)"
-                    class="absolute top-8 right-8 text-slate-400"><i data-lucide="x" class="w-8 h-8"></i></button>
-                <h2 id="room-type-modal-title" class="text-3xl font-black mb-8 text-slate-900">Thêm loại phòng mới</h2>
-                <form id="room-type-form" class="space-y-6">
-                    <input type="hidden" id="room-type-id-input">
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Tên loại phòng</label>
-                        <input type="text" id="room-type-name" required placeholder="Ví dụ: Deluxe King"
-                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500">
-                    </div>
-                    <div class="grid grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Sức chứa (Người)</label>
-                            <input type="number" id="room-type-capacity" required placeholder="Số người tối đa"
-                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500">
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Giá / Đêm (VNĐ)</label>
-                            <input type="number" id="room-type-price" required placeholder="Ví dụ: 1500000"
-                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500">
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Ảnh đại diện (URL)</label>
-                        <div class="relative group">
-                            <input type="text" id="room-type-image" placeholder="https://unsplash..."
-                                class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 pr-32">
-
-                            <!-- Upload Trigger -->
-                            <div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                                <button type="button" onclick="document.getElementById('room-type-image-file').click()"
-                                    class="p-2 bg-white text-slate-500 rounded-xl hover:text-cyan-600 border border-slate-100 shadow-sm transition-colors">
-                                    <i data-lucide="upload-cloud" class="w-5 h-5"></i>
-                                </button>
-                                <div
-                                    class="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-md bg-slate-200">
-                                    <img id="room-type-image-preview" src="" class="w-full h-full object-cover hidden">
-                                    <div id="room-type-image-placeholder"
-                                        class="w-full h-full flex items-center justify-center text-slate-400">
-                                        <i data-lucide="image" class="w-5 h-5"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <input type="file" id="room-type-image-file" class="hidden" accept="image/*">
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Mô tả</label>
-                        <textarea id="room-type-description" placeholder="Mô tả ngắn gọn về loại phòng..."
-                            class="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500"
-                            rows="3"></textarea>
-                    </div>
-                    <button type="submit"
-                        class="w-full bg-cyan-600 text-white py-6 rounded-[28px] font-black shadow-xl shadow-cyan-600/20 mt-4">
-                        Lưu loại phòng
-                    </button>
-                </form>
             </div>
         </section>
 

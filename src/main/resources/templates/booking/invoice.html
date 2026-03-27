@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Hóa đơn - LuxeStay</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            padding: 40px;
+        }
+
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .invoice-header {
+            background: linear-gradient(135deg, #0f172a, #334155);
+            color: #fff;
+            padding: 48px 48px 32px;
+        }
+        .invoice-header .brand {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .invoice-header .hotel-name {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+        }
+        .invoice-header .hotel-tagline {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 4px;
+        }
+        .invoice-header .invoice-title {
+            text-align: right;
+        }
+        .invoice-header .invoice-title h2 {
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #94a3b8;
+        }
+        .invoice-header .invoice-title .invoice-number {
+            font-size: 14px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-top: 4px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .info-item label {
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #64748b;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .info-item span {
+            font-size: 14px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        /* Body */
+        .invoice-body { padding: 40px 48px; }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #94a3b8;
+            margin-bottom: 16px;
+            padding-left: 4px;
+        }
+
+        /* Table */
+        .billing-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 32px;
+        }
+        .billing-table thead th {
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #94a3b8;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+        .billing-table thead th:last-child { text-align: right; }
+        .billing-table tbody td {
+            padding: 14px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .billing-table tbody td:last-child {
+            text-align: right;
+            font-weight: 700;
+        }
+        .billing-table .category-row td {
+            background: #f8fafc;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            padding: 10px 16px;
+        }
+
+        /* Summary */
+        .summary-section {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 28px 32px;
+            margin-top: 8px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .summary-row .label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+        }
+        .summary-row .value {
+            font-size: 13px;
+            font-weight: 800;
+            color: #1e293b;
+        }
+        .summary-row.adjustment .value {
+            color: #ef4444;
+        }
+        .summary-row.total {
+            border-top: 2px solid #e2e8f0;
+            margin-top: 12px;
+            padding-top: 16px;
+        }
+        .summary-row.total .label {
+            font-size: 14px;
+            font-weight: 900;
+            color: #0f172a;
+            text-transform: uppercase;
+        }
+        .summary-row.total .value {
+            font-size: 24px;
+            font-weight: 900;
+            color: #4f46e5;
+        }
+        .summary-row.paid .value { color: #059669; }
+        .summary-row.balance { 
+            background: #ecfdf5;
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-top: 12px;
+        }
+        .summary-row.balance .label {
+            font-size: 13px;
+            font-weight: 900;
+            color: #047857;
+            text-transform: uppercase;
+        }
+        .summary-row.balance .value {
+            font-size: 22px;
+            font-weight: 900;
+            color: #059669;
+        }
+
+        /* Footer */
+        .invoice-footer {
+            text-align: center;
+            padding: 32px 48px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .invoice-footer p {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        .invoice-footer .thank-you {
+            font-size: 16px;
+            font-weight: 900;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        /* Print controls */
+        .print-controls {
+            max-width: 800px;
+            margin: 0 auto 24px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .btn-print {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: #0f172a;
+            color: #fff;
+            border: none;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-print:hover { background: #4f46e5; }
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: #fff;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-back:hover { background: #f8fafc; color: #1e293b; }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .print-controls { display: none !important; }
+            .invoice-container { box-shadow: none; border-radius: 0; }
+            .invoice-header { border-radius: 0; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="print-controls">
+        <a href="/bookings/reception" class="btn-back">← Quay lại</a>
+        <button class="btn-print" onclick="window.print()">🖨️ In hóa đơn</button>
+    </div>
+
+    <div class="invoice-container">
+        <!-- HEADER -->
+        <div class="invoice-header">
+            <div class="brand">
+                <div>
+                    <div class="hotel-name">LuxeStay</div>
+                    <div class="hotel-tagline">Hospitality Excellence</div>
+                </div>
+                <div class="invoice-title">
+                    <h2>Hóa đơn thanh toán</h2>
+                    <div class="invoice-number" th:text="'#' + ${summary.bookingId}">
+                        #ABC123
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Khách hàng</label>
+                    <span th:text="${summary.guestName}">Nguyễn Văn A</span>
+                </div>
+                <div class="info-item">
+                    <label>Phòng</label>
+                    <span th:text="${summary.roomNames}">P.101</span>
+                </div>
+                <div class="info-item">
+                    <label>Nhận phòng</label>
+                    <span th:text="${#temporals.format(summary.checkIn, 'dd/MM/yyyy')}">01/01/2026</span>
+                </div>
+                <div class="info-item">
+                    <label>Trả phòng</label>
+                    <span th:text="${#temporals.format(summary.actualCheckOut, 'dd/MM/yyyy')}">03/01/2026</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- BODY -->
+        <div class="invoice-body">
+            <!-- Room Charges -->
+            <div class="section-title">Chi tiết hóa đơn</div>
+            <table class="billing-table">
+                <thead>
+                    <tr>
+                        <th>Mô tả</th>
+                        <th>Đơn giá</th>
+                        <th>SL</th>
+                        <th>Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Room Charge Rows -->
+                    <tr class="category-row">
+                        <td colspan="4">🏨 Tiền phòng</td>
+                    </tr>
+                    <tr th:each="br : ${summary.bookedRooms}">
+                        <td>
+                            <span th:text="${br.roomTypeName}">Deluxe</span>
+                        </td>
+                        <td th:text="${#numbers.formatDecimal(br.priceAtBooking, 0, 'COMMA', 0, 'POINT') + 'đ'}">
+                            500,000đ</td>
+                        <td th:text="${summary.actualNights} + ' đêm x ' + ${br.quantity} + ' phòng'">2 đêm x 1 phòng</td>
+                        <td th:text="${#numbers.formatDecimal(br.subTotal, 0, 'COMMA', 0, 'POINT') + 'đ'}">
+                            1,000,000đ</td>
+                    </tr>
+
+                    <!-- Service Charges -->
+                    <tr class="category-row" th:if="${summary.services != null and !summary.services.isEmpty()}">
+                        <td colspan="4">🍽️ Dịch vụ đã sử dụng</td>
+                    </tr>
+                    <th:block th:each="svc : ${summary.services}">
+                        <tr th:each="detail : ${svc.details}">
+                            <td>
+                                <span th:text="${detail.serviceName}">Buffet Sáng</span>
+                                <span th:if="${svc.roomName != null and svc.roomName != 'N/A'}"
+                                    style="color: #94a3b8; font-size: 11px;"
+                                    th:text="' (P.' + ${svc.roomName} + ')'"> (P.101)</span>
+                            </td>
+                            <td th:text="${#numbers.formatDecimal(detail.unitPrice, 0, 'COMMA', 0, 'POINT') + 'đ'}">
+                                150,000đ</td>
+                            <td th:text="${detail.quantity}">1</td>
+                            <td th:text="${#numbers.formatDecimal(detail.subTotal, 0, 'COMMA', 0, 'POINT') + 'đ'}">
+                                150,000đ</td>
+                        </tr>
+                    </th:block>
+                </tbody>
+            </table>
+
+            <!-- Summary -->
+            <div class="summary-section">
+                <div class="summary-row">
+                    <span class="label">Tiền phòng</span>
+                    <span class="value"
+                        th:text="${#numbers.formatDecimal(summary.totalRoomPrice, 0, 'COMMA', 0, 'POINT') + 'đ'}">1,000,000đ</span>
+                </div>
+                <div class="summary-row" th:if="${summary.totalServiceAmount != null and summary.totalServiceAmount > 0}">
+                    <span class="label">Tổng dịch vụ</span>
+                    <span class="value"
+                        th:text="${#numbers.formatDecimal(summary.totalServiceAmount, 0, 'COMMA', 0, 'POINT') + 'đ'}">150,000đ</span>
+                </div>
+                <div class="summary-row adjustment" th:if="${summary.roomPriceAdjustment != null and summary.roomPriceAdjustment < 0}">
+                    <span class="label">Điều chỉnh (trả phòng sớm)</span>
+                    <span class="value"
+                        th:text="${#numbers.formatDecimal(summary.roomPriceAdjustment, 0, 'COMMA', 0, 'POINT') + 'đ'}">-500,000đ</span>
+                </div>
+
+                <div class="summary-row total">
+                    <span class="label">Tổng cộng</span>
+                    <span class="value"
+                        th:text="${#numbers.formatDecimal(summary.totalAmount, 0, 'COMMA', 0, 'POINT') + 'đ'}">1,150,000đ</span>
+                </div>
+
+                <div class="summary-row paid" th:if="${summary.paidAmount != null and summary.paidAmount > 0}">
+                    <span class="label">Đã thanh toán (VNPay)</span>
+                    <span class="value"
+                        th:text="${#numbers.formatDecimal(summary.paidAmount, 0, 'COMMA', 0, 'POINT') + 'đ'}">1,000,000đ</span>
+                </div>
+
+                <div class="summary-row balance" th:if="${summary.balance != null}">
+                    <span class="label">Còn phải thu</span>
+                    <span class="value"
+                        th:text="${#numbers.formatDecimal(summary.balance, 0, 'COMMA', 0, 'POINT') + 'đ'}">150,000đ</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="invoice-footer">
+            <p class="thank-you">Cảm ơn quý khách đã sử dụng dịch vụ!</p>
+            <p>LuxeStay Hotel &amp; Resort — Mọi thắc mắc xin liên hệ: support@luxestay.com</p>
+        </div>
+    </div>
+</body>
+
+</html>

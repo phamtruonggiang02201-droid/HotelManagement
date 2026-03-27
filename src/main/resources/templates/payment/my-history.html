@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Lịch sử thanh toán - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <div class="mb-12 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900">Lịch sử thanh toán</h1>
+                <p class="text-slate-500 font-medium">Quản lý các giao dịch tài chính của bạn tại LuxeStay.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div th:each="payment : ${payments}"
+                th:id="${'card-' + payment.id}"
+                class="group bg-white rounded-[40px] border border-slate-100 shadow-sm hover:shadow-xl transition-all p-8 relative overflow-hidden">
+                
+                <div class="flex justify-between items-start mb-6">
+                    <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
+                        <i data-lucide="credit-card" class="w-7 h-7"></i>
+                    </div>
+                    <span th:classappend="${payment.paymentStatus == 'SUCCESS'} ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'"
+                          class="text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg"
+                          th:text="${payment.paymentStatus == 'SUCCESS' ? 'Thành công' : payment.paymentStatus}">
+                        Success
+                    </span>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Số tiền giao dịch</p>
+                        <h2 class="text-3xl font-black text-slate-900" 
+                            th:text="${payment.amount != null ? #numbers.formatDecimal(payment.amount, 0, 'COMMA', 0, 'POINT') + ' đ' : '0 đ'}">
+                            1.000.000 đ
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 pt-4">
+                        <div class="p-4 bg-slate-50 rounded-2xl">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Phương thức</p>
+                            <p class="text-xs font-black text-slate-700" th:text="${payment.paymentMethod}">VNPay</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-2xl">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Mã đặt phòng</p>
+                            <a th:href="@{'/bookings/' + ${payment.bookingId}}" 
+                               class="text-xs font-black text-indigo-600 hover:underline" 
+                               th:text="|#${payment.bookingId.substring(0,8)}...|">#ID-123</a>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-2 text-slate-400">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                        <p class="text-[11px] font-bold" 
+                           th:text="${#temporals.format(payment.paymentDate, 'HH:mm dd/MM/yyyy')}">
+                            10:30 15/03/2024
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Refund Status Badge -->
+                <div th:if="${payment.refundStatus != null}" class="px-4 mb-4">
+                    <span th:classappend="${payment.refundStatus == 'APPROVED'} ? 'bg-emerald-100 text-emerald-700' : (${payment.refundStatus == 'REJECTED'} ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')"
+                          class="inline-block text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+                        <span th:if="${payment.refundStatus == 'PENDING'}"> Yêu cầu hoàn tiền đang chờ duyệt</span>
+                        <span th:if="${payment.refundStatus == 'APPROVED'}"> Đã hoàn tiền</span>
+                        <span th:if="${payment.refundStatus == 'REJECTED'}"> Yêu cầu hoàn tiền bị từ chối</span>
+                    </span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 pt-4 border-t border-slate-100">
+                    <!-- Nếu chưa có yêu cầu hoàn tiền: hiện nút bình thường -->
+                    <button th:if="${payment.refundStatus == null}"
+                            th:attr="data-booking-id=${payment.bookingId}, data-payment-id=${payment.id}, data-amount=${payment.amount}"
+                            onclick="openRefundModal(this.dataset.bookingId, this.dataset.paymentId, this.dataset.amount)"
+                            class="flex-1 flex items-center justify-center gap-2 bg-rose-50 text-rose-600 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        Hoàn tiền
+                    </button>
+                    <!-- Nếu đã có yêu cầu: ẩn nút hoàn tiền -->
+                    <button th:if="${payment.refundStatus != null}"
+                            disabled
+                            class="flex-1 flex items-center justify-center gap-2 bg-slate-100 text-slate-400 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        Hoàn tiền
+                    </button>
+                    <button th:attr="data-booking-id=${payment.bookingId}, data-payment-id=${payment.id}"
+                            onclick="openIssueModal(this.dataset.bookingId, this.dataset.paymentId)"
+                            class="flex-1 flex items-center justify-center gap-2 bg-amber-50 text-amber-600 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                        Báo sự cố
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Empty State -->
+            <div th:if="${payments == null || payments.isEmpty()}" class="col-span-full py-24 text-center">
+                <div class="w-24 h-24 bg-slate-50 text-slate-200 rounded-[35px] flex items-center justify-center mx-auto mb-8">
+                    <i data-lucide="receipt" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-2xl font-black text-slate-900 mb-3">Chưa có giao dịch nào</h3>
+                <p class="text-slate-500 font-medium mb-12">Mọi khoản thanh toán của bạn sẽ được liệt kê minh bạch tại đây.</p>
+                <a th:href="@{/bookings/my-bookings}" class="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:scale-105 transition-all">Xem đơn đặt phòng</a>
+            </div>
+        </div>
+
+        <div th:if="${totalPages > 1}" class="mt-16 flex justify-center gap-2">
+            <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+               th:href="@{/api/payment/history(page=${i})}"
+               th:class="|w-12 h-12 flex items-center justify-center rounded-xl font-black text-sm transition-all ${currentPage == i ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white text-slate-400 border border-slate-100 hover:border-indigo-600 hover:text-indigo-600'}|"
+               th:text="${i + 1}">1</a>
+        </div>
+        <!-- Modal Yêu cầu hoàn tiền -->
+        <div id="refund-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center">
+            <div class="bg-white rounded-[40px] p-10 max-w-lg w-full mx-4 shadow-2xl">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="rotate-ccw" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900">Yêu cầu Hoàn tiền</h3>
+                        <p class="text-slate-400 text-sm font-medium">Mô tả lý do bạn muốn hoàn tiền</p>
+                    </div>
+                </div>
+                <input type="hidden" id="refund-booking-id">
+                <input type="hidden" id="refund-payment-id">
+                <div class="mb-4">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4 mb-2 block">Số tiền yêu cầu hoàn (VNĐ)</label>
+                    <input type="number" id="refund-amount" required min="1"
+                        placeholder="Nhập số tiền..."
+                        class="w-full bg-slate-50 rounded-2xl p-5 font-black text-xl text-slate-900 outline-none focus:ring-4 focus:ring-rose-500/10 focus:bg-white border border-transparent focus:border-rose-200 transition-all">
+                </div>
+                <div class="mb-6">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4 mb-2 block">Lý do hoàn tiền</label>
+                    <textarea id="refund-reason" rows="4"
+                        placeholder="Nhập lý do yêu cầu hoàn tiền..."
+                        class="w-full bg-slate-50 rounded-2xl p-5 font-medium text-slate-700 outline-none focus:ring-4 focus:ring-rose-500/10 focus:bg-white border border-transparent focus:border-rose-200 transition-all resize-none"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeRefundModal()" class="flex-1 bg-slate-100 text-slate-700 py-4 rounded-2xl font-black hover:bg-slate-200 transition-all">Hủy</button>
+                    <button id="submit-refund-btn" onclick="submitRefund()" class="flex-1 bg-rose-500 text-white py-4 rounded-2xl font-black hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20">Gửi yêu cầu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Báo cáo sự cố -->
+        <div id="issue-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center">
+            <div class="bg-white rounded-[40px] p-10 max-w-lg w-full mx-4 shadow-2xl">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="alert-triangle" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900">Báo cáo Sự cố</h3>
+                        <p class="text-slate-400 text-sm font-medium">Mô tả vấn đề bạn gặp phải với giao dịch này</p>
+                    </div>
+                </div>
+                <input type="hidden" id="issue-booking-id">
+                <input type="hidden" id="issue-payment-id">
+                <select id="issue-type" class="w-full bg-slate-50 rounded-2xl p-5 font-black text-slate-700 outline-none focus:ring-4 focus:ring-amber-500/10 border border-transparent focus:border-amber-200 transition-all mb-4">
+                    <option value="">-- Chọn loại sự cố --</option>
+                    <option value="WRONG_AMOUNT">Số tiền không đúng</option>
+                    <option value="DUPLICATE_CHARGE">Tính tiền trùng</option>
+                    <option value="PAYMENT_ERROR">Lỗi thanh toán</option>
+                    <option value="OTHER">Khác</option>
+                </select>
+                <textarea id="issue-description" rows="4"
+                    placeholder="Mô tả chi tiết sự cố..."
+                    class="w-full bg-slate-50 rounded-2xl p-5 font-medium text-slate-700 outline-none focus:ring-4 focus:ring-amber-500/10 focus:bg-white border border-transparent focus:border-amber-200 transition-all resize-none mb-6"></textarea>
+                <div class="flex gap-3">
+                    <button onclick="closeIssueModal()" class="flex-1 bg-slate-100 text-slate-700 py-4 rounded-2xl font-black hover:bg-slate-200 transition-all">Hủy</button>
+                    <button onclick="submitIssue()" class="flex-1 bg-amber-500 text-white py-4 rounded-2xl font-black hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20">Gửi báo cáo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script layout:fragment="script">
+        document.addEventListener('DOMContentLoaded', () => {
+            // ===== Refund Modal =====
+            window.openRefundModal = function(bookingId, paymentId, amount) {
+                const bId = document.getElementById('refund-booking-id');
+                const pId = document.getElementById('refund-payment-id');
+                const rAmt = document.getElementById('refund-amount');
+                const reason = document.getElementById('refund-reason');
+                const modal = document.getElementById('refund-modal');
+                
+                if (bId) bId.value = bookingId;
+                if (pId) pId.value = paymentId;
+                if (rAmt) rAmt.value = amount || '';
+                if (reason) reason.value = '';
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+            }
+
+            window.closeRefundModal = function() {
+                const modal = document.getElementById('refund-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            }
+
+            window.submitRefund = async function() {
+                const btn = document.getElementById('submit-refund-btn');
+                const bookingIdEl = document.getElementById('refund-booking-id');
+                const amountEl = document.getElementById('refund-amount');
+                const reasonEl = document.getElementById('refund-reason');
+                
+                if (!bookingIdEl || !reasonEl || !amountEl) return;
+                
+                const bookingId = bookingIdEl.value;
+                const amount = amountEl.value;
+                const reason = reasonEl.value.trim();
+                
+                if (!amount || parseFloat(amount) <= 0) {
+                    window.toastService.info('Vui lòng nhập số tiền hoàn!');
+                    return;
+                }
+                if (!reason) {
+                    window.toastService.info('Vui lòng nhập lý do yêu cầu hoàn tiền!');
+                    return;
+                }
+
+                // Disable button and show loading
+                const originalText = btn ? btn.innerText : 'Gửi yêu cầu';
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = 'Đang gửi...';
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+
+                try {
+                    const response = await fetch(`/api/payment/refund/request`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ bookingId, amount: parseFloat(amount), reason })
+                    });
+                    
+                    if (response.ok) {
+                        window.toastService.success('Gửi yêu cầu thành công!');
+                        closeRefundModal();
+                        // Reload to update status on UI
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        const err = await response.json().catch(() => ({}));
+                        window.toastService.error(err.message || 'Yêu cầu thất bại. Vui lòng thử lại!');
+                        // Re-enable button on error
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerText = originalText;
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        }
+                    }
+                } catch (e) {
+                    window.toastService.error('Có lỗi kết nối, vui lòng thử lại!');
+                    // Re-enable button on error
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = originalText;
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                }
+            }
+
+            // ===== Issue Modal =====
+            window.openIssueModal = function(bookingId, paymentId) {
+                const bId = document.getElementById('issue-booking-id');
+                const pId = document.getElementById('issue-payment-id');
+                const desc = document.getElementById('issue-description');
+                const type = document.getElementById('issue-type');
+                const modal = document.getElementById('issue-modal');
+                
+                if (bId) bId.value = bookingId;
+                if (pId) pId.value = paymentId;
+                if (desc) desc.value = '';
+                if (type) type.value = '';
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+            }
+
+            window.closeIssueModal = function() {
+                const modal = document.getElementById('issue-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            }
+
+            window.submitIssue = async function() {
+                const bIdEl = document.getElementById('issue-booking-id');
+                const typeEl = document.getElementById('issue-type');
+                const descEl = document.getElementById('issue-description');
+                
+                if (!bIdEl || !typeEl || !descEl) return;
+                
+                const bookingId = bIdEl.value;
+                const issueType = typeEl.value;
+                const description = descEl.value.trim();
+                
+                if (!issueType) {
+                    window.toastService.info('Vui lòng chọn loại sự cố!');
+                    return;
+                }
+                if (!description) {
+                    window.toastService.info('Vui lòng mô tả chi tiết sự cố!');
+                    return;
+                }
+                try {
+                    const response = await fetch(`/api/bookings/${bookingId}/report-issue`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ issueType, description })
+                    });
+                    if (response.ok) {
+                        closeIssueModal();
+                        window.toastService.success('Báo cáo sự cố đã được gửi thành công!');
+                    } else {
+                        const err = await response.json().catch(() => ({}));
+                        window.toastService.error(err.message || 'Gửi báo cáo thất bại. Vui lòng thử lại!');
+                    }
+                } catch (e) {
+                    window.toastService.error('Có lỗi kết nối, vui lòng thử lại!');
+                }
+            }
+
+            // Đóng modal khi click ở ngoài
+            const refundModal = document.getElementById('refund-modal');
+            if (refundModal) {
+                refundModal.addEventListener('click', function(e) {
+                    if (e.target === this) closeRefundModal();
+                });
+            }
+            
+            const issueModal = document.getElementById('issue-modal');
+            if (issueModal) {
+                issueModal.addEventListener('click', function(e) {
+                    if (e.target === this) closeIssueModal();
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

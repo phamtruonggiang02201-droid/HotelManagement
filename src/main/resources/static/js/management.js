@@ -45,8 +45,9 @@ async function loadRoomTypesForManage() {
                 <td class="px-8 py-6 font-bold text-indigo-600">${new Intl.NumberFormat('vi-VN').format(type.price)}</td>
                 <td class="px-8 py-6 font-bold text-cyan-600">${type.capacity} người</td>
                 <td class="px-8 py-6 text-right">
-                    <button onclick="editRoomType('${type.id}')" class="text-indigo-600 hover:text-indigo-900 mx-2"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                    <button onclick="deleteRoomType('${type.id}')" class="text-rose-600 hover:text-rose-900 mx-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    <button onclick="viewRoomType('${type.id}')" class="text-cyan-600 hover:text-cyan-900 mx-2" title="Xem chi tiết"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                    <button onclick="editRoomType('${type.id}')" class="text-indigo-600 hover:text-indigo-900 mx-2" title="Chỉnh sửa"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                    <button onclick="deleteRoomType('${type.id}')" class="text-rose-600 hover:text-rose-900 mx-2" title="Xóa"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                 </td>
             </tr>
         `).join('');
@@ -81,8 +82,9 @@ async function loadRoomTypesWithPagination(page = 0, keyword = '') {
                 <td class="px-8 py-6 font-bold text-indigo-600">${new Intl.NumberFormat('vi-VN').format(type.price)}</td>
                 <td class="px-8 py-6 font-bold text-cyan-600">${type.capacity} người</td>
                 <td class="px-8 py-6 text-right">
-                    <button onclick="editRoomType('${type.id}')" class="text-indigo-600 hover:text-indigo-900 mx-2"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                    <button onclick="deleteRoomType('${type.id}')" class="text-rose-600 hover:text-rose-900 mx-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    <button onclick="viewRoomType('${type.id}')" class="text-cyan-600 hover:text-cyan-900 mx-2" title="Xem chi tiết"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                    <button onclick="editRoomType('${type.id}')" class="text-indigo-600 hover:text-indigo-900 mx-2" title="Chỉnh sửa"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                    <button onclick="deleteRoomType('${type.id}')" class="text-rose-600 hover:text-rose-900 mx-2" title="Xóa"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                 </td>
             </tr>
         `).join('');
@@ -113,64 +115,19 @@ function renderRoomTypePagination(data) {
 }
 
 
-function openRoomTypeModal() {
-    document.getElementById('room-type-modal-title').innerText = 'Thêm loại phòng mới';
-    document.getElementById('room-type-form').reset();
-    document.getElementById('room-type-id-input').value = '';
-    updateImagePreview('');
-    toggleModal('room-type-manage-modal', true);
-}
+// redirection logic is now handled by links in HTML or simpler functions here
+
 
 async function editRoomType(id) {
-    try {
-        const response = await fetch('/api/room-types');
-        const data = await response.json();
-        const types = data.content || [];
-        const type = types.find(t => t.id === id);
-        if (type) {
-            document.getElementById('room-type-modal-title').innerText = 'Chỉnh sửa loại phòng';
-            document.getElementById('room-type-id-input').value = type.id;
-            document.getElementById('room-type-name').value = type.typeName;
-            document.getElementById('room-type-capacity').value = type.capacity;
-            document.getElementById('room-type-price').value = type.price;
-            document.getElementById('room-type-image').value = type.roomImage || '';
-            document.getElementById('room-type-description').value = type.description || '';
-            updateImagePreview(type.roomImage || '');
-            toggleModal('room-type-manage-modal', true);
-        }
-    } catch (err) { console.error(err); }
+    window.location.href = `/management/room-types/${id}/edit`;
 }
 
-async function handleRoomTypeSubmit(e) {
-    e.preventDefault();
-    const id = document.getElementById('room-type-id-input').value;
-    const data = {
-        typeName: document.getElementById('room-type-name').value,
-        capacity: document.getElementById('room-type-capacity').value,
-        price: document.getElementById('room-type-price').value,
-        roomImage: document.getElementById('room-type-image').value,
-        description: document.getElementById('room-type-description').value
-    };
-
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `/api/room-types/${id}` : '/api/room-types';
-
-    try {
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        if (response.ok) {
-            toggleModal('room-type-manage-modal', false);
-            loadRoomTypesForManage();
-            toastService.info('Tính năng đang được phát triển');
-        } else {
-            const err = await response.json();
-            toastService.error('Lỗi: ' + (err.message || 'Không thể lưu'));
-        }
-    } catch (err) { console.error(err); }
+async function viewRoomType(id) {
+    window.location.href = `/management/room-types/${id}/detail`;
 }
+
+// Redundant since we use separate page now
+
 
 async function deleteRoomType(id) {
     if (!confirm('Bạn có chắc chắn muốn xóa loại phòng này? Thao tác này có thể thất bại nếu có phòng đang sử dụng loại này.')) return;
@@ -193,59 +150,123 @@ async function loadRoomsForManage() {
         const response = await fetch('/api/rooms');
         const data = await response.json();
         const rooms = data.content || [];
-        const tbody = document.getElementById('room-manage-tbody');
-        if (!tbody) return;
+        const grid = document.getElementById('room-manage-grid');
+        if (!grid) return;
 
-        tbody.innerHTML = rooms.map(room => `
-            <tr>
-                <td class="px-8 py-6 font-bold text-slate-900">${room.roomName}</td>
-                <td class="px-8 py-6">${room.roomType.typeName}</td>
-                <td class="px-8 py-6">
-                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${getStatusClass(room.status)}">
-                        ${room.status}
-                    </span>
-                </td>
-                <td class="px-8 py-6 text-right">
-                    <button onclick="editRoom('${room.id}')" class="text-indigo-600 hover:text-indigo-900 mx-2"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                    <button onclick="deleteRoom('${room.id}')" class="text-rose-600 hover:text-rose-900 mx-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </td>
-            </tr>
-        `).join('');
+        grid.innerHTML = rooms.map(room => renderRoomCard(room)).join('');
         lucide.createIcons();
     } catch (error) {
         console.error('Error loading rooms:', error);
     }
 }
 
+function renderRoomCard(room, compact = false) {
+    const statusClass = getStatusClass(room.status);
+    const statusLabel = room.status === 'AVAILABLE' ? 'Sẵn sàng' : (room.status === 'OCCUPIED' ? 'Đang ở' : 'Bảo trì');
+
+    if (compact) {
+        return `
+            <div class="group relative bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0">
+                        <i data-lucide="door-closed" class="w-4 h-4"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-lg font-black text-slate-900 truncate">${room.roomName}</h3>
+                        <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate">${room.roomType?.typeName}</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="px-2 py-1 rounded-lg text-[8px] font-black uppercase ${statusClass}">${statusLabel}</span>
+                    <div class="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                        <button onclick="editRoom('${room.id}')" class="p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all"><i data-lucide="edit-3" class="w-3 h-3"></i></button>
+                        <button onclick="deleteRoom('${room.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="group relative bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:rotate-6">
+                    <i data-lucide="door-closed" class="w-7 h-7"></i>
+                </div>
+                <div class="flex gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
+                    <button onclick="editRoom('${room.id}')" class="p-2 bg-slate-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="deleteRoom('${room.id}')" class="p-2 bg-slate-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-3xl font-black text-slate-900 mb-1">${room.roomName}</h3>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${room.roomType?.typeName}</p>
+                ${room.areaName ? `<span class="inline-flex items-center gap-1 mt-2 px-2 py-1 bg-indigo-50 text-indigo-600 text-[9px] font-black rounded-lg uppercase tracking-wider"><i data-lucide="map-pin" class="w-3 h-3"></i>${room.areaName}</span>` : ''}
+            </div>
+
+            <div class="flex items-center justify-between pt-6 border-t border-slate-50">
+                <span class="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase ${statusClass}">
+                    ${statusLabel}
+                </span>
+                <div class="text-right">
+                    <p class="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Giá tham khảo</p>
+                    <p class="text-sm font-black text-slate-700">${new Intl.NumberFormat('vi-VN').format(room.roomType?.price)}₫</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // Paginated Room Loading
 let currentRoomPage = 0;
 let currentRoomKeyword = '';
 
+function getGridConfig(size) {
+    size = parseInt(size);
+    if (size >= 50) return { cols: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8', compact: true };
+    if (size >= 30) return { cols: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6', compact: true };
+    if (size >= 20) return { cols: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5', compact: true };
+    return { cols: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4', compact: false };
+}
+
 async function loadRoomsWithPagination(page = 0, keyword = '') {
     currentRoomPage = page;
     currentRoomKeyword = keyword;
+    const date = document.getElementById('filter-date')?.value || '';
+    const size = document.getElementById('room-page-size')?.value || 12;
+    const areaId = document.getElementById('filter-area')?.value || '';
+    const typeId = document.getElementById('filter-room-type')?.value || '';
+    const { cols, compact } = getGridConfig(size);
+
     try {
-        const response = await fetch(`/api/rooms/search?keyword=${encodeURIComponent(keyword)}&page=${page}&size=10`);
+        const url = `/api/rooms/search?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}&date=${date}&areaId=${areaId}&typeId=${typeId}`;
+        const response = await fetch(url);
         const data = await response.json();
-        const tbody = document.getElementById('room-manage-tbody');
-        if (!tbody) return;
+        const grid = document.getElementById('room-manage-grid');
+        if (!grid) return;
+
+        // Cập nhật grid columns dựa trên size
+        grid.className = `grid ${cols} gap-${compact ? '4' : '8'}`;
 
         const rooms = data.content || [];
-        tbody.innerHTML = rooms.map(room => `
-            <tr>
-                <td class="px-8 py-6 font-bold text-slate-900">${room.roomName}</td>
-                <td class="px-8 py-6">${room.roomType.typeName}</td>
-                <td class="px-8 py-6">
-                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${getStatusClass(room.status)}">
-                        ${room.status}
-                    </span>
-                </td>
-                <td class="px-8 py-6 text-right">
-                    <button onclick="editRoom('${room.id}')" class="text-indigo-600 hover:text-indigo-900 mx-2"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                    <button onclick="deleteRoom('${room.id}')" class="text-rose-600 hover:text-rose-900 mx-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </td>
-            </tr>
-        `).join('');
+        if (rooms.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full py-20 bg-white rounded-[40px] border border-slate-100 text-center shadow-sm">
+                    <i data-lucide="door-closed" class="w-12 h-12 text-slate-100 mx-auto mb-4"></i>
+                    <p class="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Không tìm thấy phòng nào.</p>
+                </div>
+            `;
+            lucide.createIcons();
+            renderRoomPagination(data);
+            return;
+        }
+
+        grid.innerHTML = rooms.map(room => renderRoomCard(room, compact)).join('');
         lucide.createIcons();
         renderRoomPagination(data);
     } catch (error) {
@@ -283,6 +304,31 @@ async function loadRoomTypes() {
         const select = document.getElementById('room-type-id');
         if (select) {
             select.innerHTML = types.map(t => `<option value="${t.id}">${t.typeName}</option>`).join('');
+        }
+        // Populate dropdown lọc loại phòng trên filter bar
+        const filterTypeSelect = document.getElementById('filter-room-type');
+        if (filterTypeSelect) {
+            filterTypeSelect.innerHTML = `<option value="">Tất cả loại phòng</option>` +
+                types.map(t => `<option value="${t.id}">${t.typeName}</option>`).join('');
+        }
+    } catch (err) { console.error(err); }
+}
+
+async function loadAreas() {
+    try {
+        const response = await fetch('/api/areas');
+        const areas = await response.json();
+        // Populate dropdown chọn khu vực trong form thêm/sửa phòng
+        const roomAreaSelect = document.getElementById('room-area');
+        if (roomAreaSelect) {
+            roomAreaSelect.innerHTML = `<option value="">-- Chọn khu vực --</option>` +
+                areas.map(a => `<option value="${a.id}">${a.areaName}</option>`).join('');
+        }
+        // Populate dropdown lọc khu vực trên filter bar
+        const filterAreaSelect = document.getElementById('filter-area');
+        if (filterAreaSelect) {
+            filterAreaSelect.innerHTML = `<option value="">Tất cả khu vực</option>` +
+                areas.map(a => `<option value="${a.id}">${a.areaName}</option>`).join('');
         }
     } catch (err) { console.error(err); }
 }
@@ -350,16 +396,16 @@ function openRoomModal() {
 
 async function editRoom(id) {
     try {
-        const response = await fetch('/api/rooms');
-        const data = await response.json();
-        const rooms = data.content || [];
-        const room = rooms.find(r => r.id === id);
+        const response = await fetch(`/api/rooms/${id}`);
+        const room = await response.json();
         if (room) {
             document.getElementById('room-modal-title').innerText = 'Chỉnh sửa phòng';
             document.getElementById('room-id').value = room.id;
             document.getElementById('room-name').value = room.roomName;
             document.getElementById('room-type-id').value = room.roomType.id;
             document.getElementById('room-status').value = room.status;
+            const areaSelect = document.getElementById('room-area');
+            if (areaSelect) areaSelect.value = room.areaId || room.area?.id || '';
             toggleModal('room-manage-modal', true);
         }
     } catch (err) { console.error(err); }
@@ -371,7 +417,8 @@ async function handleRoomSubmit(e) {
     const data = {
         roomName: document.getElementById('room-name').value,
         roomTypeId: document.getElementById('room-type-id').value,
-        status: document.getElementById('room-status').value
+        status: document.getElementById('room-status').value,
+        areaId: document.getElementById('room-area')?.value || null
     };
 
     const method = id ? 'PUT' : 'POST';
@@ -385,7 +432,7 @@ async function handleRoomSubmit(e) {
         });
         if (response.ok) {
             toggleModal('room-manage-modal', false);
-            loadRoomsForManage();
+            loadRoomsWithPagination(currentRoomPage);
             toastService.success('Lưu thông tin phòng thành công!');
         } else {
             const err = await response.json();
@@ -453,7 +500,7 @@ function renderServiceTable(services) {
                 </div>
             </td>
             <td class="px-10 py-8 text-right">
-                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                <div class="flex items-center justify-end gap-2 opacity-70 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                     <button onclick="toggleServiceStatus('${srv.id}')" 
                             title="${srv.isActive ? 'Khóa dịch vụ' : 'Mở khóa dịch vụ'}"
                             class="p-3 ${srv.isActive ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'} rounded-xl transition-all">
@@ -614,17 +661,78 @@ async function toggleServiceStatus(id) {
 
 // --- IMAGE PREVIEW UTILITY ---
 function updateImagePreview(url) {
-    const preview = document.getElementById('room-type-image-preview');
-    const placeholder = document.getElementById('room-type-image-placeholder');
-    if (!preview || !placeholder) return;
+    // Logic này có thể để lại nếu vẫn dùng single image ở chỗ khác, 
+    // nhưng với RoomType ta dùng Gallery ở dưới.
+}
 
-    if (url && url.trim() !== '') {
-        preview.src = url;
-        preview.classList.remove('hidden');
-        placeholder.classList.add('hidden');
+// --- GALLERY MANAGEMENT UTILITIES ---
+function getGalleryImages() {
+    return Array.from(document.querySelectorAll('.gallery-item-img')).map(img => img.src);
+}
+
+function renderGalleryPreview(images) {
+    const container = document.getElementById('gallery-preview-container');
+    const emptyState = document.getElementById('gallery-empty-state');
+    if (!container) return;
+
+    // Clear old items except empty state
+    container.querySelectorAll('.gallery-item-wrapper').forEach(el => el.remove());
+
+    if (images.length > 0) {
+        emptyState?.classList.add('hidden');
+        images.forEach(url => addImageToGalleryUI(url));
     } else {
-        preview.src = '';
-        preview.classList.add('hidden');
-        placeholder.classList.remove('hidden');
+        emptyState?.classList.remove('hidden');
+    }
+    lucide.createIcons();
+}
+
+function addImageToGalleryUI(url) {
+    const container = document.getElementById('gallery-preview-container');
+    const emptyState = document.getElementById('gallery-empty-state');
+    emptyState?.classList.add('hidden');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'gallery-item-wrapper relative group aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-sm';
+    wrapper.innerHTML = `
+        <img src="${url}" class="gallery-item-img w-full h-full object-cover">
+        <button type="button" onclick="this.parentElement.remove(); checkGalleryEmpty();" 
+            class="absolute top-1 right-1 bg-white/90 text-rose-500 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+            <i data-lucide="trash-2" class="w-3 h-3"></i>
+        </button>
+    `;
+    container.appendChild(wrapper);
+    lucide.createIcons();
+}
+
+function checkGalleryEmpty() {
+    const container = document.getElementById('gallery-preview-container');
+    const emptyState = document.getElementById('gallery-empty-state');
+    const items = container.querySelectorAll('.gallery-item-wrapper');
+    if (items.length === 0) {
+        emptyState?.classList.remove('hidden');
     }
 }
+
+// Global Gallery File Input Listener
+document.addEventListener('change', async (e) => {
+    if (e.target.id === 'gallery-images-file') {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const response = await fetch('/api/media/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (response.ok) {
+                    addImageToGalleryUI(data.url);
+                } else {
+                    toastService.error('Lỗi tải ảnh: ' + file.name);
+                }
+            } catch (err) { console.error(err); }
+        }
+        e.target.value = ''; // Reset
+    }
+});

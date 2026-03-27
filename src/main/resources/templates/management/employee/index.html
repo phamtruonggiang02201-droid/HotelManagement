@@ -54,6 +54,29 @@
             </div>
         </section>
 
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden items-center justify-center p-4">
+            <div class="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 scale-95 opacity-0 transition-all duration-300" id="deleteModalContent">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-14 h-14 bg-rose-100 text-rose-500 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="alert-octagon" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900">Xác nhận Xóa</h3>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Cảnh báo hệ thống</p>
+                    </div>
+                </div>
+                <div id="deleteWarningMsg" class="text-slate-600 font-medium mb-10 whitespace-pre-line leading-relaxed text-sm">
+                    Đại ca có chắc chắn muốn xóa nhân viên này không? Thao tác này sẽ chuyển trạng thái tài khoản thành đã khóa.
+                </div>
+                <input type="hidden" id="deleteTargetId">
+                <div class="flex gap-4">
+                    <button onclick="closeDeleteModal()" class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all">Quay lại</button>
+                    <button id="confirmDeleteBtn" onclick="executeDelete()" class="flex-[2] px-8 py-4 bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-rose-600 transition-all shadow-xl shadow-rose-200">Xác nhận xóa</button>
+                </div>
+            </div>
+        </div>
+
         <script th:src="@{/js/toast.js}"></script>
         <script th:src="@{/js/employee-management.js}"></script>
         <script>

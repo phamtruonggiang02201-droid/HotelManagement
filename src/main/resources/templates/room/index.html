@@ -14,6 +14,12 @@
                     <h1 class="text-3xl font-black text-slate-900">Quản lý Phòng nghỉ</h1>
                     <p class="text-slate-500 font-medium">Thiết lập và cập nhật thông tin phòng trong hệ thống.</p>
                 </div>
+
+                <!-- Stats Bar -->
+                <div id="room-stats-bar" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 w-full mt-8">
+                    <!-- Stats loaded via JS -->
+                </div>
+
                 <div class="flex gap-4">
                     <div class="flex gap-2">
                         <a th:href="@{/api/rooms/export}" 
@@ -47,6 +53,7 @@
                     <!-- Date Filter -->
                     <div class="relative min-w-[200px]">
                         <input type="date" id="filter-date" 
+                            onchange="loadRoomsWithPagination(0)"
                             class="w-full bg-white border border-slate-200 px-8 py-5 rounded-[24px] outline-none focus:ring-4 focus:ring-indigo-600/10 focus:border-indigo-600/50 shadow-sm transition-all text-sm font-black text-slate-600 appearance-none">
                     </div>
 
@@ -77,11 +84,6 @@
 
             <div id="room-manage-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 <!-- Data will be loaded via AJAX -->
-            </div>
-
-            <!-- Pagination Controls -->
-            <div id="room-pagination" class="flex justify-center items-center gap-4 mt-8">
-                <!-- Pagination buttons will be rendered here -->
             </div>
 
             <!-- Pagination Controls -->
@@ -153,6 +155,7 @@
                 loadRoomsWithPagination();
                 loadRoomTypes();
                 loadAreas();
+                loadRoomStats();
 
                 const searchInput = document.getElementById('room-search-input');
                 let debounceTimer;
@@ -160,7 +163,69 @@
                     clearTimeout(debounceTimer);
                     debounceTimer = setTimeout(() => loadRoomsWithPagination(0, searchInput.value), 300);
                 });
+                
+                // Add event listener for date filter to reload stats
+                const dateFilter = document.getElementById('filter-date');
+                if (dateFilter) {
+                    dateFilter.addEventListener('change', () => loadRoomStats());
+                }
             });
+
+            async function loadRoomStats() {
+                const date = document.getElementById('filter-date')?.value;
+                if (!date) return;
+                
+                try {
+                    const response = await fetch(`/api/rooms/stats?date=${date}`);
+                    const stats = await response.json();
+                    renderRoomStats(stats);
+                } catch (error) {
+                    console.error('Error loading room stats:', error);
+                }
+            }
+
+            function renderRoomStats(stats) {
+                const container = document.getElementById('room-stats-bar');
+                container.innerHTML = `
+                    <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5">
+                        <div class="w-14 h-14 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center shrink-0">
+                            <i data-lucide="layers" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tổng số phòng</p>
+                            <h4 class="text-2xl font-black text-slate-900">${stats.totalRooms}</h4>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-[32px] border border-emerald-50 shadow-sm flex items-center gap-5">
+                        <div class="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center shrink-0">
+                            <i data-lucide="check-circle" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-emerald-600/50 uppercase tracking-widest">Đang trống</p>
+                            <h4 class="text-2xl font-black text-slate-900">${stats.availableRooms}</h4>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-[32px] border border-rose-50 shadow-sm flex items-center gap-5">
+                        <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center shrink-0">
+                            <i data-lucide="user-check" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-rose-600/50 uppercase tracking-widest">Đang bận</p>
+                            <h4 class="text-2xl font-black text-slate-900">${stats.occupiedRooms}</h4>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-[32px] border border-amber-50 shadow-sm flex items-center gap-5">
+                        <div class="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center shrink-0">
+                            <i data-lucide="wrench" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-amber-600/50 uppercase tracking-widest">Bảo trì</p>
+                            <h4 class="text-2xl font-black text-slate-900">${stats.maintenanceRooms}</h4>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
 
             async function handleImportRooms(input) {
                 if (!input.files || input.files.length === 0) return;

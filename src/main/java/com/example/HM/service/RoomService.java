@@ -24,5 +24,7 @@ public interface RoomService {
 
     // Excel Operations
     ByteArrayInputStream exportRoomsToExcel();
-    void importRoomsFromExcel(MultipartFile file);
+    String importRoomsFromExcel(MultipartFile file);
+
+    void assignDefaultAreaToOldRooms();
 }

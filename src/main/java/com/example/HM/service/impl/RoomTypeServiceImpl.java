@@ -6,6 +6,8 @@ import com.example.HM.entity.RoomTypeImage;
 import com.example.HM.repository.RoomRepository;
 import com.example.HM.repository.RoomTypeRepository;
 import com.example.HM.service.RoomTypeService;
+import com.example.HM.repository.FeedbackRepository;
+import com.example.HM.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +21,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,8 +30,8 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     private final RoomTypeRepository roomTypeRepository;
     private final RoomRepository roomRepository;
-    private final com.example.HM.repository.FeedbackRepository feedbackRepository;
-    private final com.example.HM.repository.BookingRepository bookingRepository;
+    private final FeedbackRepository feedbackRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -39,7 +42,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<RoomTypeDTO> searchRoomTypes(String keyword, String typeId, java.time.LocalDate checkIn, java.time.LocalDate checkOut, Pageable pageable) {
+    public Page<RoomTypeDTO> searchRoomTypes(String keyword, String typeId, LocalDate checkIn, LocalDate checkOut, Pageable pageable) {
         Page<RoomType> roomTypes = roomTypeRepository.searchRoomTypes(keyword, typeId, pageable);
         return roomTypes.map(rt -> convertToDTO(rt, checkIn, checkOut));
     }
@@ -52,17 +55,6 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                 .orElseGet(() -> {
                     throw new RuntimeException("Loại phòng không tồn tại! (ID: " + id + ")");
                 });
-    public ByteArrayInputStream exportRoomTypesToExcel() {
-        List<RoomType> roomTypes = roomTypeRepository.findAll();
-        String[] headers = { "ID", "Tên loại phòng", "Giá cơ bản", "Số lượng phòng", "Mô tả" };
-
-        return ExcelHelper.dataToExcel(roomTypes, "RoomTypes", headers, (row, rt) -> {
-            row.createCell(0).setCellValue(rt.getId());
-            row.createCell(1).setCellValue(rt.getTypeName());
-            row.createCell(2).setCellValue(rt.getPrice() != null ? rt.getPrice().doubleValue() : 0.0);
-            row.createCell(3).setCellValue(0); // RoomType entity doesn't have totalCount field
-            row.createCell(4).setCellValue(rt.getDescription());
-        });
     }
     @Override
     @Transactional
@@ -81,7 +73,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         }
 
         RoomType roomType = new RoomType();
-        roomType.setTypeName(dto.getTypeName());
+        roomType.setTypeName(dto.getTypeName().trim());
         roomType.setDescription(dto.getDescription());
         roomType.setCapacity(dto.getCapacity());
         roomType.setPrice(dto.getPrice());
@@ -117,7 +109,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
             throw new RuntimeException("Giá phòng phải lớn hơn 0!");
         }
 
-        roomType.setTypeName(dto.getTypeName());
+        roomType.setTypeName(dto.getTypeName().trim());
         roomType.setDescription(dto.getDescription());
         roomType.setCapacity(dto.getCapacity());
         roomType.setPrice(dto.getPrice());
@@ -163,24 +155,34 @@ public class RoomTypeServiceImpl implements RoomTypeService {
 
     @Override
     @Transactional
-    public void importRoomTypesFromExcel(MultipartFile file) {
+    public String importRoomTypesFromExcel(MultipartFile file) {
         try {
-            List<RoomType> roomTypes = ExcelHelper.excelToData(file.getInputStream(), "RoomTypes", row -> {
+            List<RoomType> allRoomTypes = ExcelHelper.excelToData(file.getInputStream(), "RoomTypes", row -> {
                 String typeName = ExcelHelper.getCellValueAsString(row.getCell(1));
-                if (typeName.isEmpty()) return null;
+                if (typeName == null || typeName.trim().isEmpty()) return null;
                 
                 RoomType rt = new RoomType();
-                rt.setTypeName(typeName);
+                rt.setTypeName(typeName.trim());
                 rt.setPrice(new java.math.BigDecimal(ExcelHelper.getCellValueAsString(row.getCell(2))));
                 rt.setDescription(ExcelHelper.getCellValueAsString(row.getCell(4)));
                 return rt;
             });
+
+            int duplicateCount = 0;
+            List<RoomType> toSave = new ArrayList<>();
+            for (RoomType rt : allRoomTypes) {
+                if (roomTypeRepository.existsByTypeName(rt.getTypeName())) {
+                    duplicateCount++;
+                } else {
+                    toSave.add(rt);
+                }
+            }
             
-            // Skip existing names
-            roomTypes.removeIf(rt -> roomTypeRepository.findAll().stream().anyMatch(existing -> existing.getTypeName().equalsIgnoreCase(rt.getTypeName())));
-            roomTypeRepository.saveAll(roomTypes);
+            roomTypeRepository.saveAll(toSave);
+            return String.format("Nhập dữ liệu thành công! Đã thêm %d loại phòng mới. Bỏ qua %d loại phòng do trùng tên.", 
+                    toSave.size(), duplicateCount);
         } catch (IOException e) {
-            throw new RuntimeException("Could not store the data: " + e.getMessage());
+            throw new RuntimeException("Lỗi đọc file Excel: " + e.getMessage());
         }
     }
 
@@ -237,26 +239,6 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                         roomType.getImages().stream().map(RoomTypeImage::getImageUrl).collect(Collectors.toList()) : 
                         new ArrayList<>())
                 .build();
-    }
-    public void importRoomTypesFromExcel(MultipartFile file) {
-        try {
-            List<RoomType> roomTypes = ExcelHelper.excelToData(file.getInputStream(), "RoomTypes", row -> {
-                String typeName = ExcelHelper.getCellValueAsString(row.getCell(1));
-                if (typeName.isEmpty()) return null;
-
-                RoomType rt = new RoomType();
-                rt.setTypeName(typeName);
-                rt.setPrice(new java.math.BigDecimal(ExcelHelper.getCellValueAsString(row.getCell(2))));
-                rt.setDescription(ExcelHelper.getCellValueAsString(row.getCell(4)));
-                return rt;
-            });
-
-            // Skip existing names
-            roomTypes.removeIf(rt -> roomTypeRepository.findAll().stream().anyMatch(existing -> existing.getTypeName().equalsIgnoreCase(rt.getTypeName())));
-            roomTypeRepository.saveAll(roomTypes);
-        } catch (IOException e) {
-            throw new RuntimeException("Could not store the data: " + e.getMessage());
-        }
     }
 
 }

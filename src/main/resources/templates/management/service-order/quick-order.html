@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Đặt dịch vụ nhanh - LuxeStay</title>
+    <style>
+        .quick-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .quick-card.selected {
+            border-color: #4f46e5;
+            background-color: #f5f3ff;
+            transform: scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.1);
+        }
+        .custom-active-tab {
+            border-bottom: 2px solid #4f46e5;
+            color: #4f46e5;
+        }
+    </style>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-8 py-8 h-[calc(100vh-80px)] overflow-hidden">
+        <div class="flex flex-col h-full">
+            <!-- Header -->
+            <div class="mb-6">
+                <h1 class="text-3xl font-black text-slate-900 flex items-center gap-3">
+                    <i data-lucide="zap" class="w-8 h-8 text-amber-500"></i>
+                    Đặt dịch vụ nhanh
+                </h1>
+                <p class="text-slate-500 font-medium">Chọn phòng, chọn món và xác nhận. Tốc độ là tiên phong!</p>
+            </div>
+
+            <!-- Main Grid -->
+            <div class="grid grid-cols-12 gap-8 flex-1 min-h-0">
+                
+                <!-- Column 1: Occupied Rooms (3 cols) -->
+                <div class="col-span-3 flex flex-col bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-50 bg-slate-50/50">
+                        <h3 class="font-black text-slate-900 uppercase tracking-widest text-xs flex items-center gap-2">
+                            <i data-lucide="door-open" class="w-4 h-4 text-indigo-500"></i>
+                            1. Chọn phòng đang ở
+                        </h3>
+                    </div>
+                    <div id="room-list" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                        <!-- Rooms loaded via AJAX -->
+                        <div class="flex items-center justify-center h-full text-slate-400">
+                            <div class="text-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i>
+                                <p class="text-xs">Đang tải phòng...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 2: Service List (6 cols) -->
+                <div class="col-span-6 flex flex-col bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                        <h3 class="font-black text-slate-900 uppercase tracking-widest text-xs flex items-center gap-2">
+                            <i data-lucide="utensils" class="w-4 h-4 text-rose-500"></i>
+                            2. Chọn dịch vụ
+                        </h3>
+                        <div class="relative w-48">
+                            <input type="text" id="service-search" placeholder="Tìm món..." 
+                                class="w-full pl-8 pr-4 py-1.5 rounded-full bg-white border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        </div>
+                    </div>
+                    <!-- Categories Tabs -->
+                    <div id="category-tabs" class="px-6 py-2 border-b border-slate-50 flex gap-4 overflow-x-auto whitespace-nowrap text-[11px] font-bold text-slate-500 custom-scrollbar">
+                        <span class="cursor-pointer pb-2 custom-active-tab category-tab" data-id="all">Tất cả</span>
+                        <!-- Categories loaded via AJAX -->
+                    </div>
+                    <div id="service-grid" class="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-4 custom-scrollbar content-start">
+                        <!-- Services loaded via AJAX -->
+                    </div>
+                </div>
+
+                <!-- Column 3: Order Summary (3 cols) -->
+                <div class="col-span-3 flex flex-col bg-slate-900 rounded-[32px] shadow-2xl overflow-hidden text-white">
+                    <div class="p-6 border-b border-white/10">
+                        <h3 class="font-black uppercase tracking-widest text-xs flex items-center gap-2 text-indigo-400">
+                            <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                            3. Xác nhận đơn hàng
+                        </h3>
+                    </div>
+                    
+                    <!-- Selected Room Info -->
+                    <div id="selected-room-info" class="p-6 bg-white/5 border-b border-white/10 hidden">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Đang đặt cho</p>
+                        <h4 class="text-xl font-black text-white" id="display-room-name">Phòng 101</h4>
+                        <p class="text-xs text-indigo-300" id="display-guest-name">Khách: ...</p>
+                    </div>
+
+                    <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                        <!-- Cart items -->
+                        <div id="empty-cart" class="h-full flex flex-col items-center justify-center text-slate-500 text-center">
+                            <i data-lucide="shopping-cart" class="w-12 h-12 mb-4 opacity-20"></i>
+                            <p class="text-sm font-medium">Chưa có món nào được chọn</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 bg-indigo-600/10 border-t border-white/10 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 text-xs font-bold uppercase tracking-widest">Tổng cộng</span>
+                            <span class="text-2xl font-black text-white" id="cart-total">0đ</span>
+                        </div>
+                        <button id="confirm-order-btn" disabled
+                            class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Xác nhận đặt món
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="script">
+        <script th:src="@{/js/quick-order.js}"></script>
+    </th:block>
+</body>
+
+</html>

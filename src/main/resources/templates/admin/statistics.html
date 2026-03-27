@@ -319,8 +319,8 @@
             const start = new Date();
             start.setDate(end.getDate() - 30);
             
-            document.getElementById('export-start-date').value = start.toISOString().split('T')[0];
-            document.getElementById('export-end-date').value = end.toISOString().split('T')[0];
+            document.getElementById('export-start-date').value = start.toLocaleDateString('en-CA');
+            document.getElementById('export-end-date').value = end.toLocaleDateString('en-CA');
 
             initCharts(initialStats);
             lucide.createIcons();

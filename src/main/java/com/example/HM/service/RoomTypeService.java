@@ -18,5 +18,5 @@ public interface RoomTypeService {
 
     // Excel Operations
     ByteArrayInputStream exportRoomTypesToExcel();
-    void importRoomTypesFromExcel(MultipartFile file);
+    String importRoomTypesFromExcel(MultipartFile file);
 }

@@ -128,8 +128,8 @@ public class AccountController {
     @ResponseBody
     public ResponseEntity<?> importAccounts(@RequestParam("file") MultipartFile file) {
         try {
-            accountService.importAccountsFromExcel(file);
-            return ResponseEntity.ok(Map.of("message", "Nhập dữ liệu tài khoản thành công!"));
+            String result = accountService.importAccountsFromExcel(file);
+            return ResponseEntity.ok(Map.of("message", result));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "Lỗi nhập liệu: " + e.getMessage()));
         }

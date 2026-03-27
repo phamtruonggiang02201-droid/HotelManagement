@@ -13,20 +13,33 @@
                 <h1 class="text-3xl font-black text-slate-900">Trạng thái vận hành</h1>
                 <p class="text-slate-500 font-medium">Theo dõi và quản lý trạng thái phòng thời gian thực.</p>
             </div>
-            <div class="flex gap-4">
-                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-                    <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span class="text-xs font-black text-slate-600 uppercase">Trống</span>
+            <div class="flex items-center gap-6">
+                <!-- Date Filter -->
+                <div class="flex items-center gap-3 bg-white p-2 pl-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Xem theo ngày</span>
+                    <input type="date" id="filter-date" 
+                        class="bg-slate-50 border-none outline-none font-black text-slate-900 px-4 py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all">
                 </div>
-                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-                    <div class="w-3 h-3 rounded-full bg-rose-500"></div>
-                    <span class="text-xs font-black text-slate-600 uppercase">Đang ở</span>
-                </div>
-                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-                    <div class="w-3 h-3 rounded-full bg-amber-500"></div>
-                    <span class="text-xs font-black text-slate-600 uppercase">Bảo trì</span>
+                <div class="flex gap-4">
+                    <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                        <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                        <span class="text-xs font-black text-slate-600 uppercase">Trống</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                        <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+                        <span class="text-xs font-black text-slate-600 uppercase">Đang ở</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                        <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                        <span class="text-xs font-black text-slate-600 uppercase">Bảo trì</span>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div id="room-stats-bar" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+            <!-- Stats loaded via JS -->
         </div>
 
         <!-- Room Status Grid -->
@@ -37,49 +50,156 @@
 
     <script layout:fragment="script">
         document.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('filter-date');
+            const now = new Date();
+            const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            dateInput.value = todayStr;
+
             loadRoomStatus();
+            loadRoomStats();
+
+            dateInput.addEventListener('change', () => {
+                loadRoomStatus();
+                loadRoomStats();
+            });
         });
 
-        async function loadRoomStatus() {
+        async function loadRoomStats() {
+            const date = document.getElementById('filter-date')?.value;
+            if (!date) return;
+            
             try {
-                const response = await fetch('/api/rooms');
+                const response = await fetch(`/api/rooms/stats?date=${date}`);
+                const stats = await response.json();
+                renderRoomStats(stats);
+            } catch (error) {
+                console.error('Error loading room stats:', error);
+            }
+        }
+
+        function renderRoomStats(stats) {
+            const container = document.getElementById('room-stats-bar');
+            if (!container) return;
+            
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center shrink-0">
+                        <i data-lucide="layers" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tổng số phòng</p>
+                        <h4 class="text-2xl font-black text-slate-900">${stats.totalRooms}</h4>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-[32px] border border-emerald-50 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center shrink-0">
+                        <i data-lucide="check-circle" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-emerald-600/50 uppercase tracking-widest">Đang trống</p>
+                        <h4 class="text-2xl font-black text-slate-900">${stats.availableRooms}</h4>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-[32px] border border-rose-50 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center shrink-0">
+                        <i data-lucide="user-check" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-rose-600/50 uppercase tracking-widest">Đang bận</p>
+                        <h4 class="text-2xl font-black text-slate-900">${stats.occupiedRooms}</h4>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-[32px] border border-amber-50 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center shrink-0">
+                        <i data-lucide="wrench" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-amber-600/50 uppercase tracking-widest">Bảo trì</p>
+                        <h4 class="text-2xl font-black text-slate-900">${stats.maintenanceRooms}</h4>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        async function loadRoomStatus() {
+            const date = document.getElementById('filter-date').value;
+            const grid = document.getElementById('room-status-grid');
+            grid.innerHTML = `
+                <div class="col-span-full py-20 flex flex-col items-center justify-center gap-4">
+                    <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-slate-400 font-bold animate-pulse">Đang kiểm tra trạng thái phòng...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/rooms/status-by-date?date=${date}`);
                 const rooms = await response.json();
                 renderStatusGrid(rooms);
             } catch (error) {
                 console.error('Error loading room status:', error);
+                grid.innerHTML = '<p class="col-span-full text-center text-rose-500 font-bold">Lỗi khi tải dữ liệu!</p>';
             }
         }
 
         function renderStatusGrid(rooms) {
             const grid = document.getElementById('room-status-grid');
+            if (rooms.length === 0) {
+                grid.innerHTML = '<p class="col-span-full text-center py-20 text-slate-400 font-bold">Không tìm thấy phòng nào.</p>';
+                return;
+            }
+
             grid.innerHTML = rooms.map(room => `
-                <div class="group relative bg-white p-6 rounded-[32px] border-2 transition-all cursor-pointer ${getStatusBorder(room.status)} hover:shadow-xl">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="text-2xl font-black text-slate-900">${room.roomName}</span>
-                        <div class="w-3 h-3 rounded-full ${getStatusBg(room.status)}"></div>
-                    </div>
-                    <p class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">${room.roomType?.typeName}</p>
-                    
-                    <div class="flex flex-col gap-2 mt-auto">
-                         <button onclick="changeStatus('${room.id}', 'AVAILABLE')" class="text-[9px] font-bold py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">Sẵn sàng</button>
-                         <button onclick="changeStatus('${room.id}', 'MAINTENANCE')" class="text-[9px] font-bold py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-amber-50 hover:text-amber-700 transition-colors">Bảo trì</button>
+                <div class="group relative bg-white p-8 rounded-[40px] border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${getStatusBorder(room.status)}">
+                    <!-- Status Badge -->
+                    <div class="absolute top-6 right-6 flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-50">
+                        <div class="w-2 h-2 rounded-full ${getStatusBg(room.status)} pulse-animation"></div>
+                        <span class="text-[8px] font-black text-slate-500 uppercase tracking-tighter">${getStatusText(room.status)}</span>
                     </div>
 
-                    <!-- Tooltip/Hover Effect -->
-                    <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm rounded-[30px] opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all p-4 text-center">
-                        <div class="space-y-4">
-                            <p class="text-white text-xs font-bold leading-relaxed">${getStatusActionText(room.status)}</p>
-                            <a href="/bookings/reception" class="inline-block text-[10px] font-black uppercase tracking-widest bg-white text-slate-900 px-4 py-2 rounded-xl">Quản lý Check-in</a>
+                    <div class="mb-6">
+                        <div class="w-14 h-14 rounded-2xl ${getStatusLightBg(room.status)} flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                            <i data-lucide="${getStatusIcon(room.status)}" class="w-7 h-7 ${getStatusTextClass(room.status)}"></i>
+                        </div>
+                        <h3 class="text-3xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors">${room.roomName}</h3>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">${room.roomType?.typeName}</p>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-slate-50">
+                        <div>
+                            <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Giá / Đêm</span>
+                            <span class="text-sm font-black text-slate-700">${new Intl.NumberFormat('vi-VN').format(room.roomType?.price)}đ</span>
+                        </div>
+                        
+                        <div class="flex gap-1">
+                             <button onclick="changeStatus('${room.id}', 'AVAILABLE')" title="Sẵn sàng" class="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                             </button>
+                             <button onclick="changeStatus('${room.id}', 'MAINTENANCE')" title="Bảo trì" class="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-all">
+                                <i data-lucide="wrench" class="w-4 h-4"></i>
+                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Overlay for actions -->
+                    <div class="absolute inset-2 bg-slate-900/95 backdrop-blur-md rounded-[32px] opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all duration-300 p-6 text-center scale-95 group-hover:scale-100">
+                        <p class="text-white text-xs font-bold leading-relaxed mb-6">${getStatusActionText(room.status)}</p>
+                        <div class="flex flex-col w-full gap-2">
+                            <a href="/bookings/reception" class="w-full bg-white text-slate-900 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-lg shadow-white/10">Quản lý Check-in</a>
+                            ${room.status === 'AVAILABLE' ? `<a href="/bookings/reception/walk-in" class="w-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest py-3 rounded-xl hover:bg-indigo-700 transition-all">Đặt phòng ngay</a>` : ''}
                         </div>
                     </div>
                 </div>
             `).join('');
+            lucide.createIcons();
         }
 
         async function changeStatus(id, status) {
+            if (!confirm('Xác nhận đổi trạng thái phòng?')) return;
             try {
-                // We need to fetch the existing room data first because updateRoom needs RoomRequest
-                const response = await fetch(`/api/rooms`);
+                // Fetch current data from the list
+                const date = document.getElementById('filter-date').value;
+                const response = await fetch(`/api/rooms/status-by-date?date=${date}`);
                 const rooms = await response.json();
                 const room = rooms.find(r => r.id === id);
 
@@ -88,9 +208,7 @@
                 const request = {
                     roomName: room.roomName,
                     roomTypeId: room.roomType.id,
-                    price: room.price,
-                    status: status,
-                    roomImage: room.roomImage
+                    status: status
                 };
 
                 const updateResponse = await fetch(`/api/rooms/${id}`, {
@@ -100,18 +218,20 @@
                 });
 
                 if (updateResponse.ok) {
+                    toastService.success('Cập nhật trạng thái thành công!');
                     loadRoomStatus();
                 }
             } catch (error) {
                 console.error('Error changing status:', error);
+                toastService.error('Có lỗi xảy ra!');
             }
         }
 
         function getStatusBorder(status) {
             switch (status) {
-                case 'AVAILABLE': return 'border-emerald-100';
-                case 'OCCUPIED': return 'border-rose-100';
-                case 'MAINTENANCE': return 'border-amber-100';
+                case 'AVAILABLE': return 'border-emerald-100 hover:border-emerald-500';
+                case 'OCCUPIED': return 'border-rose-100 hover:border-rose-500';
+                case 'MAINTENANCE': return 'border-amber-100 hover:border-amber-500';
                 default: return 'border-slate-100';
             }
         }
@@ -125,11 +245,47 @@
             }
         }
 
+        function getStatusLightBg(status) {
+            switch (status) {
+                case 'AVAILABLE': return 'bg-emerald-50';
+                case 'OCCUPIED': return 'bg-rose-50';
+                case 'MAINTENANCE': return 'bg-amber-50';
+                default: return 'bg-slate-50';
+            }
+        }
+
+        function getStatusTextClass(status) {
+            switch (status) {
+                case 'AVAILABLE': return 'text-emerald-500';
+                case 'OCCUPIED': return 'text-rose-500';
+                case 'MAINTENANCE': return 'text-amber-500';
+                default: return 'text-slate-500';
+            }
+        }
+
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'AVAILABLE': return 'door-open';
+                case 'OCCUPIED': return 'user-check';
+                case 'MAINTENANCE': return 'wrench';
+                default: return 'help-circle';
+            }
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 'AVAILABLE': return 'Sẵn sàng';
+                case 'OCCUPIED': return 'Đang có khách';
+                case 'MAINTENANCE': return 'Đang bảo trì';
+                default: return 'Không xác định';
+            }
+        }
+
         function getStatusActionText(status) {
             switch (status) {
-                case 'AVAILABLE': return 'Phòng đang trống. Sẵn sàng cho khách mới.';
-                case 'OCCUPIED': return 'Phòng đang có khách lưu trú.';
-                case 'MAINTENANCE': return 'Phòng đang bảo trì, không thể sử dụng.';
+                case 'AVAILABLE': return 'Phòng đang trống. Đại ca có thể đón khách mới ngay lập tức.';
+                case 'OCCUPIED': return 'Phòng đang có khách lưu trú. Hãy kiểm tra lịch Check-out.';
+                case 'MAINTENANCE': return 'Phòng đang bảo trì. Chặn nhận phòng cho đến khi hoàn tất.';
                 default: return 'Trạng thái không xác định.';
             }
         }

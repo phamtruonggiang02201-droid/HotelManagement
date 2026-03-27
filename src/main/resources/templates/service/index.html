@@ -16,20 +16,20 @@
                 </div>
                 <div class="flex gap-4">
                     <div class="flex gap-2">
-                        <a th:href="@{/api/services/export}"
+                        <a th:href="@{/api/services/export}" 
                            class="bg-emerald-600 text-white px-6 py-4 rounded-[20px] font-black shadow-lg shadow-emerald-600/10 hover:bg-emerald-700 transition-all flex items-center gap-2">
                             <i data-lucide="file-down" class="w-5 h-5"></i>
                             <span class="hidden lg:inline">Xuất Excel</span>
                         </a>
                         <button onclick="document.getElementById('import-service-input').click()"
-                                class="bg-slate-100 text-slate-700 px-6 py-4 rounded-[20px] font-black hover:bg-slate-200 transition-all flex items-center gap-2">
+                           class="bg-slate-100 text-slate-700 px-6 py-4 rounded-[20px] font-black hover:bg-slate-200 transition-all flex items-center gap-2">
                             <i data-lucide="file-up" class="w-5 h-5"></i>
                             <span class="hidden lg:inline">Nhập Excel</span>
                         </button>
                         <input type="file" id="import-service-input" class="hidden" accept=".xlsx, .xls" onchange="handleImportServices(this)">
                     </div>
                     <button onclick="openServiceModal()"
-                            class="bg-rose-600 text-white px-8 py-5 rounded-[24px] font-black shadow-xl shadow-rose-600/20 hover:scale-105 transition-all flex items-center gap-3">
+                        class="bg-rose-600 text-white px-8 py-5 rounded-[24px] font-black shadow-xl shadow-rose-600/20 hover:scale-105 transition-all flex items-center gap-3">
                         <i data-lucide="plus-circle" class="w-6 h-6"></i>
                         Thêm dịch vụ mới
                     </button>
@@ -146,6 +146,35 @@
                     debounceTimer = setTimeout(() => loadServicesWithPagination(0, searchInput.value), 300);
                 });
             });
+
+            async function handleImportServices(input) {
+                if (!input.files || input.files.length === 0) return;
+                
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                toastService.info("Đang xử lý nhập dữ liệu dịch vụ...");
+                
+                try {
+                    const response = await fetch('/api/services/import', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        toastService.success(result.message);
+                        loadServicesWithPagination(); // Reload list
+                    } else {
+                        toastService.error(result.message);
+                    }
+                } catch (error) {
+                    toastService.error("Có lỗi xảy ra khi nhập dữ liệu.");
+                } finally {
+                    input.value = ''; // Reset input
+                }
+            }
         </script>
     </div>
 </body>

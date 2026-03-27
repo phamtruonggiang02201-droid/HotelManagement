@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class Payment extends BaseEntity {
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "BookingID")
     private Booking booking;

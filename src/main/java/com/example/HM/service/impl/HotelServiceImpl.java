@@ -47,8 +47,108 @@ public class HotelServiceImpl implements HotelService {
                         .id(cat.getId())
                         .categoryName(cat.getCategoryName())
                         .description(cat.getDescription())
+                        .build())
+                .collect(Collectors.toList());
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceDTO> getAllServices(Pageable pageable) {
+        return extraServiceRepository.findAll(pageable).map(this::convertToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceCategoryDTO> getAllCategories(Pageable pageable) {
+        return serviceCategoryRepository.findAll(pageable)
+                .map(cat -> ServiceCategoryDTO.builder()
+                        .id(cat.getId())
+                        .categoryName(cat.getCategoryName())
+                        .description(cat.getDescription())
                         .build());
     }
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceDTO> searchServices(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.isBlank()) {
+            return extraServiceRepository.findAll(pageable).map(this::convertToDTO);
+        }
+        return extraServiceRepository.findByServiceNameContainingIgnoreCase(keyword, pageable)
+                .map(this::convertToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceDTO> getServicesByCategory(String categoryId, Pageable pageable) {
+        ServiceCategory category = serviceCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
+        // Chỉ lấy dịch vụ đang hoạt động cho khách
+        return extraServiceRepository.findByCategoryAndIsActiveTrue(category, pageable)
+                .map(this::convertToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ServiceDTO getServiceById(String id) {
+        ExtraService service = extraServiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại!"));
+        return convertToDTO(service);
+    }
+
+    @Override
+    @Transactional
+    public ServiceDTO createService(ServiceRequest request) {
+        ServiceCategory category = serviceCategoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
+
+        ExtraService service = new ExtraService();
+        service.setServiceName(request.getServiceName());
+        service.setPrice(request.getPrice());
+        service.setCategory(category);
+        service.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+
+        return convertToDTO(extraServiceRepository.save(service));
+    }
+
+    @Override
+    @Transactional
+    public ServiceDTO updateService(String id, ServiceRequest request) {
+        ExtraService service = extraServiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại!"));
+
+        ServiceCategory category = serviceCategoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
+
+        service.setServiceName(request.getServiceName());
+        service.setPrice(request.getPrice());
+        service.setCategory(category);
+        service.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+
+        return convertToDTO(extraServiceRepository.save(service));
+    }
+
+    @Override
+    @Transactional
+    public void deleteService(String id) {
+        ExtraService service = extraServiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại!"));
+        try {
+            extraServiceRepository.delete(service);
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể xóa dịch vụ vì đang được sử dụng trong các đơn đặt phòng!");
+        }
+    }
+
+    @Override
+    @Transactional
+    public ServiceDTO toggleServiceStatus(String id) {
+        ExtraService service = extraServiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Dịch vụ không tồn tại!"));
+        // Xử lý null-safe: Nếu null thì coi như đang active (true), đảo ngược thành false
+        boolean currentStatus = service.getIsActive() != null ? service.getIsActive() : true;
+        service.setIsActive(!currentStatus);
+        return convertToDTO(extraServiceRepository.save(service));
+    }
+
     @Override
     public ByteArrayInputStream exportServicesToExcel() {
         List<ExtraService> services = extraServiceRepository.findAll();
@@ -65,14 +165,14 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     @Transactional
-    public void importServicesFromExcel(MultipartFile file) {
+    public String importServicesFromExcel(MultipartFile file) {
         try {
-            List<ExtraService> services = ExcelHelper.excelToData(file.getInputStream(), "Services", row -> {
+            List<ExtraService> allServices = ExcelHelper.excelToData(file.getInputStream(), "Services", row -> {
                 String serviceName = ExcelHelper.getCellValueAsString(row.getCell(1));
-                if (serviceName.isEmpty()) return null;
+                if (serviceName == null || serviceName.trim().isEmpty()) return null;
                 
                 ExtraService s = new ExtraService();
-                s.setServiceName(serviceName);
+                s.setServiceName(serviceName.trim());
                 
                 String categoryName = ExcelHelper.getCellValueAsString(row.getCell(2));
                 ServiceCategory cat = serviceCategoryRepository.findAll().stream()
@@ -85,12 +185,22 @@ public class HotelServiceImpl implements HotelService {
                 s.setIsActive(ExcelHelper.getCellValueAsString(row.getCell(4)).equalsIgnoreCase("Hoạt động"));
                 return s;
             });
+
+            int duplicateCount = 0;
+            List<ExtraService> toSave = new java.util.ArrayList<>();
+            for (ExtraService s : allServices) {
+                if (extraServiceRepository.existsByServiceName(s.getServiceName())) {
+                    duplicateCount++;
+                } else {
+                    toSave.add(s);
+                }
+            }
             
-            // Skip existing names
-            services.removeIf(s -> extraServiceRepository.existsByServiceName(s.getServiceName()));
-            extraServiceRepository.saveAll(services);
+            extraServiceRepository.saveAll(toSave);
+            return String.format("Nhập dữ liệu thành công! Đã thêm %d dịch vụ mới. Bỏ qua %d dịch vụ do trùng tên.", 
+                    toSave.size(), duplicateCount);
         } catch (IOException e) {
-            throw new RuntimeException("Could not store the data: " + e.getMessage());
+            throw new RuntimeException("Lỗi đọc file Excel: " + e.getMessage());
         }
     }
 

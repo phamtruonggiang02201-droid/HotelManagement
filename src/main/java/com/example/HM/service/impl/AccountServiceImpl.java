@@ -9,13 +9,16 @@ import com.example.HM.dto.UpdateProfileRequest;
 import com.example.HM.dto.ChangePasswordRequest;
 import com.example.HM.entity.Account;
 import com.example.HM.entity.Role;
+import com.example.HM.entity.PasswordHistory;
 import com.example.HM.repository.AccountRepository;
+import com.example.HM.repository.PasswordHistoryRepository;
 import com.example.HM.repository.RoleRepository;
 import com.example.HM.security.SecurityUtils;
 import com.example.HM.service.AccountService;
 import com.example.HM.service.EmailService;
 import com.example.HM.util.ExcelHelper;
 import lombok.RequiredArgsConstructor;
+import java.time.format.DateTimeFormatter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,6 +31,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -38,6 +42,7 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
     private final RoleRepository roleRepository;
+    private final PasswordHistoryRepository passwordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
@@ -48,7 +53,7 @@ public class AccountServiceImpl implements AccountService {
             return accountRepository.searchAllAccounts(search.trim(), pageable)
                     .map(this::convertToDTO);
         }
-        return accountRepository.findAll(pageable)
+        return accountRepository.findAllByStatusTrue(pageable)
                 .map(this::convertToDTO);
     }
 
@@ -60,7 +65,7 @@ public class AccountServiceImpl implements AccountService {
             return accountRepository.searchEmployees(search.trim(), employeeRoles, pageable)
                     .map(this::convertToEmployeeDTO);
         }
-        return accountRepository.findAllByRole_RoleNameIn(employeeRoles, pageable)
+        return accountRepository.findAllByRole_RoleNameInAndStatusTrue(employeeRoles, pageable)
                 .map(this::convertToEmployeeDTO);
     }
 
@@ -98,7 +103,16 @@ public class AccountServiceImpl implements AccountService {
         account.setJobTitle(request.getJobTitle());
 
         // Map personal info
-        if (request.getPhone() != null) account.setPhone(request.getPhone());
+        if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            if (!Pattern.matches(Constants.REGEX_PHONE, request.getPhone())) {
+                throw new RuntimeException("Số điện thoại không đúng định dạng!");
+            }
+            if (accountRepository.existsByPhone(request.getPhone())) {
+                throw new RuntimeException("Số điện thoại đã được sử dụng bởi tài khoản khác!");
+            }
+            account.setPhone(request.getPhone());
+        }
+
         if (request.getDob() != null && !request.getDob().isEmpty()) {
             account.setDob(LocalDate.parse(request.getDob()));
         }
@@ -125,6 +139,9 @@ public class AccountServiceImpl implements AccountService {
                 randomPassword,
                 request.getFullName()
         );
+
+        // Save to password history
+        saveToPasswordHistory(saved, saved.getPassword());
 
         return convertToDTO(saved);
     }
@@ -178,13 +195,23 @@ public class AccountServiceImpl implements AccountService {
 
         // Update password if provided
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+            checkAndSavePasswordHistory(account, request.getPassword());
             account.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
         account.setJobTitle(request.getJobTitle());
 
         // Update personal info
-        if (request.getPhone() != null) account.setPhone(request.getPhone());
+        if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            if (!Pattern.matches(Constants.REGEX_PHONE, request.getPhone())) {
+                throw new RuntimeException("Số điện thoại không đúng định dạng!");
+            }
+            if (!request.getPhone().equals(account.getPhone()) && accountRepository.existsByPhone(request.getPhone())) {
+                throw new RuntimeException("Số điện thoại đã được sử dụng bởi tài khoản khác!");
+            }
+            account.setPhone(request.getPhone());
+        }
+
         if (request.getDob() != null && !request.getDob().isEmpty()) {
             account.setDob(LocalDate.parse(request.getDob()));
         }
@@ -192,7 +219,15 @@ public class AccountServiceImpl implements AccountService {
         if (request.getIdNumber() != null) account.setIdNumber(request.getIdNumber());
         if (request.getIdType() != null) account.setIdType(request.getIdType());
         if (request.getNationality() != null) account.setNationality(request.getNationality());
-        if (request.getStatus() != null) account.setStatus(request.getStatus());
+        // Protection for root admin
+        if (Constants.ROOT_ADMIN_USERNAME.equals(account.getUsername())) {
+            if (request.getStatus() != null && !request.getStatus()) {
+                throw new RuntimeException("Không thể vô hiệu hóa tài khoản root admin!");
+            }
+            if (!account.getRole().getRoleName().equals(request.getRoleName())) {
+                throw new RuntimeException("Không thể thay đổi quyền của tài khoản root admin!");
+            }
+        }
 
         accountRepository.save(account);
         return convertToDTO(account);
@@ -204,196 +239,10 @@ public class AccountServiceImpl implements AccountService {
     public void deleteAccount(String id) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        accountRepository.delete(account);
-    }
 
-    @Override
-    @Transactional(readOnly = true)
-    public AccountDTO getAccountById(String id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        return convertToDTO(account);
-    }
-
-    @Override
-    @Transactional
-    public AccountDTO createAccountByAdmin(AdminAccountRequest request) {
-        // Validate
-        if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Tên đăng nhập đã tồn tại!");
+        if (Constants.ROOT_ADMIN_USERNAME.equals(account.getUsername())) {
+            throw new RuntimeException("Không thể xóa tài khoản root admin!");
         }
-        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email đã được sử dụng!");
-        }
-
-        Account account = new Account();
-        account.setUsername(request.getUsername());
-        account.setPassword(passwordEncoder.encode(request.getPassword()));
-        account.setEmail(request.getEmail());
-
-        // Split full name
-        String fullName = request.getFullName().trim();
-        int firstSpaceIndex = fullName.indexOf(" ");
-        if (firstSpaceIndex != -1) {
-            account.setFirstName(fullName.substring(0, firstSpaceIndex));
-            account.setLastName(fullName.substring(firstSpaceIndex + 1));
-        } else {
-            account.setFirstName(fullName);
-            account.setLastName("");
-        }
-
-        account.setEmailVerified(false);
-        account.setVerificationToken(UUID.randomUUID().toString());
-        account.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusDays(1)); // 24 hours for admin-created
-        account.setStatus(false); // Locked until email verified
-
-        // Set Role
-        Role role = roleRepository.findByRoleName(request.getRoleName())
-                .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
-        account.setRole(role);
-
-        Account saved = accountRepository.save(account);
-
-        // Send Verification Email
-        String verifyUrl = "http://localhost:8080/verify-email?token=" + saved.getVerificationToken();
-        emailService.sendRegistrationEmail(saved.getEmail(), saved.getUsername(), request.getFullName(), verifyUrl);
-
-        return convertToDTO(saved);
-    }
-
-    @Override
-    @Transactional
-    public AccountDTO updateAccountByAdmin(String id, AdminAccountRequest request) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-
-        // Update name
-        String fullName = request.getFullName().trim();
-        int firstSpaceIndex = fullName.indexOf(" ");
-        if (firstSpaceIndex != -1) {
-            account.setFirstName(fullName.substring(0, firstSpaceIndex));
-            account.setLastName(fullName.substring(firstSpaceIndex + 1));
-        } else {
-            account.setFirstName(fullName);
-            account.setLastName("");
-        }
-
-        // Update role if provided
-        if (request.getRoleName() != null && !request.getRoleName().isEmpty()) {
-            Role role = roleRepository.findByRoleName(request.getRoleName())
-                    .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
-            account.setRole(role);
-        }
-
-        // Update password if provided
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            account.setPassword(passwordEncoder.encode(request.getPassword()));
-        }
-
-        accountRepository.save(account);
-        return convertToDTO(account);
-    }
-
-    @Override
-    @Transactional
-    public void deleteAccount(String id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        accountRepository.delete(account);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public AccountDTO getAccountById(String id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        return convertToDTO(account);
-    }
-
-    @Override
-    @Transactional
-    public AccountDTO createAccountByAdmin(AdminAccountRequest request) {
-        // Validate
-        if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Tên đăng nhập đã tồn tại!");
-        }
-        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email đã được sử dụng!");
-        }
-
-        Account account = new Account();
-        account.setUsername(request.getUsername());
-        account.setPassword(passwordEncoder.encode(request.getPassword()));
-        account.setEmail(request.getEmail());
-
-        // Split full name
-        String fullName = request.getFullName().trim();
-        int firstSpaceIndex = fullName.indexOf(" ");
-        if (firstSpaceIndex != -1) {
-            account.setFirstName(fullName.substring(0, firstSpaceIndex));
-            account.setLastName(fullName.substring(firstSpaceIndex + 1));
-        } else {
-            account.setFirstName(fullName);
-            account.setLastName("");
-        }
-
-        account.setEmailVerified(false);
-        account.setVerificationToken(UUID.randomUUID().toString());
-        account.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusDays(1)); // 24 hours for admin-created
-        account.setStatus(false); // Locked until email verified
-
-        // Set Role
-        Role role = roleRepository.findByRoleName(request.getRoleName())
-                .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
-        account.setRole(role);
-
-        Account saved = accountRepository.save(account);
-
-        // Send Verification Email
-        String verifyUrl = "http://localhost:8080/verify-email?token=" + saved.getVerificationToken();
-        emailService.sendRegistrationEmail(saved.getEmail(), saved.getUsername(), request.getFullName(), verifyUrl);
-
-        return convertToDTO(saved);
-    }
-
-    @Override
-    @Transactional
-    public AccountDTO updateAccountByAdmin(String id, AdminAccountRequest request) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-
-        // Update name
-        String fullName = request.getFullName().trim();
-        int firstSpaceIndex = fullName.indexOf(" ");
-        if (firstSpaceIndex != -1) {
-            account.setFirstName(fullName.substring(0, firstSpaceIndex));
-            account.setLastName(fullName.substring(firstSpaceIndex + 1));
-        } else {
-            account.setFirstName(fullName);
-            account.setLastName("");
-        }
-
-        // Update role if provided
-        if (request.getRoleName() != null && !request.getRoleName().isEmpty()) {
-            Role role = roleRepository.findByRoleName(request.getRoleName())
-                    .orElseThrow(() -> new RuntimeException("Quyền " + request.getRoleName() + " không tồn tại!"));
-            account.setRole(role);
-        }
-
-        // Update password if provided
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            account.setPassword(passwordEncoder.encode(request.getPassword()));
-        }
-
-        accountRepository.save(account);
-        return convertToDTO(account);
-    }
-
-    @Override
-    @Transactional
-    public void deleteAccount(String id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
 
         account.setStatus(false);
         accountRepository.save(account);
@@ -412,6 +261,12 @@ public class AccountServiceImpl implements AccountService {
         if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email đã được sử dụng!");
         }
+        if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            if (accountRepository.existsByPhone(request.getPhone())) {
+                throw new RuntimeException("Số điện thoại đã được sử dụng bởi tài khoản khác!");
+            }
+        }
+
 
         // 2. Create Account
         Account account = new Account();
@@ -452,6 +307,9 @@ public class AccountServiceImpl implements AccountService {
                 request.getFullName(),
                 verifyUrl
         );
+
+        // Save initial password to history
+        saveToPasswordHistory(saved, saved.getPassword());
 
         return convertToDTO(saved);
     }
@@ -543,9 +401,19 @@ public class AccountServiceImpl implements AccountService {
         if (request.getIdNumber() != null) account.setIdNumber(request.getIdNumber());
         if (request.getIdType() != null) account.setIdType(request.getIdType());
         if (request.getNationality() != null) account.setNationality(request.getNationality());
-        if (request.getPhone() != null) account.setPhone(request.getPhone());
+        
+        if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            if (!Pattern.matches(Constants.REGEX_PHONE, request.getPhone())) {
+                throw new RuntimeException("Số điện thoại không đúng định dạng!");
+            }
+            if (!request.getPhone().equals(account.getPhone()) && accountRepository.existsByPhone(request.getPhone())) {
+                throw new RuntimeException("Số điện thoại đã được sử dụng bởi tài khoản khác!");
+            }
+            account.setPhone(request.getPhone());
+        }
 
         accountRepository.save(account);
+
     }
 
     @Override
@@ -564,9 +432,11 @@ public class AccountServiceImpl implements AccountService {
             throw new RuntimeException("Mật khẩu mới không đúng định dạng (tối thiểu 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt)!");
         }
 
+        checkAndSavePasswordHistory(account, request.getNewPassword());
         account.setPassword(passwordEncoder.encode(request.getNewPassword()));
         accountRepository.save(account);
     }
+
 
     @Override
     @Transactional
@@ -610,17 +480,24 @@ public class AccountServiceImpl implements AccountService {
             throw new RuntimeException("Mật khẩu không đúng định dạng (tối thiểu 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt)!");
         }
 
+        checkAndSavePasswordHistory(account, newPassword);
         account.setPassword(passwordEncoder.encode(newPassword));
         account.setResetToken(null);
         account.setResetTokenExpiry(null);
         accountRepository.save(account);
     }
 
+
     @Override
     @Transactional
     public void updateStatus(String id, boolean status) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        
+        if (Constants.ROOT_ADMIN_USERNAME.equals(account.getUsername()) && !status) {
+            throw new RuntimeException("Không thể vô hiệu hóa tài khoản root admin!");
+        }
+
         account.setStatus(status);
         accountRepository.save(account);
     }
@@ -645,7 +522,10 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public ByteArrayInputStream exportAccountsToExcel() {
-        List<Account> accounts = accountRepository.findAll();
+        List<Account> accounts = accountRepository.findAll()
+                .stream()
+                .filter(Account::getStatus)
+                .collect(java.util.stream.Collectors.toList());
         String[] headers = { "ID", "Username", "Email", "Full Name", "Phone", "Role", "Status" };
         
         return ExcelHelper.dataToExcel(accounts, "Accounts", headers, (row, acc) -> {
@@ -661,14 +541,14 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public void importAccountsFromExcel(MultipartFile file) {
+    public String importAccountsFromExcel(MultipartFile file) {
         try {
-            List<Account> accounts = ExcelHelper.excelToData(file.getInputStream(), "Accounts", row -> {
+            List<Account> allAccounts = ExcelHelper.excelToData(file.getInputStream(), "Accounts", row -> {
                 String username = ExcelHelper.getCellValueAsString(row.getCell(1));
-                if (username.isEmpty()) return null;
+                if (username == null || username.trim().isEmpty()) return null;
                 
                 Account acc = new Account();
-                acc.setUsername(username);
+                acc.setUsername(username.trim());
                 acc.setEmail(ExcelHelper.getCellValueAsString(row.getCell(2)));
                 String fullName = ExcelHelper.getCellValueAsString(row.getCell(3));
                 if (fullName != null && !fullName.isEmpty()) {
@@ -694,12 +574,29 @@ public class AccountServiceImpl implements AccountService {
                 
                 return acc;
             });
+
+            int totalRows = allAccounts.size();
+            List<Account> toSave = new ArrayList<>();
+            int duplicateCount = 0;
+
+            for (Account acc : allAccounts) {
+                boolean exists = accountRepository.existsByUsername(acc.getUsername()) ||
+                        (acc.getEmail() != null && !acc.getEmail().isEmpty() && accountRepository.existsByEmail(acc.getEmail())) ||
+                        (acc.getPhone() != null && !acc.getPhone().isEmpty() && accountRepository.existsByPhone(acc.getPhone()));
+                
+                if (exists) {
+                    duplicateCount++;
+                } else {
+                    toSave.add(acc);
+                }
+            }
+
+            accountRepository.saveAll(toSave);
             
-            // Filter out existing usernames
-            accounts.removeIf(acc -> accountRepository.existsByUsername(acc.getUsername()));
-            accountRepository.saveAll(accounts);
+            return String.format("Nhập dữ liệu thành công! Đã thêm %d tài khoản mới. Bỏ qua %d tài khoản do trùng dữ liệu (username/email/phone).", 
+                    toSave.size(), duplicateCount);
         } catch (IOException e) {
-            throw new RuntimeException("Could not store the data: " + e.getMessage());
+            throw new RuntimeException("Lỗi đọc file Excel: " + e.getMessage());
         }
     }
 
@@ -764,4 +661,31 @@ public class AccountServiceImpl implements AccountService {
             }
         }
     }
+
+    private void checkAndSavePasswordHistory(Account account, String newPassword) {
+        List<PasswordHistory> history = passwordHistoryRepository.findByAccountOrderByCreatedAtDesc(account);
+        
+        for (PasswordHistory ph : history) {
+            if (passwordEncoder.matches(newPassword, ph.getPassword())) {
+                String formattedDate = ph.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                throw new RuntimeException("Mật khẩu này bạn đã sử dụng vào ngày " + formattedDate + ". Vui lòng chọn mật khẩu khác!");
+            }
+        }
+
+        saveToPasswordHistory(account, passwordEncoder.encode(newPassword));
+
+        // Keep only the latest MAX_PASSWORD_HISTORY entries
+        if (history.size() >= Constants.MAX_PASSWORD_HISTORY) {
+            List<PasswordHistory> toDelete = history.subList(Constants.MAX_PASSWORD_HISTORY - 1, history.size());
+            passwordHistoryRepository.deleteAll(toDelete);
+        }
+    }
+
+    private void saveToPasswordHistory(Account account, String encodedPassword) {
+        PasswordHistory ph = new PasswordHistory();
+        ph.setAccount(account);
+        ph.setPassword(encodedPassword);
+        passwordHistoryRepository.save(ph);
+    }
 }
+

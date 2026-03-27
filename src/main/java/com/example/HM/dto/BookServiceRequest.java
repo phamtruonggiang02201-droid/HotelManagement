@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class BookServiceRequest {
     private String bookingId;
+    private String roomId;
     private String serviceId;
     private Integer quantity;
 }

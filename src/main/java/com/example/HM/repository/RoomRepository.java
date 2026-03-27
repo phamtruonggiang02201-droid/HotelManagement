@@ -17,6 +17,7 @@ public interface RoomRepository extends JpaRepository<Room, String> {
     Page<Room> findByStatus(String status, Pageable pageable);
     Page<Room> findByRoomTypeAndStatus(RoomType roomType, String status, Pageable pageable);
     long countByRoomTypeAndStatus(RoomType roomType, String status);
+    long countByRoomTypeAndStatusNot(RoomType roomType, String status);
 
     // Uniqueness check
     boolean existsByRoomName(String roomName);
@@ -68,4 +69,13 @@ public interface RoomRepository extends JpaRepository<Room, String> {
            ":date >= b.checkIn AND :date < b.checkOut " +
            "GROUP BY br.roomType.id")
     List<Object[]> findBookedQuantitiesByDate(@Param("date") java.time.LocalDate date);
+
+    @Query("SELECT SUM(br.quantity) FROM Booking b JOIN b.bookedRooms br WHERE " +
+           "br.roomType.id = :typeId AND " +
+           "b.status NOT IN ('CANCELLED') AND " +
+           "b.checkIn < :checkOut AND b.checkOut > :checkIn")
+    Long countBookedQuantityByTypeAndDate(
+            @Param("typeId") String typeId,
+            @Param("checkIn") java.time.LocalDate checkIn,
+            @Param("checkOut") java.time.LocalDate checkOut);
 }
