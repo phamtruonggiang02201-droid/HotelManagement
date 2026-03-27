@@ -3,6 +3,7 @@ package com.example.HM.repository;
 import com.example.HM.entity.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,22 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"rooms", "guest", "bookedRooms", "bookedRooms.roomType", "payments"})
     @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.checkOut = :checkOut AND LOWER(CAST(b.id AS string)) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Booking> findByStatusAndCheckOutAndKeyword(String status, java.time.LocalDate checkOut, String keyword, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"rooms", "guest", "bookedRooms", "bookedRooms.roomType", "payments"})
+    @Query("SELECT b FROM Booking b WHERE b.checkIn = :checkIn AND b.status <> 'CANCELLED'")
+    Page<Booking> findReceptionCheckInBookings(java.time.LocalDate checkIn, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"rooms", "guest", "bookedRooms", "bookedRooms.roomType", "payments"})
+    @Query("SELECT b FROM Booking b WHERE b.checkIn = :checkIn AND b.status <> 'CANCELLED' AND LOWER(CAST(b.id AS string)) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Booking> findReceptionCheckInBookingsByKeyword(java.time.LocalDate checkIn, String keyword, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"rooms", "guest", "bookedRooms", "bookedRooms.roomType", "payments"})
+    @Query("SELECT b FROM Booking b WHERE b.checkOut = :checkOut AND b.status <> 'CANCELLED'")
+    Page<Booking> findReceptionCheckOutBookings(java.time.LocalDate checkOut, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"rooms", "guest", "bookedRooms", "bookedRooms.roomType", "payments"})
+    @Query("SELECT b FROM Booking b WHERE b.checkOut = :checkOut AND b.status <> 'CANCELLED' AND LOWER(CAST(b.id AS string)) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Booking> findReceptionCheckOutBookingsByKeyword(java.time.LocalDate checkOut, String keyword, Pageable pageable);
 
     List<Booking> findByCheckInBetween(java.time.LocalDate startDate, java.time.LocalDate endDate);
 
