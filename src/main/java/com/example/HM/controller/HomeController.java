@@ -30,7 +30,7 @@ public class HomeController {
 
     @GetMapping("/feedback")
     public String publicFeedback(Model model, @PageableDefault(size = 12, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        model.addAttribute("feedbacks", feedbackService.getAllFeedbacks(pageable));
+        model.addAttribute("feedbacks", feedbackService .getAllFeedbacks(null, pageable));
         return "feedback";
     }
 

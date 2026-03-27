@@ -33,6 +33,10 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
         Account employee = accountRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Nhân viên không tồn tại!"));
 
+        if (!employee.getStatus()) {
+            throw new RuntimeException("Không thể gán lịch cho tài khoản đã bị xóa/vô hiệu hóa!");
+        }
+
         LocalDate workDate = LocalDate.parse(request.getWorkDate());
         System.out.println("BE: Parsed workDate: " + workDate);
         
@@ -177,6 +181,11 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ!"));
         Account employee = accountRepository.findById(employeeId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên!"));
+        
+        if (!employee.getStatus()) {
+            throw new RuntimeException("Không thể gán nhiệm vụ cho tài khoản đã bị xóa/vô hiệu hóa!");
+        }
+
         task.setEmployee(employee);
         task.setShift(shift);
         task.setStatus("PROCESSING");
@@ -268,7 +277,7 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
             System.out.println("BE: Copying to " + targetDate);
             
             for (WorkAssignment sourceAs : sourceAssignments) {
-                if (sourceAs.getEmployee() == null) continue;
+                if (sourceAs.getEmployee() == null || !sourceAs.getEmployee().getStatus()) continue;
 
                 List<WorkAssignment> existing = assignmentRepository.findAllByEmployee_IdAndWorkDate(
                         sourceAs.getEmployee().getId(), targetDate);
@@ -310,7 +319,7 @@ public class WorkAssignmentServiceImpl implements WorkAssignmentService {
         int totalApplied = 0;
         
         for (WorkAssignment sourceAs : sourceAssignments) {
-            if (sourceAs.getEmployee() == null) continue;
+            if (sourceAs.getEmployee() == null || !sourceAs.getEmployee().getStatus()) continue;
 
             List<WorkAssignment> existing = assignmentRepository.findAllByEmployee_IdAndWorkDate(
                     sourceAs.getEmployee().getId(), targetDate);

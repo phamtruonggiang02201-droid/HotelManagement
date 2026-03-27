@@ -9,8 +9,18 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.Map;
 
+import org.springframework.beans.propertyeditors.StringTrimmerEditor;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
+
 @ControllerAdvice
 public class GlobalControllerAdvice {
+
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        StringTrimmerEditor stringTrimmer = new StringTrimmerEditor(true);
+        binder.registerCustomEditor(String.class, stringTrimmer);
+    }
 
     @ModelAttribute("currentUri")
     public String currentUri(HttpServletRequest request) {

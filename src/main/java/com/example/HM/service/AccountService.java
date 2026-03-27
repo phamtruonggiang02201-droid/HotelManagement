@@ -30,7 +30,7 @@ public interface AccountService {
 
     // Excel Operations
     ByteArrayInputStream exportAccountsToExcel();
-    void importAccountsFromExcel(MultipartFile file);
+    String importAccountsFromExcel(MultipartFile file);
 
     AccountDTO getCurrentProfile();
     Account getCurrentAccount();

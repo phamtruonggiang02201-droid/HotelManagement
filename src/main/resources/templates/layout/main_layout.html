@@ -178,6 +178,7 @@
 
 <body class="overflow-x-hidden" th:classappend="${#authorization.expression('isAuthenticated()')} ? 'logged-in' : ''">
     <div id="toast-container"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden md:hidden transition-all duration-300"></div>
 
     <div class="flex min-h-screen">
         <!-- SIDEBAR -->
@@ -239,6 +240,23 @@
             }
         })();
 
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.querySelector('aside');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                if (sidebar) sidebar.classList.remove('-translate-x-full');
+                if (overlay) overlay.classList.remove('hidden');
+            });
+        }
+        
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                if (sidebar) sidebar.classList.add('-translate-x-full');
+                if (overlay) overlay.classList.add('hidden');
+            });
+        }
         // Xử lý Đăng xuất AJAX
         document.addEventListener('submit', async (e) => {
             if (e.target && e.target.id === 'logoutForm') {

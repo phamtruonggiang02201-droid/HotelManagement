@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface RefundRepository extends JpaRepository<Refund, String> {
     Page<Refund> findAllByOrderByRequestedAtDesc(Pageable pageable);
-    Optional<Refund> findByBookingId(String bookingId);
+    Optional<Refund> findTopByBookingIdOrderByRequestedAtDesc(String bookingId);
     boolean existsByBookingId(String bookingId);
     Page<Refund> findByStatus(String status, Pageable pageable);
 }

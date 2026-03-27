@@ -51,7 +51,7 @@ public class ServiceOrderController {
     public ResponseEntity<Resource> exportServiceOrders(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status) {
-        
+
         String filename = "luxe-stay-service-orders.xlsx";
         ByteArrayInputStream in = bookingService.exportBookedServicesToExcel(keyword, status);
         InputStreamResource file = new InputStreamResource(in);

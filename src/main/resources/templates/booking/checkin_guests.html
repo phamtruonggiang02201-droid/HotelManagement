@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Thông tin người nhận phòng - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1000px] mx-auto">
+        <div class="flex items-center justify-between mb-12">
+            <div>
+                <a href="javascript:history.back()" class="text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-2 mb-4 font-black uppercase text-[10px] tracking-widest">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    Quay lại chọn phòng
+                </a>
+                <h1 class="text-4xl font-black text-slate-900 mb-2">Thông tin người nhận phòng</h1>
+                <p class="text-slate-500 font-medium">Vui lòng nhập thông tin định danh cho từng khách đại ca nhé!</p>
+            </div>
+        </div>
+
+        <div id="guests-container" class="space-y-8">
+            <!-- Guest inputs will be rendered here -->
+        </div>
+
+        <div class="mt-12 flex justify-end">
+            <button id="btn-submit-all" onclick="submitCheckIn()"
+                class="px-12 py-6 bg-slate-900 text-white rounded-[32px] font-black text-sm hover:bg-emerald-600 transition-all shadow-2xl shadow-slate-900/10 flex items-center justify-center gap-3">
+                <i data-lucide="check-circle" class="w-5 h-5"></i>
+                HOÀN TẤT CHECK-IN
+            </button>
+        </div>
+    </div>
+
+    <script layout:fragment="script" th:inline="javascript">
+        let checkInState = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const rawState = sessionStorage.getItem('checkInState');
+            if (!rawState) {
+                window.location.href = '/bookings/reception';
+                return;
+            }
+            checkInState = JSON.parse(rawState);
+            renderGuestForms();
+        });
+
+        function renderGuestForms() {
+            const container = document.getElementById('guests-container');
+            container.innerHTML = '';
+
+            checkInState.selectedRooms.forEach((room, index) => {
+                const guestCard = `
+                    <div class="bg-white rounded-[40px] p-10 border border-slate-100 shadow-xl shadow-slate-200/40 room-form-card" data-room-id="${room.id}">
+                        <div class="flex items-center justify-between mb-8 pb-6 border-b border-slate-50">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                                    <i data-lucide="door-open" class="w-7 h-7"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phòng</p>
+                                    <p class="font-black text-2xl text-slate-800">${room.name}</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="addGuestRow('${room.id}')"
+                                class="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-xs hover:bg-indigo-600 hover:text-white transition-all">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                                THÊM KHÁCH
+                            </button>
+                        </div>
+
+                        <div id="occupants-${room.id}" class="space-y-6">
+                            <!-- Initial guest row -->
+                            ${createGuestRowHtml(true)}
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', guestCard);
+            });
+            lucide.createIcons();
+        }
+
+        function createGuestRowHtml(isFirst = false) {
+            return `
+                <div class="guest-row grid grid-cols-1 md:grid-cols-12 gap-6 items-end group animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div class="md:col-span-4 space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Họ và tên *</label>
+                        <input type="text" class="guest-name w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20" 
+                               placeholder="Tên khách nhận phòng">
+                    </div>
+                    <div class="md:col-span-3 space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Số CCCD / Passport *</label>
+                        <input type="text" class="guest-id-card w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20" 
+                               placeholder="Nhập số định danh">
+                    </div>
+                    <div class="md:col-span-3 space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Số điện thoại</label>
+                        <input type="text" class="guest-phone w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20" 
+                               placeholder="Số điện thoại (nếu có)">
+                    </div>
+                    <div class="md:col-span-2 flex justify-end pb-1">
+                        ${isFirst ? `
+                            <div class="w-12 h-12 flex items-center justify-center text-slate-200">
+                                <i data-lucide="user" class="w-6 h-6"></i>
+                            </div>
+                        ` : `
+                            <button type="button" onclick="this.closest('.guest-row').remove()"
+                                class="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function addGuestRow(roomId) {
+            const container = document.getElementById(`occupants-${roomId}`);
+            container.insertAdjacentHTML('beforeend', createGuestRowHtml(false));
+            lucide.createIcons();
+        }
+
+        async function submitCheckIn() {
+            const roomCards = document.querySelectorAll('.room-form-card');
+            const occupants = [];
+            let isValid = true;
+
+            roomCards.forEach(card => {
+                const roomId = card.getAttribute('data-room-id');
+                const rows = card.querySelectorAll('.guest-row');
+                
+                rows.forEach(row => {
+                    const fullName = row.querySelector('.guest-name').value.trim();
+                    const idNumber = row.querySelector('.guest-id-card').value.trim();
+                    const phone = row.querySelector('.guest-phone').value.trim();
+
+                    if (!fullName || !idNumber) {
+                        isValid = false;
+                    }
+
+                    occupants.push({
+                        roomId: roomId,
+                        fullName: fullName,
+                        idNumber: idNumber,
+                        phone: phone
+                    });
+                });
+            });
+
+            if (!isValid) {
+                showToast('Đại ca vui lòng nhập đầy đủ tên và CCCD cho tất cả khách nhé!', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-submit-all');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="lucide-refresh-cw animate-spin w-5 h-5"></i> Đang xứ lý...';
+
+            try {
+                const response = await fetch('/bookings/api/check-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bookingId: checkInState.bookingId,
+                        roomIds: checkInState.selectedRooms.map(r => r.id),
+                        guestIdCard: checkInState.guestIdCard,
+                        occupants: occupants
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Check-in thành công cho tất cả đại ca nhé!', 'success');
+                    sessionStorage.removeItem('checkInState');
+                    setTimeout(() => window.location.href = '/bookings/reception', 1500);
+                } else {
+                    const error = await response.json();
+                    showToast(error.message || 'Check-in thất bại', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    lucide.createIcons();
+                }
+            } catch (error) {
+                console.error('Check-in error:', error);
+                showToast('Lỗi hệ thống rồi đại ca ơi!', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                lucide.createIcons();
+            }
+        }
+    </script>
+</body>
+
+</html>

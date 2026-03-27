@@ -16,8 +16,8 @@
             <!-- Status Tabs -->
             <div class="flex bg-slate-100 p-1.5 rounded-[24px] w-fit">
                 <button onclick="filterByStatus('ALL')" class="status-tab active px-6 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all">Tất cả</button>
-                <button onclick="filterByStatus('PENDING_PAYMENT')" class="status-tab px-6 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all">Chờ xử lý</button>
-                <button onclick="filterByStatus('PAID_CHECKED_IN')" class="status-tab px-6 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all">Đang thực hiện</button>
+                <button onclick="filterByStatus('PAID')" class="status-tab px-6 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all">Chờ Check-in</button>
+                <button onclick="filterByStatus('CHECKED_IN')" class="status-tab px-6 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all">Đã Check-in</button>
                 <button onclick="filterByStatus('COMPLETED_CHECKED_OUT')" class="status-tab px-6 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all">Lịch sử</button>
                 <button onclick="filterByStatus('CANCELLED')" class="status-tab px-6 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all">Đã hủy</button>
             </div>
@@ -61,11 +61,17 @@
                                 <span th:text="|${booking.checkIn != null ? booking.checkIn : '...'} - ${booking.checkOut != null ? booking.checkOut : '...'}|"></span>
                                 <span class="mx-2 text-slate-300">|</span>
                                 <span class="text-indigo-600">
-                                    <th:block th:each="br, iter : ${booking.bookedRooms}">
-                                        <span th:text="|${br.roomType.typeName} (x${br.quantity})|"></span>
-                                        <span th:if="${!iter.last}">, </span>
+                                    <th:block th:if="${booking.rooms != null and !booking.rooms.isEmpty()}">
+                                        <i data-lucide="key" class="w-3 h-3 inline mr-0.5"></i>
+                                        <span th:each="r, iter : ${booking.rooms}" th:text="|${r.roomName}${!iter.last ? ', ' : ''}|"></span>
                                     </th:block>
-                                    <span th:if="${booking.bookedRooms == null || #lists.isEmpty(booking.bookedRooms)}">N/A</span>
+                                    <th:block th:unless="${booking.rooms != null and !booking.rooms.isEmpty()}">
+                                        <th:block th:each="br, iter : ${booking.bookedRooms}">
+                                            <span th:text="|${br.roomType.typeName} (x${br.quantity})|"></span>
+                                            <span th:if="${!iter.last}">, </span>
+                                        </th:block>
+                                        <span th:if="${booking.bookedRooms == null || booking.bookedRooms.isEmpty()}">N/A</span>
+                                    </th:block>
                                 </span>
                             </p>
                         </div>
@@ -138,8 +144,8 @@
                             <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </a>
                     </div>
-                    <!-- Action Buttons -->
-                    <div th:if="${booking.status == 'CHECKED_OUT'}" class="flex flex-wrap gap-2 pt-2">
+                    <!-- Action Buttons for COMPLETED/CHECKED_OUT -->
+                    <div th:if="${booking.status == 'CHECKED_OUT' or booking.status == 'COMPLETED'}" class="flex flex-wrap gap-2 pt-2">
                         <button th:data-booking-id="${booking.id}"
                             th:data-items="${#strings.replace(#strings.replace(booking.bookedRooms.![roomType.id + ':' + roomType.typeName + ':ROOM'].toString(), '[', ''), ']', '') + (booking.bookedServices != null and !booking.bookedServices.isEmpty() ? ', ' + #strings.replace(#strings.replace(booking.bookedServices.![details.![service.id + ':' + service.serviceName + ':SERVICE']].toString(), '[', ''), ']', '') : '')}"
                             onclick="openFeedbackModal(this.getAttribute('data-booking-id'), this.getAttribute('data-items'))"
@@ -151,10 +157,37 @@
                             class="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-700 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-rose-100 transition-all">
                             <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Báo sự cố
                         </button>
-                        <button th:data-booking-id="${booking.id}" th:data-amount="${booking.totalAmount ?: 0}"
+                        <button th:data-booking-id="${booking.id}"
+                            th:data-amount="${booking.totalAmount}"
                             onclick="openRefundModal(this.getAttribute('data-booking-id'), this.getAttribute('data-amount'))"
-                            class="flex items-center gap-1.5 px-3 py-2 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-100 transition-all">
+                            class="flex items-center gap-1.5 px-3 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-all">
                             <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Hoàn tiền
+                        </button>
+                    </div>
+                    <!-- Action Buttons for CHECKED_IN -->
+                    <div th:if="${booking.status == 'CHECKED_IN'}" class="flex flex-wrap gap-2 pt-2">
+                        <button th:data-booking-id="${booking.id}"
+                            onclick="openServiceModal(this.getAttribute('data-booking-id'))"
+                            class="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-600 hover:text-white transition-all">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Thêm dịch vụ
+                        </button>
+                        <button th:data-booking-id="${booking.id}"
+                            onclick="openIssueModal(this.getAttribute('data-booking-id'))"
+                            class="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-700 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-rose-100 transition-all">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Báo sự cố
+                        </button>
+                    </div>
+                    <!-- Action Buttons for PENDING/PAID (Before Check-in) -->
+                    <div th:if="${booking.status == 'PENDING_PAYMENT' or booking.status == 'PAID'}" class="flex flex-wrap gap-2 pt-2">
+                        <button th:data-booking-id="${booking.id}"
+                            onclick="cancelBooking(this.getAttribute('data-booking-id'))"
+                            class="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-700 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-rose-100 transition-all">
+                            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Hủy đặt phòng
+                        </button>
+                        <button th:data-booking-id="${booking.id}"
+                            onclick="modifyBooking(this.getAttribute('data-booking-id'))"
+                            class="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-100 transition-all">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Chỉnh sửa
                         </button>
                     </div>
                 </div>
@@ -249,11 +282,11 @@
                     <div class="space-y-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">Số sao</label>
                         <div class="flex gap-2 justify-center" id="starRating">
-                            <button type="button" onclick="setRating(1)" class="star-btn text-4xl text-slate-200 hover:text-amber-400 transition-colors">★</button>
-                            <button type="button" onclick="setRating(2)" class="star-btn text-4xl text-slate-200 hover:text-amber-400 transition-colors">★</button>
-                            <button type="button" onclick="setRating(3)" class="star-btn text-4xl text-slate-200 hover:text-amber-400 transition-colors">★</button>
-                            <button type="button" onclick="setRating(4)" class="star-btn text-4xl text-slate-200 hover:text-amber-400 transition-colors">★</button>
-                            <button type="button" onclick="setRating(5)" class="star-btn text-4xl text-slate-200 hover:text-amber-400 transition-colors">★</button>
+                            <button type="button" onclick="setRating(1)" class="star-btn text-4xl text-slate-300 hover:text-amber-400 transition-colors drop-shadow-sm">★</button>
+                            <button type="button" onclick="setRating(2)" class="star-btn text-4xl text-slate-300 hover:text-amber-400 transition-colors drop-shadow-sm">★</button>
+                            <button type="button" onclick="setRating(3)" class="star-btn text-4xl text-slate-300 hover:text-amber-400 transition-colors drop-shadow-sm">★</button>
+                            <button type="button" onclick="setRating(4)" class="star-btn text-4xl text-slate-300 hover:text-amber-400 transition-colors drop-shadow-sm">★</button>
+                            <button type="button" onclick="setRating(5)" class="star-btn text-4xl text-slate-300 hover:text-amber-400 transition-colors drop-shadow-sm">★</button>
                         </div>
                         <input type="hidden" id="feedbackRating" value="0">
                     </div>
@@ -334,6 +367,27 @@
                 </form>
             </div>
         </div>
+        <!-- ========== MODAL: XÁC NHẬN HỦY ĐẶT PHÒNG ========== -->
+        <div id="cancelConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+            <div class="bg-white rounded-[40px] w-full max-w-md overflow-hidden shadow-2xl scale-95 opacity-0 transition-all duration-300" id="cancelModalContent">
+                <div class="p-8 border-b border-slate-50 flex flex-col items-center text-center bg-slate-50/50">
+                    <div class="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 mb-6">
+                        <i data-lucide="alert-circle" class="w-10 h-10"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-900">Xác nhận hủy</h2>
+                    <p class="text-slate-500 font-medium text-sm mt-2">Đại ca có chắc chắn muốn hủy đặt phòng này không? Hành động này không thể hoàn tác.</p>
+                </div>
+                <div class="p-8 flex gap-4">
+                    <input type="hidden" id="cancelBookingId">
+                    <button onclick="closeCancelModal()" class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all">
+                        Giữ lại
+                    </button>
+                    <button id="confirmCancelBtn" onclick="executeCancelBooking()" class="flex-[2] px-8 py-4 bg-rose-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-rose-700 transition-all shadow-xl shadow-rose-600/20">
+                        Xác nhận hủy
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <script th:inline="javascript">
             let servicesData = [];
@@ -392,7 +446,7 @@
                 const quantity = document.getElementById('modalServiceQuantity').value;
 
                 if (!serviceId) {
-                    showToast('Vui lòng chọn một dịch vụ!', 'error');
+                    toastService.error('Vui lòng chọn một dịch vụ!');
                     return;
                 }
 
@@ -412,16 +466,16 @@
 
                     const result = await response.json();
                     if (response.ok) {
-                        showToast('Thêm dịch vụ thành công!', 'success');
+                    window.toastService.success('Thêm dịch vụ thành công!');
                         closeServiceModal();
                         setTimeout(() => location.reload(), 1000);
                     } else {
-                        showToast(result.message || 'Có lỗi xảy ra!', 'error');
+                        window.toastService.error(result.message || 'Có lỗi xảy ra!');
                         btn.disabled = false;
                         btn.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Xác nhận thêm';
                     }
                 } catch (error) {
-                    showToast('Có lỗi kết nối!', 'error');
+                    window.toastService.error('Có lỗi kết nối!');
                     btn.disabled = false;
                     btn.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Xác nhận thêm';
                 }
@@ -435,7 +489,7 @@
                 if (fRating) fRating.value = value;
                 document.querySelectorAll('.star-btn').forEach((btn, i) => {
                     btn.classList.toggle('text-amber-400', i < value);
-                    btn.classList.toggle('text-slate-200', i >= value);
+                    btn.classList.toggle('text-slate-300', i >= value);
                 });
             }
 
@@ -486,7 +540,7 @@
                     fbForm.onsubmit = async (e) => {
                         e.preventDefault();
                         if (selectedRating < 1) {
-                            showToast('Vui lòng chọn số sao!', 'error');
+                            toastService.error('Vui lòng chọn số sao!');
                             return;
                         }
                         try {
@@ -506,13 +560,13 @@
                             });
                             const result = await response.json();
                             if (response.ok) {
-                                showToast(result.message, 'success');
+                                window.toastService.success(result.message);
                                 closeFeedbackModal();
                             } else {
-                                showToast(result.message, 'error');
+                                window.toastService.error(result.message);
                             }
                         } catch (error) {
-                            showToast('Có lỗi xảy ra!', 'error');
+                            window.toastService.error('Có lỗi xảy ra!');
                         }
                     };
                 }
@@ -537,15 +591,17 @@
                             });
                             const result = await response.json();
                             if (response.ok) {
-                                showToast(result.message, 'success');
+                                window.toastService.success(result.message);
                                 closeIssueModal();
+                                btn.disabled = false;
+                                btn.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5"></i> Gửi báo cáo';
                             } else {
-                                showToast(result.message, 'error');
+                                window.toastService.error(result.message);
                                 btn.disabled = false;
                                 btn.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5"></i> Gửi báo cáo';
                             }
                         } catch (error) {
-                            showToast('Có lỗi kết nối!', 'error');
+                            window.toastService.error('Có lỗi kết nối!');
                             btn.disabled = false;
                             btn.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5"></i> Gửi báo cáo';
                         }
@@ -572,17 +628,25 @@
                                     reason: document.getElementById('refundReason').value
                                 })
                             });
-                            const result = await response.json();
+                            let result;
+                            try {
+                                result = await response.json();
+                            } catch (e) {
+                                result = { message: 'Có lỗi xảy ra từ máy chủ' };
+                            }
+
                             if (response.ok) {
-                                showToast(result.message, 'success');
+                                window.toastService.success('Gửi yêu cầu hoàn tiền thành công!');
                                 closeRefundModal();
+                                // Reload sau 1s để cập nhật trạng thái
+                                setTimeout(() => location.reload(), 1000);
                             } else {
-                                showToast(result.message, 'error');
+                                window.toastService.error(result.message || 'Yêu cầu thất bại');
                                 btn.disabled = false;
                                 btn.innerHTML = '<i data-lucide="credit-card" class="w-5 h-5"></i> Gửi yêu cầu hoàn tiền';
                             }
                         } catch (error) {
-                            showToast('Có lỗi kết nối!', 'error');
+                            window.toastService.error('Có lỗi kết nối, vui lòng thử lại!');
                             btn.disabled = false;
                             btn.innerHTML = '<i data-lucide="credit-card" class="w-5 h-5"></i> Gửi yêu cầu hoàn tiền';
                         }
@@ -598,6 +662,11 @@
                 if (iId) iId.value = bookingId;
                 if (iDesc) iDesc.value = '';
                 if (iModal) {
+                    const btn = iModal.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5"></i> Gửi báo cáo';
+                    }
                     iModal.classList.remove('hidden');
                     iModal.classList.add('flex');
                 }
@@ -633,6 +702,63 @@
                 }
             }
 
+            async function cancelBooking(bookingId) {
+                const modal = document.getElementById('cancelConfirmModal');
+                const content = document.getElementById('cancelModalContent');
+                document.getElementById('cancelBookingId').value = bookingId;
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                lucide.createIcons({ nodes: [modal] });
+            }
+
+            function closeCancelModal() {
+                const modal = document.getElementById('cancelConfirmModal');
+                const content = document.getElementById('cancelModalContent');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 300);
+            }
+
+            async function executeCancelBooking() {
+                const bookingId = document.getElementById('cancelBookingId').value;
+                const btn = document.getElementById('confirmCancelBtn');
+                
+                btn.disabled = true;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="lucide-refresh-cw animate-spin w-4 h-4 mr-2"></i> Đang xử lý...';
+
+                try {
+                    const response = await fetch(`/bookings/api/cancel/${bookingId}`, {
+                        method: 'PUT'
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        window.toastService.success(result.message || 'Đã hủy đặt phòng!');
+                        closeCancelModal();
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        window.toastService.error(result.message || 'Không thể hủy!');
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                } catch (error) {
+                    window.toastService.error('Có lỗi kết nối!');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            }
+
+            function modifyBooking(bookingId) {
+                window.location.href = `/bookings/edit/${bookingId}`;
+            }
+
             function filterByStatus(status) {
                 // Update tabs UI
                 document.querySelectorAll('.status-tab').forEach(tab => {
@@ -649,7 +775,8 @@
                     
                     if (status === 'ALL') show = true;
                     else if (status === 'PENDING_PAYMENT' && cardStatus === 'PENDING_PAYMENT') show = true;
-                    else if (status === 'PAID_CHECKED_IN' && (cardStatus === 'PAID' || cardStatus === 'CHECKED_IN')) show = true;
+                    else if (status === 'PAID' && cardStatus === 'PAID') show = true;
+                    else if (status === 'CHECKED_IN' && cardStatus === 'CHECKED_IN') show = true;
                     else if (status === 'COMPLETED_CHECKED_OUT' && (cardStatus === 'CHECKED_OUT' || cardStatus === 'COMPLETED')) show = true;
                     else if (status === 'CANCELLED' && cardStatus === 'CANCELLED') show = true;
                     

@@ -36,17 +36,17 @@ document.getElementById('employee-form').addEventListener('submit', function (e)
         .then(res => res.json())
         .then(res => {
             if (res.message.includes('thành công')) {
-                showToast(res.message);
+                toastService.success(res.message);
                 setTimeout(() => {
                     window.location.href = '/management/employees';
                 }, 1000);
             } else {
-                showToast(res.message, 'error');
+                toastService.error(res.message);
             }
         })
         .catch(err => {
             console.error(err);
-            showToast('Đã xảy ra lỗi!', 'error');
+            toastService.error('Đã xảy ra lỗi!');
         });
 });
 
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Handle Date of Birth (format yyyy-MM-dd for input type="date")
                 if (data.dob) {
                     const dobDate = new Date(data.dob);
-                    const formattedDob = dobDate.toISOString().split('T')[0];
+                    const formattedDob = dobDate.toLocaleDateString('en-CA');
                     document.getElementById('dob').value = formattedDob;
                 }
             })

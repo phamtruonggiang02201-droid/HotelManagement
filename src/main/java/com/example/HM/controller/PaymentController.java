@@ -8,10 +8,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.ByteArrayInputStream;
 
 import com.example.HM.dto.PaymentDTO;
 import com.example.HM.security.SecurityUtils;
@@ -34,6 +40,7 @@ public class PaymentController {
     private final VNPayService vnPayService;
     private final BookingService bookingService;
     private final com.example.HM.service.PaymentService paymentService;
+    private final com.example.HM.service.RefundService refundService;
 
     /**
      * Test payment page (for demo purposes)
@@ -184,5 +191,63 @@ public class PaymentController {
         model.addAttribute("currentPage", payments.getNumber());
         model.addAttribute("totalPages", payments.getTotalPages());
         return "admin/payment-history";
+    }
+
+    /**
+     * Request a refund for a booking
+     */
+    @PostMapping("/refund/request")
+    @ResponseBody
+    public ResponseEntity<?> requestRefund(@RequestBody com.example.HM.dto.RefundRequest request) {
+        try {
+            refundService.requestRefund(request);
+            return ResponseEntity.ok(Map.of("message", "Yêu cầu hoàn tiền đã được ghi nhận!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Approve a refund request (Admin/Manager)
+     */
+    @PostMapping("/admin/refund/approve/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @ResponseBody
+    public ResponseEntity<?> approveRefund(@PathVariable String id) {
+        try {
+            refundService.approveRefund(id);
+            return ResponseEntity.ok(Map.of("message", "Đã duyệt yêu cầu hoàn tiền!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Reject a refund request (Admin/Manager)
+     */
+    @PostMapping("/admin/refund/reject/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @ResponseBody
+    public ResponseEntity<?> rejectRefund(@PathVariable String id, @RequestBody Map<String, String> body) {
+        try {
+            String reason = body.get("reason");
+            refundService.rejectRefund(id, reason);
+            return ResponseEntity.ok(Map.of("message", "Đã từ chối yêu cầu hoàn tiền!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/export")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    public ResponseEntity<Resource> exportPaymentsToExcel() {
+        String filename = "luxe-stay-payments.xlsx";
+        ByteArrayInputStream in = paymentService.exportPaymentsToExcel();
+        InputStreamResource file = new InputStreamResource(in);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 }
