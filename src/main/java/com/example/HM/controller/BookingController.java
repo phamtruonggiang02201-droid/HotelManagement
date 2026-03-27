@@ -36,39 +36,6 @@ public class BookingController {
     private final AccountService accountService;
     private final HotelService hotelService;
     private final RoomService roomService;
-    private final RoomTypeService roomTypeService;
-
-    @GetMapping("/edit/{id}")
-    public String editBookingForm(@PathVariable String id, Model model) {
-        Booking booking = bookingService.getBookingById(id);
-        if (booking == null) return "redirect:/bookings/my-bookings";
-        
-        model.addAttribute("booking", booking);
-        model.addAttribute("roomTypes", roomTypeService.getAllRoomTypes(org.springframework.data.domain.Pageable.unpaged()).getContent());
-        return "booking/edit";
-    }
-
-    @PostMapping("/api/edit/{id}")
-    @ResponseBody
-    public ResponseEntity<?> updateBooking(@PathVariable String id, @RequestBody BookingRequest request) {
-        try {
-            bookingService.updateBooking(id, request);
-            return ResponseEntity.ok(Map.of("message", "Cập nhật đặt phòng thành công!"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        }
-    }
-
-    @PutMapping("/api/cancel/{id}")
-    @ResponseBody
-    public ResponseEntity<?> cancelBooking(@PathVariable String id) {
-        try {
-            bookingService.cancelBooking(id);
-            return ResponseEntity.ok(Map.of("message", "Hủy đặt phòng thành công!"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        }
-    }
 
     @GetMapping("/new")
     public String bookingForm(
@@ -226,17 +193,25 @@ public class BookingController {
     // ============ RECEPTION: CHECK-IN / CHECK-OUT ============
 
     @GetMapping("/reception")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public String receptionDashboard(
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
             @RequestParam(required = false) String keyword,
             Model model, 
             @org.springframework.beans.factory.annotation.Qualifier("paid") @PageableDefault(size = 5, sort = "checkIn", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable paidPageable,
             @org.springframework.beans.factory.annotation.Qualifier("checked") @PageableDefault(size = 5, sort = "checkIn", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable checkedPageable) {
-        
-        model.addAttribute("paidBookings", bookingService.getPaidBookings(date, keyword, paidPageable));
-        model.addAttribute("checkedInBookings", bookingService.getCheckedInBookings(date, keyword, checkedPageable));
-        model.addAttribute("selectedDate", date != null ? date : java.time.LocalDate.now());
+
+        LocalDate selectedDate = date != null ? date : LocalDate.now();
+        boolean isTodayFilter = LocalDate.now().equals(selectedDate);
+
+        model.addAttribute("paidBookings", isTodayFilter
+                ? bookingService.getPaidBookings(selectedDate, keyword, paidPageable)
+                : bookingService.getReceptionCheckInBookings(selectedDate, keyword, paidPageable));
+        model.addAttribute("checkedInBookings", isTodayFilter
+                ? bookingService.getCheckedInBookings(selectedDate, keyword, checkedPageable)
+                : bookingService.getReceptionCheckOutBookings(selectedDate, keyword, checkedPageable));
+        model.addAttribute("isTodayFilter", isTodayFilter);
+        model.addAttribute("selectedDate", selectedDate);
         model.addAttribute("keyword", keyword);
         model.addAttribute("services", hotelService.getAllServices(Pageable.unpaged()).getContent());
         model.addAttribute("categories", hotelService.getAllCategories(Pageable.unpaged()).getContent());
@@ -245,20 +220,20 @@ public class BookingController {
     }
 
     @GetMapping("/walk-in")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public String walkInBookingPage(Model model) {
         return "booking/walk-in";
     }
 
     @GetMapping("/check-in/{bookingId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public String checkInForm(@PathVariable String bookingId, Model model) {
         model.addAttribute("checkInData", bookingService.getCheckInData(bookingId));
         return "booking/checkin";
     }
 
     @GetMapping("/check-in/{bookingId}/guests")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public String checkInGuestsForm(@PathVariable String bookingId, Model model) {
         model.addAttribute("bookingId", bookingId);
         return "booking/checkin_guests";
@@ -266,7 +241,7 @@ public class BookingController {
 
     @PostMapping("/api/check-in")
     @ResponseBody
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public ResponseEntity<?> checkIn(@RequestBody CheckInRequest request) {
         try {
             bookingService.checkIn(request);
@@ -278,7 +253,7 @@ public class BookingController {
 
     @PostMapping("/api/check-out/{bookingId}")
     @ResponseBody
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public ResponseEntity<?> checkOut(@PathVariable String bookingId) {
         try {
             bookingService.checkOut(bookingId);
@@ -290,7 +265,7 @@ public class BookingController {
 
     @GetMapping("/api/available-rooms/{roomTypeId}")
     @ResponseBody
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public ResponseEntity<?> getAvailableRooms(@PathVariable String roomTypeId, @PageableDefault(size = 10) Pageable pageable) {
         try {
             return ResponseEntity.ok(roomService.getRoomsByRoomTypeAndStatus(roomTypeId, "AVAILABLE", pageable));
@@ -300,7 +275,7 @@ public class BookingController {
     }
     @GetMapping("/api/checkout-summary/{bookingId}")
     @ResponseBody
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public ResponseEntity<?> getCheckoutSummary(@PathVariable String bookingId) {
         try {
             return ResponseEntity.ok(bookingService.getCheckoutSummary(bookingId));
@@ -320,7 +295,7 @@ public class BookingController {
     }
 
     @GetMapping("/invoice/{bookingId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    @PreAuthorize("hasRole('RECEPTION')")
     public String showInvoice(@PathVariable String bookingId, Model model) {
         model.addAttribute("summary", bookingService.getCheckoutSummary(bookingId));
         model.addAttribute("booking", bookingService.getBookingById(bookingId));
