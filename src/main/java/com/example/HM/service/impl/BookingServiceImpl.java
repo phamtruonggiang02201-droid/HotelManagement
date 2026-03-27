@@ -516,6 +516,34 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<Booking> getReceptionCheckInBookings(LocalDate date, String keyword, Pageable pageable) {
+        if (date == null) {
+            date = LocalDate.now();
+        }
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            return bookingRepository.findReceptionCheckInBookingsByKeyword(date, keyword.trim(), pageable);
+        }
+
+        return bookingRepository.findReceptionCheckInBookings(date, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Booking> getReceptionCheckOutBookings(LocalDate date, String keyword, Pageable pageable) {
+        if (date == null) {
+            date = LocalDate.now();
+        }
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            return bookingRepository.findReceptionCheckOutBookingsByKeyword(date, keyword.trim(), pageable);
+        }
+
+        return bookingRepository.findReceptionCheckOutBookings(date, pageable);
+    }
+
+    @Override
     @Transactional
     public void bookService(BookServiceRequest request) {
         if (request.getQuantity() <= 0) {
@@ -792,10 +820,16 @@ public class BookingServiceImpl implements BookingService {
         List<OccupantDTO> occupantDTOs = booking.getOccupants() != null ? 
                 booking.getOccupants().stream().map(this::convertToOccupantDTO).collect(Collectors.toList()) : 
                 new ArrayList<>();
+        String roomTypeName = roomSummaries.stream()
+                .map(CheckoutSummaryDTO.BookedRoomSummaryDTO::getRoomTypeName)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.joining(", "));
 
         return CheckoutSummaryDTO.builder()
                 .bookingId(booking.getId())
                 .guestName(booking.getGuest() != null ? booking.getGuest().getFullName() : "Khách vãng lai")
+                .roomTypeName(roomTypeName.isBlank() ? "N/A" : roomTypeName)
                 .roomNames(booking.getRooms() != null ? booking.getRooms().stream().map(Room::getRoomName).collect(Collectors.joining(", ")) : "N/A")
                 .checkIn(booking.getCheckIn())
                 .checkOut(originalCheckOut)
@@ -994,3 +1028,7 @@ public class BookingServiceImpl implements BookingService {
         return bookingRepository.save(booking);
     }
 }
+
+
+
+

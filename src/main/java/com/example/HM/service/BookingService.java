@@ -27,6 +27,8 @@ public interface BookingService {
     void checkOut(String bookingId);
     Page<Booking> getPaidBookings(java.time.LocalDate date, String keyword, Pageable pageable);
     Page<Booking> getCheckedInBookings(java.time.LocalDate date, String keyword, Pageable pageable);
+    Page<Booking> getReceptionCheckInBookings(java.time.LocalDate date, String keyword, Pageable pageable);
+    Page<Booking> getReceptionCheckOutBookings(java.time.LocalDate date, String keyword, Pageable pageable);
     
     // Manage Booked Services
     Page<BookedServiceDTO> getAllBookedServices(String keyword, String status, Pageable pageable);
