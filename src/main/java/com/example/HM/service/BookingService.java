@@ -25,8 +25,10 @@ public interface BookingService {
     void bookService(BookServiceRequest request);
     void checkIn(CheckInRequest request);
     void checkOut(String bookingId);
-    Page<Booking> getPaidBookings(java.time.LocalDate date, Pageable pageable);
-    Page<Booking> getCheckedInBookings(java.time.LocalDate date, Pageable pageable);
+    Page<Booking> getPaidBookings(java.time.LocalDate date, String keyword, Pageable pageable);
+    Page<Booking> getCheckedInBookings(java.time.LocalDate date, String keyword, Pageable pageable);
+    Page<Booking> getReceptionCheckInBookings(java.time.LocalDate date, String keyword, Pageable pageable);
+    Page<Booking> getReceptionCheckOutBookings(java.time.LocalDate date, String keyword, Pageable pageable);
     
     // Manage Booked Services
     Page<BookedServiceDTO> getAllBookedServices(String keyword, String status, Pageable pageable);
@@ -44,4 +46,6 @@ public interface BookingService {
     
     // Checkout Summary
     CheckoutSummaryDTO getCheckoutSummary(String bookingId);
+    void cancelBooking(String bookingId);
+    Booking updateBooking(String id, BookingRequest request);
 }
