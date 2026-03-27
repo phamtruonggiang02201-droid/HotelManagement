@@ -30,4 +30,11 @@ public class BookedService extends BaseEntity {
 
     @OneToMany(mappedBy = "bookedService", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<BookedDetail> details = new java.util.ArrayList<>();
+
+    // Explicit getters for compiler issues
+    public Booking getBooking() { return booking; }
+    public java.util.List<BookedDetail> getDetails() { return details; }
+    public String getStatus() { return status; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public Room getRoom() { return room; }
 }

@@ -41,4 +41,9 @@ public class BookedDetail extends BaseEntity {
 
     @Transient
     private String serviceStatus;
+
+    // Explicit getters for compiler issues
+    public ExtraService getService() { return service; }
+    public Integer getQuantity() { return quantity; }
+    public BigDecimal getUnitPrice() { return unitPrice; }
 }
