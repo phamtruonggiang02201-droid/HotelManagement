@@ -30,10 +30,12 @@ public class ProfileController {
 
     @GetMapping("/profile")
     public String profile(Model model) {
-        AccountDTO profile = accountService.getCurrentProfile();
-        if (profile != null) {
-            model.addAttribute("account", profile);
+        AccountDTO profile = null;
+        try {
+            profile = accountService.getCurrentProfile();
+        } catch (Exception ignored) {
         }
+        model.addAttribute("account", profile);
         return "profile";
     }
 
