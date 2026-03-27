@@ -11,4 +11,5 @@ public class CheckInRequest {
     private String guestIdCard;
     private String guestFullName;
     private String note;
+    private List<OccupantDTO> occupants;
 }
