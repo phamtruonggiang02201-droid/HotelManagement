@@ -49,8 +49,32 @@ public class AssignmentController {
         }
     }
 
-    @GetMapping("/api")
+    @PostMapping("/api/apply-week")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @ResponseBody
+    public ResponseEntity<?> applyWeek(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        try {
+            int count = assignmentService.applyWeek(date);
+            return ResponseEntity.ok(Map.of("success", true, "count", count));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/api/copy-next-day")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @ResponseBody
+    public ResponseEntity<?> copyToNextDay(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        try {
+            int count = assignmentService.copyToNextDay(date);
+            return ResponseEntity.ok(Map.of("success", true, "count", count));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/api")
+    @PreAuthorize("isAuthenticated()")
     @ResponseBody
     public ResponseEntity<Page<AssignmentResponseDTO>> getAssignments(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
@@ -84,12 +108,12 @@ public class AssignmentController {
         }
     }
 
-    @PatchMapping("/api/{id}/status")
+    @PutMapping("/api/{id}/assign")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @ResponseBody
-    public ResponseEntity<?> updateStatus(@PathVariable String id, @RequestParam String status) {
+    public ResponseEntity<?> assignTask(@PathVariable String id, @RequestParam String employeeId, @RequestParam String shift) {
         try {
-            assignmentService.updateStatus(id, status);
-            return ResponseEntity.ok(Map.of("message", "Cập nhật trạng thái thành công!"));
+            return ResponseEntity.ok(assignmentService.assignTask(id, employeeId, shift));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

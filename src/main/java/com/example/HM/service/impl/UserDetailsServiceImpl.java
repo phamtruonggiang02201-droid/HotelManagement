@@ -45,6 +45,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
 
         return new CustomUserDetails(
+                account.getId(),
                 account.getUsername(),
                 account.getPassword(),
                 account.getEmailVerified() != null && account.getEmailVerified(),

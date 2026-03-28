@@ -8,9 +8,35 @@
 
 <body>
     <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
-        <div class="mb-12">
-            <h1 class="text-4xl font-black text-slate-900 mb-2">Quản lý Check-in/out</h1>
-            <p class="text-slate-500 font-medium">Theo dõi và thực hiện nhận/trả phòng cho khách hàng.</p>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+            <div>
+                <h1 class="text-4xl font-black text-slate-900 mb-2">Quản lý Check-in/out</h1>
+                <p class="text-slate-500 font-medium">Theo dõi và thực hiện nhận/trả phòng cho khách hàng.</p>
+            </div>
+            
+            <form action="/bookings/reception" method="GET" id="reception-filter-form" class="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-100 shadow-sm">
+                <!-- Search by ID or Name -->
+                <div class="flex items-center gap-2 px-4 py-2 border-r border-slate-100 min-w-[250px]">
+                    <i data-lucide="search" class="w-5 h-5 text-slate-400"></i>
+                    <input type="text" name="keyword" th:value="${keyword}" 
+                           placeholder="Tìm theo Mã Booking..."
+                           class="bg-transparent border-none outline-none font-medium text-slate-700 text-sm focus:ring-0 w-full placeholder:text-slate-400">
+                </div>
+                <!-- Date Filter -->
+                <div class="flex items-center gap-3 px-4 py-2 border-r border-slate-100">
+                    <i data-lucide="calendar" class="w-5 h-5 text-indigo-600"></i>
+                    <input type="date" name="date" id="reception-filter-date" 
+                           th:value="${selectedDate}"
+                           class="bg-transparent border-none outline-none font-black text-slate-700 text-sm focus:ring-0 cursor-pointer">
+                </div>
+                <button type="submit" class="hidden"></button>
+
+                <a th:href="@{/bookings/walk-in}"
+                    class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-sm hover:scale-105 transition-all flex items-center gap-2 whitespace-nowrap">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    Tạo đặt phòng
+                </a>
+            </form>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -32,12 +58,20 @@
                             <div>
                                 <h3 class="font-black text-slate-900 text-lg" th:text="${booking.guest?.fullName}">Khách
                                     hàng</h3>
-                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest"
-                                    th:text="${booking.roomType?.typeName}">Loại phòng</p>
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                    <span th:each="br, iter : ${booking.bookedRooms}" 
+                                          th:text="${br.roomType.typeName} + ${!iter.last ? ', ' : ''}"></span>
+                                </p>
                             </div>
-                            <span
-                                class="px-3 py-1 bg-emerald-100 text-emerald-600 text-[10px] font-black uppercase rounded-lg">Đã
-                                thanh toán</span>
+                            <div class="flex flex-col items-end gap-2">
+                                <span class="px-3 py-1 bg-emerald-100 text-emerald-600 text-[10px] font-black uppercase rounded-lg">Đã thanh toán</span>
+                                <!-- Hiển thị mã VNPay nếu có -->
+                                <div th:each="p : ${booking.payments}" th:if="${p.transactionNo != null}" 
+                                     class="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100">
+                                    <div class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></div>
+                                    <span class="text-[9px] font-black tracking-wider" th:text="'VNPay: #' + ${p.transactionNo}">VNPay: #...</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex items-center gap-6 mb-6 text-slate-500 text-sm font-medium">
@@ -52,18 +86,51 @@
                             </div>
                         </div>
 
-                        <button
-                            th:data-booking-id="${booking.id}" th:data-room-type-id="${booking.roomType?.id}" th:data-room-type-name="${booking.roomType?.typeName}"
-                            onclick="openCheckInModal(this.getAttribute('data-booking-id'), this.getAttribute('data-room-type-id'), this.getAttribute('data-room-type-name'))"
-                            class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm hover:bg-indigo-600 transition-all flex items-center justify-center gap-2">
-                            <i data-lucide="log-in" class="w-4 h-4"></i>
-                            Thực hiện Check-in
-                        </button>
+                        <div class="grid grid-cols-3 gap-2">
+                            <a th:href="@{/bookings/check-in/{id}(id=${booking.id})}"
+                                class="col-span-1 bg-slate-900 text-white py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-indigo-600 transition-all flex flex-col items-center justify-center gap-1">
+                                <i data-lucide="log-in" class="w-4 h-4"></i>
+                                Nhận phòng
+                            </a>
+                            <a th:href="@{/bookings/edit/{id}(id=${booking.id})}"
+                                class="bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-indigo-600 hover:text-white transition-all flex flex-col items-center justify-center gap-1 border border-indigo-100">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                Sửa
+                            </a>
+                             <button th:data-booking-id="${booking.id}"
+                                 onclick="openDeleteBookingModal(this.getAttribute('data-booking-id'))"
+                                 class="bg-rose-50 text-rose-600 py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all flex flex-col items-center justify-center gap-1 border border-rose-100">
+                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                 Hủy đơn
+                             </button>
+                        </div>
+
                     </div>
 
                     <div th:if="${paidBookings.isEmpty()}"
                         class="py-12 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 text-center">
                         <p class="text-slate-400 font-bold">Không có yêu cầu check-in nào</p>
+                    </div>
+                    
+                    <!-- Pagination for Paid Bookings -->
+                    <div th:if="${paidBookings.totalPages > 1}" class="flex justify-center mt-6">
+                        <nav class="flex items-center gap-2">
+                            <a th:if="${paidBookings.hasPrevious()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, checked_page=${checkedInBookings.number}, paid_page=${paidBookings.number - 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                            
+                            <span class="text-sm font-black text-slate-700 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                Trang <span th:text="${paidBookings.number + 1}">1</span> / <span th:text="${paidBookings.totalPages}">3</span>
+                            </span>
+
+                            <a th:if="${paidBookings.hasNext()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, checked_page=${checkedInBookings.number}, paid_page=${paidBookings.number + 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        </nav>
                     </div>
                 </div>
             </div>
@@ -93,8 +160,10 @@
                                             th:text="${room.roomName}">101</span>
                                     </div>
                                 </div>
-                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest"
-                                    th:text="${booking.roomType?.typeName}">Loại phòng</p>
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                    <span th:each="br, iter : ${booking.bookedRooms}" 
+                                          th:text="${br.roomType.typeName} + ${!iter.last ? ', ' : ''}"></span>
+                                </p>
                             </div>
                             <span
                                 class="px-3 py-1 bg-indigo-100 text-indigo-600 text-[10px] font-black uppercase rounded-lg">Checked-in</span>
@@ -108,99 +177,70 @@
                             </div>
                         </div>
 
-                        <button th:data-booking-id="${booking.id}"
-                            onclick="handleCheckOut(this.getAttribute('data-booking-id'))"
-                            class="w-full border-2 border-slate-900 text-slate-900 py-4 rounded-2xl font-black text-sm hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2">
-                            <i data-lucide="log-out" class="w-4 h-4"></i>
-                            Thực hiện Check-out
-                        </button>
+                        <div class="grid grid-cols-4 gap-2 mb-6">
+                            <a th:href="@{/bookings/{id}(id=${booking.id})}"
+                                class="bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-indigo-600 hover:text-white transition-all flex flex-col items-center justify-center gap-1 border border-indigo-100 p-2 text-center">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                                Chi tiết
+                            </a>
+                            <a th:href="@{/bookings/edit/{id}(id=${booking.id})}"
+                                class="bg-amber-50 text-amber-600 py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-amber-600 hover:text-white transition-all flex flex-col items-center justify-center gap-1 border border-amber-100 p-2 text-center">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                Sửa
+                            </a>
+                            <button th:data-booking-id="${booking.id}"
+                                th:data-room-ids="${#strings.arrayJoin(booking.rooms.![id], ',')}"
+                                th:data-room-names="${#strings.arrayJoin(booking.rooms.![roomName], ',')}"
+                                onclick="openServiceCatalogModal(this.getAttribute('data-booking-id'), this)"
+                                class="bg-emerald-50 text-emerald-600 py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all flex flex-col items-center justify-center gap-1 border border-emerald-100 p-2 text-center">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                Dịch vụ
+                            </button>
+                            <button th:data-booking-id="${booking.id}"
+                                onclick="handleCheckOut(this.getAttribute('data-booking-id'))"
+                                class="bg-slate-900 text-white py-4 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-rose-600 transition-all flex flex-col items-center justify-center gap-1 border border-slate-900 p-2 text-center">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                Trả phòng
+                            </button>
+                        </div>
+
+                        <!-- Hidden room data for JS -->
+                        <div th:id="'booking-rooms-' + ${booking.id}" class="hidden">
+                            <th:block th:each="room : ${booking.rooms}">
+                                <div class="room-data" th:data-id="${room.id}" th:data-name="${room.roomName}"></div>
+                            </th:block>
+                        </div>
                     </div>
 
                     <div th:if="${checkedInBookings.isEmpty()}"
                         class="py-12 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 text-center">
                         <p class="text-slate-400 font-bold">Không có khách đang lưu trú</p>
                     </div>
+                    
+                    <!-- Pagination for Checked-in Bookings -->
+                    <div th:if="${checkedInBookings.totalPages > 1}" class="flex justify-center mt-6">
+                        <nav class="flex items-center gap-2">
+                            <a th:if="${checkedInBookings.hasPrevious()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, paid_page=${paidBookings.number}, checked_page=${checkedInBookings.number - 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-rose-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                            
+                            <span class="text-sm font-black text-slate-700 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                Trang <span th:text="${checkedInBookings.number + 1}">1</span> / <span th:text="${checkedInBookings.totalPages}">3</span>
+                            </span>
+
+                            <a th:if="${checkedInBookings.hasNext()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, paid_page=${paidBookings.number}, checked_page=${checkedInBookings.number + 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-rose-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        </nav>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Check-in Modal -->
-        <div id="check-in-modal" class="fixed inset-0 z-[60] hidden">
-            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeCheckInModal()"></div>
-            <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-                <div class="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 transform transition-all scale-95 opacity-0 duration-300 pointer-events-auto"
-                    id="modal-content">
-                    
-                    <!-- Progress Bar -->
-                    <div class="flex gap-2 mb-8">
-                        <div id="step-1-indicator" class="h-1.5 flex-1 bg-indigo-600 rounded-full transition-all"></div>
-                        <div id="step-2-indicator" class="h-1.5 flex-1 bg-slate-100 rounded-full transition-all"></div>
-                    </div>
-
-                    <form id="check-in-form" class="space-y-8 text-left">
-                        <input type="hidden" id="modal-booking-id">
-
-                        <!-- STEP 1: SELECT ROOM -->
-                        <div id="step-1-container">
-                            <h3 class="text-3xl font-black text-slate-900 mb-2">Bước 1: Chọn phòng</h3>
-                            <p class="text-slate-500 font-medium mb-8">Vui lòng chọn số phòng trống loại <span id="modal-room-type-name" class="text-indigo-600 font-black">...</span></p>
-                            
-                            <div id="available-rooms-container" class="grid grid-cols-3 gap-3 min-h-[120px]">
-                                <!-- Room options will be loaded here -->
-                            </div>
-
-                            <div class="flex gap-4 mt-10">
-                                <button type="button" onclick="closeCheckInModal()"
-                                    class="flex-1 px-8 py-5 rounded-3xl font-black text-slate-500 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest">Hủy</button>
-                                <button type="button" onclick="goToStep2()"
-                                    class="flex-1 px-8 py-5 rounded-3xl bg-slate-900 text-white font-black hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10 uppercase text-xs tracking-widest flex items-center justify-center gap-2">
-                                    Tiếp theo
-                                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- STEP 2: GUEST INFO -->
-                        <div id="step-2-container" class="hidden">
-                            <h3 class="text-3xl font-black text-slate-900 mb-2">Bước 2: Thông tin khách</h3>
-                            <p class="text-slate-500 font-medium mb-8">Nhập thông tin định danh khách hàng thực hiện check-in.</p>
-                            
-                            <div class="space-y-5">
-                                <div class="space-y-2">
-                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Số CCCD / Passport</label>
-                                    <input type="text" id="guest-id-card" required
-                                        class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20"
-                                        placeholder="Nhập số giấy tờ định danh">
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Họ và tên khách</label>
-                                    <input type="text" id="guest-full-name" required
-                                        class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20"
-                                        placeholder="Tên khách hàng check-in">
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Ghi chú check-in</label>
-                                    <textarea id="check-in-note" rows="2"
-                                        class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20"
-                                        placeholder="Yêu cầu đặc biệt (nếu có)..."></textarea>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-4 mt-10">
-                                <button type="button" onclick="goToStep1()"
-                                    class="flex-1 px-8 py-5 rounded-3xl font-black text-slate-500 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-2">
-                                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                                    Quay lại
-                                </button>
-                                <button type="submit"
-                                    class="flex-1 px-8 py-5 rounded-3xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 uppercase text-xs tracking-widest">
-                                    Hoàn tất Check-in
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
         <!-- Checkout Summary Modal -->
         <div id="checkout-modal" class="fixed inset-0 z-[60] hidden">
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeCheckoutModal()"></div>
@@ -231,38 +271,59 @@
                             </div>
                         </div>
 
-                        <!-- BILLING DETAILS -->
-                        <div class="space-y-4">
-                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Chi tiết hóa đơn</h4>
-                            <div class="border border-slate-100 rounded-3xl overflow-hidden">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-slate-50">
-                                        <tr>
-                                            <th class="px-6 py-4 text-left font-black text-slate-500">Nội dung</th>
-                                            <th class="px-6 py-4 text-center font-black text-slate-500">SL</th>
-                                            <th class="px-6 py-4 text-right font-black text-slate-500">Thành tiền</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="summary-table-body" class="divide-y divide-slate-50">
-                                        <!-- Row data -->
-                                    </tbody>
-                                </table>
+                        <!-- OCCUPANTS SECTION -->
+                        <div id="summary-occupants-section" class="space-y-4 hidden">
+                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Khách lưu trú thực tế</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="summary-occupants-list">
+                                <!-- Occupants will be injected here -->
                             </div>
                         </div>
 
-                        <!-- TOTALS -->
-                        <div class="p-8 bg-indigo-600 rounded-[32px] text-white space-y-4 shadow-xl shadow-indigo-600/20">
-                            <div class="flex justify-between items-center opacity-80 text-sm font-bold">
-                                <span>Tổng cộng (Phòng + Dịch vụ)</span>
-                                <span id="summary-total-amount">0đ</span>
+                        <!-- BILLING DETAILS GROUPED BY ROOM -->
+                        <div class="space-y-4">
+                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Chi tiết hóa đơn & Dịch vụ</h4>
+                            <div id="summary-grouped-services" class="space-y-4">
+                                <!-- Groups will be injected here -->
                             </div>
-                            <div class="flex justify-between items-center opacity-80 text-sm font-bold border-b border-white/10 pb-4">
-                                <span>Đã thanh toán trước</span>
-                                <span id="summary-paid-amount">0đ</span>
+                        </div>
+
+                        <!-- DATES & NIGHTS -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-indigo-50 p-4 rounded-3xl">
+                                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Ngày trả thực tế</p>
+                                <p class="text-sm font-black text-slate-800" id="summary-check-out">...</p>
                             </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-lg font-black uppercase tracking-wider">Còn lại phải thu</span>
-                                <span class="text-3xl font-black" id="summary-balance">0đ</span>
+                            <div class="bg-amber-50 p-4 rounded-3xl">
+                                <p class="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Số đêm thực tế</p>
+                                <p class="text-sm font-black text-slate-800" id="summary-total-nights">...</p>
+                            </div>
+                        </div>
+
+                        <!-- BILLING SUMMARY -->
+                        <div class="space-y-3 p-6 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-bold text-slate-500 uppercase tracking-widest">Tiền phòng gốc</span>
+                                <span class="font-black text-slate-900" id="summary-original-total">0đ</span>
+                            </div>
+                            <div class="hidden justify-between items-center text-xs" id="adjustment-row">
+                                <span class="font-bold text-rose-500 uppercase tracking-widest">Chênh lệch trả sớm</span>
+                                <span class="font-black text-rose-600" id="summary-adjustment">0đ</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                                <span class="text-sm font-black text-slate-900 uppercase">Tổng cộng cuối</span>
+                                <span class="text-xl font-black text-indigo-600" id="summary-total-amount">0đ</span>
+                            </div>
+                        </div>
+
+                        <!-- PAYMENT INFO -->
+                        <div class="space-y-3">
+                            <div class="flex justify-between px-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Đã thanh toán (VNPay)</span>
+                                <span class="text-xs font-black text-slate-900" id="summary-paid-amount">0đ</span>
+                            </div>
+                            <div class="flex justify-between items-center p-6 bg-emerald-50 rounded-[32px] border border-emerald-100">
+                                <span class="text-sm font-black text-emerald-700 uppercase tracking-widest">Còn lại phải thu</span>
+                                <span class="text-3xl font-black text-emerald-600" id="summary-balance">0đ</span>
                             </div>
                         </div>
                     </div>
@@ -270,6 +331,10 @@
                     <div class="flex gap-4 mt-10">
                         <button onclick="closeCheckoutModal()"
                             class="flex-1 px-8 py-5 rounded-3xl font-black text-slate-500 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest">Quay lại</button>
+                        <a id="btn-print-invoice" href="#" target="_blank"
+                            class="hidden flex-1 px-8 py-5 rounded-3xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/10 uppercase text-xs tracking-widest text-center items-center justify-center gap-2">
+                            🖨️ In hóa đơn
+                        </a>
                         <button id="btn-confirm-checkout"
                             class="flex-1 px-8 py-5 rounded-3xl bg-slate-900 text-white font-black hover:bg-rose-600 transition-all shadow-xl shadow-slate-900/10 uppercase text-xs tracking-widest">
                             Xác nhận trả phòng
@@ -278,127 +343,202 @@
                 </div>
             </div>
         </div>
+
+        <!-- Custom Confirm Modal -->
+        <div id="confirm-modal" class="fixed inset-0 z-[70] hidden">
+            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] transition-opacity" onclick="closeConfirmModal()"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-8 transform transition-all scale-95 opacity-0 duration-300"
+                    id="confirm-modal-content">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mx-auto mb-4">
+                            <i data-lucide="alert-circle" class="w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-900 mb-2">Chốt trả phòng?</h3>
+                        <p class="text-xs font-medium text-slate-500 leading-relaxed">Đại ca xác nhận đã thu đủ tiền và muốn giải phóng phòng cho đơn này chứ?</p>
+                    </div>
+                    
+                    <div class="flex flex-col gap-3">
+                        <button id="btn-final-confirm"
+                            class="w-full py-4 rounded-2xl bg-slate-900 text-white font-black hover:bg-rose-600 transition-all text-xs uppercase tracking-widest shadow-lg shadow-slate-900/10">
+                            Xác nhận chốt đơn
+                        </button>
+                        <button onclick="closeConfirmModal()"
+                            class="w-full py-4 rounded-2xl font-black text-slate-400 hover:text-slate-900 transition-all text-[10px] uppercase tracking-widest">
+                            Quay lại kiểm tra
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Service Catalog Modal -->
+        <div id="serviceCatalogModal" class="fixed inset-0 z-[60] hidden">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeServiceCatalogModal()"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-white rounded-[40px] w-full max-w-4xl shadow-2xl p-8 transform transition-all scale-95 opacity-0 duration-300 max-h-[90vh] flex flex-col"
+                    id="serviceCatalogModal-content">
+                    <div class="flex justify-between items-center mb-6 shrink-0">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-900">Thêm Dịch Vụ</h2>
+                            <p class="text-xs font-medium text-slate-400">Chọn dịch vụ để thêm vào booking <span id="catalog-booking-id" class="font-bold text-indigo-600"></span></p>
+                        </div>
+                        <button onclick="closeServiceCatalogModal()" class="w-10 h-10 bg-slate-50 hover:bg-rose-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                        <!-- Category Filter Tabs -->
+                        <div class="flex flex-wrap gap-2 mb-6" id="category-tabs">
+                            <button onclick="filterCategory('')"
+                                class="category-tab active px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all bg-slate-900 text-white"
+                                data-category="">
+                                Tất cả
+                            </button>
+                            <button th:each="cat : ${categories}" th:data-cat-id="${cat.id}"
+                                onclick="filterCategory(this.getAttribute('data-cat-id'))" th:attr="data-category=${cat.id}"
+                                class="category-tab px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                th:text="${cat.categoryName}">
+                            </button>
+                        </div>
+
+                        <!-- Services Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="services-grid">
+                            <div th:each="svc : ${services}" th:attr="data-category=${svc.categoryId}"
+                                class="service-card group bg-slate-50 hover:bg-indigo-50 rounded-3xl p-5 transition-all border border-transparent hover:border-indigo-100">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <p class="font-black text-slate-900 group-hover:text-indigo-700 transition-colors"
+                                            th:text="${svc.serviceName}"></p>
+                                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1"
+                                            th:text="${svc.categoryName}"></p>
+                                        <p class="text-sm font-black text-indigo-600 mt-2"
+                                            th:text="|${svc.price != null ? #numbers.formatDecimal(svc.price, 0, 'COMMA', 0, 'POINT') : '0'} đ|">
+                                        </p>
+                                    </div>
+                                    <button th:data-svc-id="${svc.id}" th:data-svc-name="${svc.serviceName}"
+                                        onclick="openAddServiceConfirmModal(this.getAttribute('data-svc-id'), this.getAttribute('data-svc-name'))"
+                                        class="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-slate-100 hover:border-indigo-600 shrink-0">
+                                        <i data-lucide="plus" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Service Confirmation Modal -->
+        <div id="addServiceConfirmModal"
+            class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+            <div class="bg-white rounded-[40px] w-full max-w-md overflow-hidden shadow-2xl transition-all">
+                <div class="p-8 border-b border-slate-50 bg-slate-50/50">
+                    <h2 class="text-xl font-black text-slate-900">Xác nhận đặt dịch vụ</h2>
+                    <p class="text-slate-500 font-medium text-sm" id="modalServiceName"></p>
+                </div>
+                <div class="p-8 space-y-6">
+                    <input type="hidden" id="modalServiceId">
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">Chọn phòng đặt dịch vụ</label>
+                            <select id="modalRoomId" class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-slate-900 border border-slate-100">
+                                <option value="">Dịch vụ chung cho cả đoàn</option>
+                                <!-- JS will populate options here -->
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">Số lượng</label>
+                            <div class="flex items-center justify-center gap-4">
+                                <button onclick="changeQty('modalQuantity', -1)"
+                                    class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all font-black text-xl">−</button>
+                                <input type="number" id="modalQuantity" value="1" min="1"
+                                    class="w-24 bg-slate-50 border-none rounded-2xl px-4 py-4 outline-none focus:ring-4 focus:ring-indigo-500/10 font-black text-center text-2xl text-slate-900">
+                                <button onclick="changeQty('modalQuantity', 1)"
+                                    class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all font-black text-xl">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button onclick="closeAddServiceConfirmModal()"
+                            class="flex-1 py-4 rounded-2xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all">Hủy</button>
+                        <button onclick="confirmReceptionAddService(event)" id="confirmAddServiceBtn"
+                            class="flex-1 py-4 rounded-2xl font-black text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 text-sm">Xác nhận</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Modal Hủy đặt phòng -->
+        <div id="delete-booking-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeDeleteBookingModal()"></div>
+            <div class="relative bg-white rounded-[40px] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+                <div class="p-10 text-center">
+                    <div class="w-20 h-20 bg-rose-50 rounded-[32px] flex items-center justify-center text-rose-600 mx-auto mb-6 shadow-sm">
+                        <i data-lucide="alert-triangle" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-2xl font-black text-slate-900 mb-2">Hủy đặt phòng?</h3>
+                    <p class="text-slate-500 font-medium mb-10 leading-relaxed">Đại ca có chắc chắn muốn hủy đơn đặt phòng này không? Toàn bộ thông tin sẽ bị hủy bỏ.</p>
+                    
+                    <div class="flex flex-col gap-3">
+                        <button onclick="confirmCancelBooking()" class="w-full bg-rose-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-rose-600/20 hover:bg-rose-700 hover:-translate-y-0.5 transition-all">
+                            Xác nhận hủy đơn
+                        </button>
+                        <button onclick="closeDeleteBookingModal()" class="w-full py-5 rounded-2xl font-black text-slate-500 hover:bg-slate-50 transition-all">
+                            Giữ lại đơn này
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script layout:fragment="script">
-        let currentCheckInStep = 1;
+        let currentBookingToCancel = null;
 
-        function openCheckInModal(bookingId, roomTypeId, roomTypeName) {
-            document.getElementById('modal-booking-id').value = bookingId;
-            document.getElementById('modal-room-type-name').textContent = roomTypeName;
-
-            // Reset Form & Steps
-            document.getElementById('check-in-form').reset();
-            goToStep1();
-
-            // Load available rooms of this type
-            loadAvailableRooms(roomTypeId);
-
-            const modal = document.getElementById('check-in-modal');
-            const content = document.getElementById('modal-content');
+        function openDeleteBookingModal(bookingId) {
+            currentBookingToCancel = bookingId;
+            const modal = document.getElementById('delete-booking-modal');
             modal.classList.remove('hidden');
+            modal.classList.add('flex');
             setTimeout(() => {
-                content.classList.remove('scale-95', 'opacity-0');
-                content.classList.add('scale-100', 'opacity-100');
+                modal.querySelector('.bg-white').classList.remove('scale-95', 'opacity-0');
             }, 10);
-        }
-
-        function closeCheckInModal() {
-            const modal = document.getElementById('check-in-modal');
-            const content = document.getElementById('modal-content');
-            content.classList.remove('scale-100', 'opacity-100');
-            content.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        }
-
-        function goToStep1() {
-            currentCheckInStep = 1;
-            document.getElementById('step-1-container').classList.remove('hidden');
-            document.getElementById('step-2-container').classList.add('hidden');
-            document.getElementById('step-1-indicator').className = 'h-1.5 flex-1 bg-indigo-600 rounded-full transition-all';
-            document.getElementById('step-2-indicator').className = 'h-1.5 flex-1 bg-slate-100 rounded-full transition-all';
-        }
-
-        function goToStep2() {
-            const selectedRooms = Array.from(document.querySelectorAll('input[name="roomIds"]:checked'));
-            if (selectedRooms.length === 0) {
-                alert('bạn vui lòng chọn ít nhất một phòng để tiếp tục ạ!');
-                return;
-            }
-
-            currentCheckInStep = 2;
-            document.getElementById('step-1-container').classList.add('hidden');
-            document.getElementById('step-2-container').classList.remove('hidden');
-            document.getElementById('step-1-indicator').className = 'h-1.5 flex-1 bg-emerald-500 rounded-full transition-all';
-            document.getElementById('step-2-indicator').className = 'h-1.5 flex-1 bg-indigo-600 rounded-full transition-all';
             lucide.createIcons();
         }
 
-        async function loadAvailableRooms(roomTypeId) {
-            const container = document.getElementById('available-rooms-container');
-            container.innerHTML = '<div class="col-span-full py-8 text-center text-slate-400"><i class="lucide-refresh-cw animate-spin w-8 h-8 mx-auto mb-2"></i><p class="text-[10px] font-black uppercase tracking-tighter">Đang tìm phòng trống...</p></div>';
-
-            try {
-                const response = await fetch(`/bookings/api/available-rooms/${roomTypeId}`);
-                const data = await response.json();
-                const rooms = data.content || [];
-
-                if (rooms.length === 0) {
-                    container.innerHTML = '<div class="col-span-full py-8 text-center bg-rose-50 border-2 border-rose-100 rounded-3xl"><p class="text-rose-500 font-black text-xs uppercase tracking-widest">Hết phòng trống loại này!</p></div>';
-                    return;
-                }
-
-                container.innerHTML = rooms.map(room => `
-                    <label class="cursor-pointer group">
-                        <input type="checkbox" name="roomIds" value="${room.id}" class="peer hidden">
-                        <div class="p-4 border-2 border-slate-100 rounded-2xl text-center font-black text-slate-600 group-hover:border-slate-300 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-600 transition-all shadow-sm">
-                            <div class="text-xs opacity-40 mb-1">ROOM</div>
-                            <div class="text-lg">${room.roomName}</div>
-                        </div>
-                    </label>
-                `).join('');
-                lucide.createIcons();
-            } catch (error) {
-                console.error('Error loading available rooms:', error);
-                container.innerHTML = '<p class="col-span-full text-center text-rose-500 font-bold">Lỗi tải dữ liệu phòng</p>';
-            }
+        function closeDeleteBookingModal() {
+            const modal = document.getElementById('delete-booking-modal');
+            modal.querySelector('.bg-white').classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                currentBookingToCancel = null;
+            }, 300);
         }
 
-        document.getElementById('check-in-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const bookingId = document.getElementById('modal-booking-id').value;
-            const selectedRooms = Array.from(document.querySelectorAll('input[name="roomIds"]:checked')).map(cb => cb.value);
+        async function confirmCancelBooking() {
+            if (!currentBookingToCancel) return;
             
-            const guestIdCard = document.getElementById('guest-id-card').value;
-            const guestFullName = document.getElementById('guest-full-name').value;
-            const note = document.getElementById('check-in-note').value;
-
             try {
-                const response = await fetch('/bookings/api/check-in', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bookingId: bookingId,
-                        roomIds: selectedRooms,
-                        guestIdCard: guestIdCard,
-                        guestFullName: guestFullName,
-                        note: note
-                    })
+                const response = await fetch(`/bookings/api/cancel/${currentBookingToCancel}`, {
+                    method: 'PUT'
                 });
 
                 if (response.ok) {
-                    window.location.reload();
+                    showToast('Đã hủy đặt phòng thành công!', 'success');
+                    closeDeleteBookingModal();
+                    setTimeout(() => location.reload(), 1000);
                 } else {
                     const error = await response.json();
-                    alert(error.message || 'Check-in thất bại');
+                    showToast(error.message || 'Hủy thất bại', 'error');
                 }
             } catch (error) {
-                console.error('Error during check-in:', error);
-                alert('Đã có lỗi xảy ra, bạn kiểm tra lại nhé!');
+                console.error('Error cancelling booking:', error);
+                showToast('Lỗi kết nối hệ thống!', 'error');
             }
-        });
+        }
+
+        // REMOVED OLD CHECK-IN SCRIPT LOGIC
 
         async function handleCheckOut(bookingId) {
             // Thay vì confirm ngay, ta load bảng kê
@@ -410,7 +550,7 @@
                 const response = await fetch(`/bookings/api/checkout-summary/${bookingId}`);
                 if (!response.ok) {
                     const error = await response.json();
-                    alert(error.message || 'Không thể tải bảng kê thanh toán!');
+                    showToast(error.message || 'Không thể tải bảng kê thanh toán!', 'error');
                     return;
                 }
                 const data = await response.json();
@@ -419,35 +559,111 @@
                 document.getElementById('summary-booking-id').textContent = `#${data.bookingId.substring(0, 8)}...`;
                 document.getElementById('summary-guest-name').textContent = data.guestName;
                 document.getElementById('summary-rooms').textContent = data.roomNames;
+                document.getElementById('summary-check-out').textContent = data.actualCheckOut;
+                document.getElementById('summary-total-nights').textContent = `${data.actualNights} đêm`;
                 
                 const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
                 
+                document.getElementById('summary-original-total').textContent = formatCurrency(data.originalTotalAmount);
                 document.getElementById('summary-total-amount').textContent = formatCurrency(data.totalAmount);
                 document.getElementById('summary-paid-amount').textContent = formatCurrency(data.paidAmount);
                 document.getElementById('summary-balance').textContent = formatCurrency(data.balance);
 
-                const tbody = document.getElementById('summary-table-body');
-                tbody.innerHTML = `
-                    <tr class="hover:bg-slate-50/50">
-                        <td class="px-6 py-4 font-bold text-slate-700">Tiền phòng (${data.totalNights} đêm x ${formatCurrency(data.roomPricePerNight)})</td>
-                        <td class="px-6 py-4 text-center font-bold text-slate-500">1</td>
-                        <td class="px-6 py-4 text-right font-black text-slate-900">${formatCurrency(data.totalRoomPrice)}</td>
-                    </tr>
-                `;
+                const adjRow = document.getElementById('adjustment-row');
+                const adjAmount = document.getElementById('summary-adjustment');
+                if (data.roomPriceAdjustment < 0) {
+                    adjRow.classList.remove('hidden');
+                    adjRow.classList.add('flex');
+                    adjAmount.textContent = formatCurrency(data.roomPriceAdjustment);
+                } else {
+                    adjRow.classList.add('hidden');
+                    adjRow.classList.remove('flex');
+                }
 
+                // Render Occupants
+                const occupantsSection = document.getElementById('summary-occupants-section');
+                const occupantsList = document.getElementById('summary-occupants-list');
+                if (data.occupants && data.occupants.length > 0) {
+                    occupantsSection.classList.remove('hidden');
+                    occupantsList.innerHTML = data.occupants.map(occ => `
+                        <div class="bg-indigo-50/50 p-4 rounded-2xl flex items-center gap-3 border border-indigo-100/50">
+                            <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-400">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-black text-slate-900">${occ.fullName}</div>
+                                <div class="text-[9px] font-bold text-slate-400">P.${occ.roomName} | CCCD: ${occ.idNumber}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    occupantsSection.classList.add('hidden');
+                }
+
+                // Render Grouped Services
+                const groupedContainer = document.getElementById('summary-grouped-services');
+                groupedContainer.innerHTML = '';
+
+                // 1. Room Charge Group
+                const roomGroup = `
+                    <div class="bg-white border border-slate-100 rounded-[32px] overflow-hidden">
+                        <div class="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
+                            <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Tiền phòng</span>
+                            <span class="text-[10px] font-black text-indigo-600 tracking-widest">${data.totalNights} ĐÊM</span>
+                        </div>
+                        <div class="p-6 flex justify-between items-center">
+                            <div>
+                                <div class="font-black text-slate-900">${data.roomTypeName}</div>
+                                <div class="text-[11px] font-medium text-slate-400">${data.roomNames}</div>
+                            </div>
+                            <div class="text-right font-black text-slate-900">${formatCurrency(data.totalRoomPrice)}</div>
+                        </div>
+                    </div>
+                `;
+                groupedContainer.insertAdjacentHTML('beforeend', roomGroup);
+
+                // 2. Services grouped by room or general
+                const servicesByRoom = {};
                 data.services.forEach(srv => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-slate-50/50';
-                    row.innerHTML = `
-                        <td class="px-6 py-4 font-bold text-slate-700">${srv.serviceName}</td>
-                        <td class="px-6 py-4 text-center font-bold text-slate-500">x${srv.quantity}</td>
-                        <td class="px-6 py-4 text-right font-black text-slate-900">${formatCurrency(srv.totalAmount)}</td>
-                    `;
-                    tbody.appendChild(row);
+                    const roomKey = srv.roomId || 'general';
+                    const roomName = srv.roomName || 'Dịch vụ chung';
+                    if (!servicesByRoom[roomKey]) servicesByRoom[roomKey] = { name: roomName, items: [] };
+                    servicesByRoom[roomKey].items.push(srv);
                 });
 
-                // Set action for confirm button
+                Object.values(servicesByRoom).forEach(group => {
+                    const groupHtml = `
+                        <div class="bg-white border border-slate-100 rounded-[32px] overflow-hidden">
+                            <div class="bg-slate-50 px-6 py-3 border-b border-slate-100">
+                                <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Phòng ${group.name}</span>
+                            </div>
+                            <div class="divide-y divide-slate-50">
+                                ${group.items.map(item => `
+                                    <div class="p-6 flex justify-between items-center">
+                                        <div>
+                                            <div class="font-black text-slate-900 text-sm">${item.serviceName}</div>
+                                            <div class="text-[11px] font-medium text-slate-400">x${item.totalQuantity} đơn vị</div>
+                                        </div>
+                                        <div class="text-right font-black text-indigo-600">${formatCurrency(item.totalAmount)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    groupedContainer.insertAdjacentHTML('beforeend', groupHtml);
+                });
+                
+                lucide.createIcons();
+
+                // Set invoice link
+                const invoiceBtn = document.getElementById('btn-print-invoice');
+                invoiceBtn.href = `/bookings/invoice/${bookingId}`;
+                invoiceBtn.classList.add('hidden');
+                invoiceBtn.classList.remove('flex');
+
+                // Show confirm button
                 const confirmBtn = document.getElementById('btn-confirm-checkout');
+                confirmBtn.classList.remove('hidden');
                 confirmBtn.onclick = () => processActualCheckOut(bookingId);
 
                 // Show modal
@@ -461,7 +677,7 @@
 
             } catch (error) {
                 console.error('Error loading checkout summary:', error);
-                alert('Không thể tải bảng kê thanh toán, bạn kiểm tra lại nhé!');
+                showToast('Không thể tải bảng kê thanh toán, đại ca kiểm tra lại nhé!', 'error');
             }
         }
 
@@ -475,22 +691,249 @@
             }, 300);
         }
 
+        let currentBookingId = null;
+
         async function processActualCheckOut(bookingId) {
-            if (!confirm('bạn xác nhận đã thu đủ tiền và hoàn tất trả phòng?')) return;
+            currentBookingId = bookingId;
+            showConfirmModal();
+        }
+
+        function showConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            document.getElementById('btn-final-confirm').onclick = executeCheckOut;
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        async function executeCheckOut() {
+            const btn = document.getElementById('btn-final-confirm');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="lucide-refresh-cw animate-spin w-3 h-3 mr-2"></i> Đang chốt...';
 
             try {
-                const response = await fetch(`/bookings/api/check-out/${bookingId}`, {
+                const response = await fetch(`/bookings/api/check-out/${currentBookingId}`, {
                     method: 'POST'
                 });
 
                 if (response.ok) {
-                    window.location.reload();
+                    showToast('Đã hoàn tất trả phòng! Bạn có thể in hóa đơn.', 'success');
+                    closeConfirmModal();
+
+                    // Show invoice button, hide confirm button
+                    const invoiceBtn = document.getElementById('btn-print-invoice');
+                    invoiceBtn.classList.remove('hidden');
+                    invoiceBtn.classList.add('flex');
+                    document.getElementById('btn-confirm-checkout').classList.add('hidden');
+
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 5000);
                 } else {
                     const error = await response.json();
-                    alert(error.message || 'Check-out thất bại');
+                    showToast(error.message || 'Check-out thất bại', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
                 }
             } catch (error) {
                 console.error('Error during actual check-out:', error);
+                showToast('Lỗi kết nối hệ thống!', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // Handle date filter change
+        document.getElementById('reception-filter-date').addEventListener('change', function(e) {
+            document.getElementById('reception-filter-form').submit();
+        });
+
+        // ================= SERVICE CATALOG ================= //
+        let targetBookingId = null;
+
+        function openServiceCatalogModal(bookingId, btnElement) {
+            targetBookingId = bookingId;
+            document.getElementById('catalog-booking-id').textContent = `#${bookingId.substring(0,8)}...`;
+            
+            // Populate room select in confirm modal
+            const roomSelect = document.getElementById('modalRoomId');
+            roomSelect.innerHTML = '<option value="">Dịch vụ chung cho cả đoàn</option>';
+            
+            let roomCount = 0;
+            
+            // Ưu tiên 1: Lấy trực tiếp từ thuộc tính của nút bấm (Nhanh & Chính xác nhất)
+            if (btnElement) {
+                const roomIds = btnElement.getAttribute('data-room-ids');
+                const roomNames = btnElement.getAttribute('data-room-names');
+                
+                if (roomIds && roomNames) {
+                    const idsArr = roomIds.split(',');
+                    const namesArr = roomNames.split(',');
+                    
+                    if (idsArr.length > 0 && idsArr[0] !== "") {
+                        for (let i = 0; i < idsArr.length; i++) {
+                            const option = document.createElement('option');
+                            option.value = idsArr[i];
+                            option.textContent = `Phòng ${namesArr[i]}`;
+                            roomSelect.appendChild(option);
+                            roomCount++;
+                        }
+                    }
+                }
+            }
+            
+            // Ưu tiên 2: Tìm trong DOM (Dự phòng)
+            if (roomCount === 0) {
+                let roomElements = null;
+                if (btnElement) {
+                    const card = btnElement.closest('.bg-white');
+                    if (card) roomElements = card.querySelectorAll('.room-data');
+                }
+                
+                if (!roomElements || roomElements.length === 0) {
+                    const roomDataContainer = document.getElementById(`booking-rooms-${bookingId}`);
+                    if (roomDataContainer) roomElements = roomDataContainer.querySelectorAll('.room-data');
+                }
+
+                if (roomElements && roomElements.length > 0) {
+                    roomElements.forEach(el => {
+                        const roomId = el.getAttribute('data-id');
+                        const roomName = el.getAttribute('data-name');
+                        const option = document.createElement('option');
+                        option.value = roomId;
+                        option.textContent = `Phòng ${roomName}`;
+                        roomSelect.appendChild(option);
+                        roomCount++;
+                    });
+                }
+            }
+
+            if (roomCount > 0) {
+                console.log(`Đã nạp ${roomCount} phòng cho booking ${bookingId}`);
+            } else {
+                console.warn(`Cảnh báo: Không thể tìm thấy phòng cho booking ${bookingId}. Nếu khách đã check-in, vui lòng kiểm tra lại dữ liệu.`);
+            }
+
+            const modal = document.getElementById('serviceCatalogModal');
+            const content = document.getElementById('serviceCatalogModal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeServiceCatalogModal() {
+            const modal = document.getElementById('serviceCatalogModal');
+            const content = document.getElementById('serviceCatalogModal-content');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function filterCategory(categoryId) {
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                if (tab.dataset.category === categoryId) {
+                    tab.classList.add('bg-slate-900', 'text-white');
+                    tab.classList.remove('bg-slate-100', 'text-slate-600');
+                } else {
+                    tab.classList.remove('bg-slate-900', 'text-white');
+                    tab.classList.add('bg-slate-100', 'text-slate-600');
+                }
+            });
+
+            document.querySelectorAll('.service-card').forEach(card => {
+                if (!categoryId || card.dataset.category === categoryId) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function openAddServiceConfirmModal(serviceId, serviceName) {
+            document.getElementById('modalServiceId').value = serviceId;
+            document.getElementById('modalServiceName').textContent = serviceName;
+            document.getElementById('modalQuantity').value = 1;
+            
+            const modal = document.getElementById('addServiceConfirmModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeAddServiceConfirmModal() {
+            const modal = document.getElementById('addServiceConfirmModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function changeQty(inputId, delta) {
+            const input = document.getElementById(inputId);
+            let val = parseInt(input.value) + delta;
+            if (val < 1) val = 1;
+            input.value = val;
+        }
+
+        async function confirmReceptionAddService(event) {
+            const btn = document.getElementById('confirmAddServiceBtn');
+            const quantityInput = document.getElementById('modalQuantity');
+            const quantity = parseInt(quantityInput.value);
+
+            if (isNaN(quantity) || quantity <= 0) {
+                showToast('Số lượng dịch vụ phải lớn hơn 0!', 'error');
+                quantityInput.focus();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="lucide-refresh-cw animate-spin w-4 h-4 mr-2"></i> Đang xử lý...';
+
+            const data = {
+                bookingId: targetBookingId,
+                serviceId: document.getElementById('modalServiceId').value,
+                roomId: document.getElementById('modalRoomId').value || null,
+                quantity: quantity
+            };
+
+            try {
+                const response = await fetch('/bookings/api/book-service', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    showToast('Đã thêm dịch vụ vào hóa đơn thành công!', 'success');
+                    closeAddServiceConfirmModal();
+                    closeServiceCatalogModal();
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    const error = await response.json();
+                    showToast(error.message || 'Có lỗi xảy ra!', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Xác nhận';
+                }
+            } catch (error) {
+                showToast('Lỗi kết nối hệ thống!', 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Xác nhận';
             }
         }
     </script>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Check-in - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1200px] mx-auto">
+        <div class="flex items-center justify-between mb-12">
+            <div>
+                <a th:href="@{/bookings/reception}" class="text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-2 mb-4 font-black uppercase text-[10px] tracking-widest">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    Quay lại Dashboard lễ tân
+                </a>
+                <h1 class="text-4xl font-black text-slate-900 mb-2">Thực hiện Check-in</h1>
+                <p class="text-slate-500 font-medium">Đơn đặt phòng #[[${checkInData.booking.id.substring(0,8)}]]...</p>
+            </div>
+            <div class="text-right">
+                <span class="px-4 py-2 bg-emerald-100 text-emerald-600 rounded-xl text-xs font-black uppercase tracking-widest">
+                    Đã thanh toán
+                </span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <!-- Room Selection Area -->
+            <div class="lg:col-span-2 space-y-12">
+                <div th:each="group : ${checkInData.roomGroups}" class="space-y-6 group-container" 
+                     th:attr="data-required=${group.requiredQuantity}, data-group-name=${group.roomTypeName}">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-4">
+                            <i data-lucide="hotel" class="w-6 h-6 text-indigo-600"></i>
+                            <h3 class="text-xl font-black text-slate-800" th:text="${group.roomTypeName}">Loại phòng</h3>
+                        </div>
+                        <p class="text-sm font-bold">
+                            Cần chọn: <span class="text-indigo-600 font-black req-count" th:id="|req-${group.roomTypeName}|" th:text="${group.requiredQuantity}">0</span> phòng
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                        <div th:each="room : ${group.rooms}">
+                            <input type="checkbox" name="roomIds" th:id="${room.id}" th:value="${room.id}" 
+                                   class="peer hidden" th:disabled="${room.occupied}"
+                                   th:attr="data-group=${group.roomTypeName}, data-occupied=${room.occupied}"
+                                   onchange="handleRoomSelection(this)">
+                            <label th:for="${room.id}" 
+                                   class="block p-6 rounded-3xl border-2 transition-all cursor-pointer text-center relative group"
+                                   th:classappend="${room.occupied ? 'border-rose-100 bg-rose-50 cursor-not-allowed opacity-60' : 'border-slate-100 hover:border-indigo-200 hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50'}">
+                                
+                                <span class="block text-[10px] font-black uppercase tracking-tighter mb-1 opacity-40">Phòng</span>
+                                <span class="block text-lg font-black" th:classappend="${room.occupied ? 'text-rose-500' : 'text-slate-700 peer-checked:text-indigo-600'}"
+                                      th:text="${room.roomName}">...</span>
+
+                                <!-- Status Badge -->
+                                <div class="absolute -top-2 -right-2">
+                                    <div th:if="${room.occupied}" class="w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-lg">
+                                        <i data-lucide="lock" class="w-3 h-3"></i>
+                                    </div>
+                                    <div th:unless="${room.occupied}" class="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg peer-checked:scale-110 transition-transform">
+                                        <i data-lucide="check" class="w-3 h-3"></i>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Info & Action -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-[40px] p-10 border border-slate-100 shadow-xl shadow-slate-200/50 sticky top-10 space-y-8">
+                    <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest">Thông tin khách hàng</h4>
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                                <i data-lucide="user" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Họ và tên</p>
+                                <p class="font-bold text-slate-900" th:text="${checkInData.booking.guest?.fullName}">...</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                                <i data-lucide="calendar" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Thời gian ở</p>
+                                <p class="font-bold text-slate-900">
+                                    [[${#temporals.format(checkInData.booking.checkIn, 'dd/MM')}]] - [[${#temporals.format(checkInData.booking.checkOut, 'dd/MM/yyyy')}]]
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="pt-6 border-t border-slate-50 space-y-4">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Số CCCD / Passport *</label>
+                                <input type="text" id="guest-id-card" required th:value="${checkInData.booking.guest?.idNumber}"
+                                    class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600/20"
+                                    placeholder="Nhập số CMND/CCCD">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-8">
+                        <button id="btn-next-step" onclick="goToGuestInfo()"
+                            class="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-sm hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-900/10 flex items-center justify-center gap-3">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                            TIẾP TỤC: NHẬP THÔNG TIN KHÁCH
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script layout:fragment="script" th:inline="javascript">
+        const bookingId = /*[[${checkInData.booking.id}]]*/ '';
+        
+        function handleRoomSelection(checkbox) {
+            const container = checkbox.closest('.group-container');
+            const groupName = container.getAttribute('data-group-name');
+            const required = parseInt(container.getAttribute('data-required'));
+            
+            const selectedInGroup = container.querySelectorAll('input[name="roomIds"]:checked');
+            
+            if (selectedInGroup.length > required) {
+                checkbox.checked = false;
+                showToast(`Loại phòng ${groupName} chỉ cần chọn tối đa ${required} phòng đại ca ạ!`, 'error');
+                return;
+            }
+
+            // Cập nhật số lượng còn lại cần chọn
+            const remainingCount = required - selectedInGroup.length;
+            const reqSpan = container.querySelector('.req-count');
+            if (reqSpan) {
+                reqSpan.textContent = remainingCount;
+            }
+
+            // Disable/Enable các checkbox khác trong nhóm
+            const allCheckboxesInGroup = container.querySelectorAll('input[name="roomIds"]');
+            allCheckboxesInGroup.forEach(cb => {
+                if (!cb.checked) {
+                    const isOccupied = cb.getAttribute('data-occupied') === 'true';
+                    if (selectedInGroup.length === required) {
+                        cb.disabled = true;
+                        cb.classList.add('auto-disabled');
+                    } else if (!isOccupied) {
+                        cb.disabled = false;
+                        cb.classList.remove('auto-disabled');
+                    }
+                }
+            });
+        }
+
+        function goToGuestInfo() {
+            const guestIdCard = document.getElementById('guest-id-card').value;
+            if (!guestIdCard) {
+                showToast('Vui lòng nhập số CCCD khách đại diện đại ca nhé!', 'error');
+                return;
+            }
+
+            const selectedRooms = Array.from(document.querySelectorAll('input[name="roomIds"]:checked')).map(cb => {
+                const label = document.querySelector(`label[for="${cb.id}"]`);
+                const roomName = label.querySelector('.text-lg').textContent;
+                return { id: cb.id, name: roomName };
+            });
+            
+            // Validate all groups are full using DOM attributes
+            const groups = document.querySelectorAll('.group-container');
+            for (const group of groups) {
+                const groupName = group.getAttribute('data-group-name');
+                const required = parseInt(group.getAttribute('data-required'));
+                const selectedCount = group.querySelectorAll('input[name="roomIds"]:checked').length;
+                
+                if (selectedCount !== required) {
+                    showToast(`Đại ca vui lòng chọn đủ ${required} phòng cho loại ${groupName} nhé!`, 'error');
+                    return;
+                }
+            }
+
+            if (selectedRooms.length === 0) {
+                showToast('Đại ca chưa chọn phòng nào cả!', 'error');
+                return;
+            }
+
+            // Save state and redirect
+            const state = {
+                bookingId: bookingId,
+                guestIdCard: guestIdCard,
+                selectedRooms: selectedRooms
+            };
+            sessionStorage.setItem('checkInState', JSON.stringify(state));
+            window.location.href = `/bookings/check-in/${bookingId}/guests`;
+        }
+    </script>
+</body>
+
+</html>

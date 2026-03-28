@@ -34,6 +34,7 @@ function populateForm(account) {
     document.getElementById('email').value = account.email || '';
     document.getElementById('username').value = account.username || '';
     document.getElementById('roleName').value = account.roleName || '';
+    document.getElementById('phone').value = account.phone || '';
     // Password is intentionally left blank for security
 }
 
@@ -48,6 +49,7 @@ async function handleFormSubmit(e) {
         username: document.getElementById('username').value,
         password: document.getElementById('password').value,
         roleName: document.getElementById('roleName').value,
+        phone: document.getElementById('phone').value,
     };
 
     const url = mode === 'create' ? '/management/api/accounts' : `/management/api/accounts/${accountId}`;

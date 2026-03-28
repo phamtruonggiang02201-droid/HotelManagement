@@ -2,10 +2,24 @@
  * Logic quản lý Tài khoản cho Dashboard
  */
 
+let currentAccountSearch = '';
+let accountSearchTimeout = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     // Tải dữ liệu ban đầu
     if (document.getElementById('account-manage-tbody')) {
         loadAccountsForManage(0);
+    }
+
+    const searchInput = document.getElementById('account-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(accountSearchTimeout);
+            currentAccountSearch = e.target.value;
+            accountSearchTimeout = setTimeout(() => {
+                loadAccountsForManage(0);
+            }, 500);
+        });
     }
 });
 
@@ -15,7 +29,7 @@ async function loadAccountsForManage(page = 0) {
         if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="7" class="px-8 py-10 text-center text-slate-400 font-medium italic">Đang tải danh sách tài khoản...</td></tr>';
 
-        const response = await fetch(`/management/api/accounts?page=${page}&size=10`);
+        const response = await fetch(`/management/api/accounts?page=${page}&size=10&search=${encodeURIComponent(currentAccountSearch)}`);
         const data = await response.json();
         
         if (!data.content || data.content.length === 0) {
@@ -28,14 +42,15 @@ async function loadAccountsForManage(page = 0) {
                 <td class="px-8 py-6 font-bold text-slate-900">${acc.username}</td>
                 <td class="px-8 py-6 text-slate-600">${acc.fullName || 'N/A'}</td>
                 <td class="px-8 py-6 text-sm text-slate-500 underline decoration-slate-200 underline-offset-4">${acc.email}</td>
+                <td class="px-8 py-6 text-sm text-slate-600 font-bold">${acc.phone || 'N/A'}</td>
                 <td class="px-8 py-6">
                     <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getRoleClass(acc.roleName)}">
                         ${acc.roleName}
                     </span>
                 </td>
                 <td class="px-8 py-6">
-                    <button onclick="toggleAccountStatus('${acc.id}', ${acc.status})" 
-                            class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 ${acc.status ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-rose-100 text-rose-600 hover:bg-rose-200'}">
+                    <button ${acc.username === 'admin' ? 'disabled' : `onclick="toggleAccountStatus('${acc.id}', ${acc.status})"`} 
+                            class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${acc.username === 'admin' ? 'cursor-default opacity-80' : 'hover:scale-105 active:scale-95'} ${acc.status ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-rose-100 text-rose-600 hover:bg-rose-200'}">
                         ${acc.status ? 'HOẠT ĐỘNG' : 'ĐÃ KHÓA'}
                     </button>
                 </td>
@@ -49,9 +64,11 @@ async function loadAccountsForManage(page = 0) {
                         <a href="/management/accounts/${acc.id}" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-all">
                             <i data-lucide="edit-3" class="w-5 h-5"></i>
                         </a>
-                        <button onclick="deleteAccount('${acc.id}')" class="p-2 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-all">
+                        ${acc.username === 'admin' ? '' : `
+                        <button onclick="openDeleteModal('${acc.id}')" class="p-2 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-500 transition-all">
                             <i data-lucide="trash-2" class="w-5 h-5"></i>
                         </button>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -109,27 +126,61 @@ function editAccount(id) {
     }
 }
 
-async function deleteAccount(id) {
-    if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
-        try {
-            const response = await fetch(`/management/api/accounts/${id}`, { method: 'DELETE' });
-            const data = await response.json();
-            if (response.ok) {
-                if (typeof toastService !== 'undefined') {
-                    toastService.success(data.message);
-                }
-                loadAccountsForManage();
-            } else {
-                if (typeof toastService !== 'undefined') {
-                    toastService.error(data.message || 'Có lỗi xảy ra');
-                }
-            }
-        } catch (error) {
-            console.error('Error deleting account:', error);
-            if (typeof toastService !== 'undefined') {
-                toastService.error('Có lỗi xảy ra khi xóa tài khoản');
-            }
+function openDeleteModal(id) {
+    const modal = document.getElementById('deleteConfirmModal');
+    const content = document.getElementById('deleteModalContent');
+    const targetId = document.getElementById('deleteTargetId');
+    
+    if (targetId) targetId.value = id;
+    if (modal && content) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteConfirmModal');
+    const content = document.getElementById('deleteModalContent');
+    
+    if (modal && content) {
+        content.classList.add('scale-95', 'opacity-0');
+        content.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
+}
+
+async function executeDelete() {
+    const id = document.getElementById('deleteTargetId').value;
+    const btn = document.getElementById('confirmDeleteBtn');
+    const originalText = btn.innerText;
+    
+    btn.disabled = true;
+    btn.innerText = 'Đang xử lý...';
+
+    try {
+        const res = await fetch(`/management/api/accounts/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        
+        if (res.ok) {
+            toastService.success(result.message || 'Xóa tài khoản thành công!');
+            closeDeleteModal();
+            loadAccountsForManage();
+        } else {
+            toastService.error(result.message || 'Lỗi khi xóa tài khoản!');
         }
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        toastService.error('Có lỗi xảy ra khi xóa tài khoản');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
     }
 }
 

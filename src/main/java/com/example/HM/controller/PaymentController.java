@@ -6,11 +6,26 @@ import com.example.HM.service.VNPayService;
 import com.example.HM.util.VNPayUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayInputStream;
+
+import com.example.HM.dto.PaymentDTO;
+import com.example.HM.security.SecurityUtils;
+import com.example.HM.service.PaymentService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,8 +35,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentController {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
+
     private final VNPayService vnPayService;
     private final BookingService bookingService;
+    private final com.example.HM.service.PaymentService paymentService;
+    private final com.example.HM.service.RefundService refundService;
 
     /**
      * Test payment page (for demo purposes)
@@ -81,9 +100,9 @@ public class PaymentController {
             // Update Booking Status to PAID
             if (txnRef != null && txnRef.length() > 10) { // Primitive check for real booking IDs
                 try {
-                    bookingService.updateBookingStatus(txnRef, BookingStatus.PAID);
+                    bookingService.updateBookingStatus(txnRef, BookingStatus.PAID, transactionNo);
                 } catch (Exception e) {
-                    // Log error but show success if payment was valid
+                    log.error("[VNPay Return] Thanh toán thành công nhưng KHÔNG update được booking {}: {}", txnRef, e.getMessage(), e);
                 }
             }
             model.addAttribute("success", true);
@@ -92,9 +111,9 @@ public class PaymentController {
             // Payment failed or cancelled at the gateway
             if (txnRef != null && txnRef.length() > 10) {
                 try {
-                    bookingService.updateBookingStatus(txnRef, BookingStatus.CANCELLED);
+                    bookingService.updateBookingStatus(txnRef, BookingStatus.CANCELLED, null);
                 } catch (Exception e) {
-                    // Log error
+                    log.error("[VNPay Return] Thanh toán thất bại, KHÔNG hủy được booking {}: {}", txnRef, e.getMessage(), e);
                 }
             }
             model.addAttribute("success", false);
@@ -133,16 +152,102 @@ public class PaymentController {
 
         if ("00".equals(responseCode)) {
             // Payment successful - update order status
-             if (txnRef != null && txnRef.length() > 10) {
-                 bookingService.updateBookingStatus(txnRef, BookingStatus.PAID);
-             }
+            if (txnRef != null && txnRef.length() > 10) {
+                String transactionNo = vnpParams.get("vnp_TransactionNo");
+                bookingService.updateBookingStatus(txnRef, BookingStatus.PAID, transactionNo);
+            }
             return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));
         } else {
             // Payment failed or cancelled
-             if (txnRef != null && txnRef.length() > 10) {
-                 bookingService.updateBookingStatus(txnRef, BookingStatus.CANCELLED);
-             }
+            if (txnRef != null && txnRef.length() > 10) {
+                bookingService.updateBookingStatus(txnRef, BookingStatus.CANCELLED, null);
+            }
             return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));
         }
+    }
+    /**
+     * View current user's payment history
+     */
+    @GetMapping("/history")
+    public String myPaymentHistory(Model model, @PageableDefault(size = 10) Pageable pageable) {
+        String accountId = SecurityUtils.getCurrentUserId();
+        if (accountId == null) return "redirect:/login";
+        
+        Page<PaymentDTO> payments = paymentService.getMyPayments(accountId, pageable);
+        model.addAttribute("payments", payments.getContent());
+        model.addAttribute("currentPage", payments.getNumber());
+        model.addAttribute("totalPages", payments.getTotalPages());
+        return "payment/my-history";
+    }
+
+    /**
+     * View all payment history (Admin/Manager/Receptionist)
+     */
+    @GetMapping("/admin/history")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    public String adminPaymentHistory(Model model, @PageableDefault(size = 10) Pageable pageable) {
+        Page<PaymentDTO> payments = paymentService.getAllPayments(pageable);
+        model.addAttribute("payments", payments.getContent());
+        model.addAttribute("currentPage", payments.getNumber());
+        model.addAttribute("totalPages", payments.getTotalPages());
+        return "admin/payment-history";
+    }
+
+    /**
+     * Request a refund for a booking
+     */
+    @PostMapping("/refund/request")
+    @ResponseBody
+    public ResponseEntity<?> requestRefund(@RequestBody com.example.HM.dto.RefundRequest request) {
+        try {
+            refundService.requestRefund(request);
+            return ResponseEntity.ok(Map.of("message", "Yêu cầu hoàn tiền đã được ghi nhận!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Approve a refund request (Admin/Manager)
+     */
+    @PostMapping("/admin/refund/approve/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @ResponseBody
+    public ResponseEntity<?> approveRefund(@PathVariable String id) {
+        try {
+            refundService.approveRefund(id);
+            return ResponseEntity.ok(Map.of("message", "Đã duyệt yêu cầu hoàn tiền!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Reject a refund request (Admin/Manager)
+     */
+    @PostMapping("/admin/refund/reject/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @ResponseBody
+    public ResponseEntity<?> rejectRefund(@PathVariable String id, @RequestBody Map<String, String> body) {
+        try {
+            String reason = body.get("reason");
+            refundService.rejectRefund(id, reason);
+            return ResponseEntity.ok(Map.of("message", "Đã từ chối yêu cầu hoàn tiền!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/export")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTION')")
+    public ResponseEntity<Resource> exportPaymentsToExcel() {
+        String filename = "luxe-stay-payments.xlsx";
+        ByteArrayInputStream in = paymentService.exportPaymentsToExcel();
+        InputStreamResource file = new InputStreamResource(in);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 }

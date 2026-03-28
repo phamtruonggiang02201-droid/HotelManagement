@@ -2,22 +2,23 @@ package com.example.HM.service.impl;
 
 import com.example.HM.config.EmailConfig;
 import com.example.HM.service.EmailService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.ITemplateEngine;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class EmailServiceImpl implements EmailService {
 
-    @Autowired
     private JavaMailSender emailSender;
 
-    @Autowired
     private EmailConfig emailConfig;
 
-    @Autowired
     private ITemplateEngine templateEngine;
 
     @Override

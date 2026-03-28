@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/main_layout}">
+
+<head>
+    <title>Đặt phòng tại quầy - LuxeStay</title>
+</head>
+
+<body>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1000px] mx-auto">
+        <!-- Header -->
+        <div class="flex items-center gap-6 mb-12">
+            <a th:href="@{/bookings/reception}" 
+                class="w-14 h-14 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm">
+                <i data-lucide="arrow-left" class="w-6 h-6"></i>
+            </a>
+            <div>
+                <h1 class="text-4xl font-black text-slate-900 mb-2">Đặt phòng tại quầy</h1>
+                <p class="text-slate-500 font-medium italic">Tiếp nhận khách vãng lai trực tiếp một cách nhanh chóng.</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[48px] border border-slate-100 shadow-2xl overflow-hidden">
+            <div class="p-12">
+                <form id="walk-in-form" class="space-y-10">
+                    <!-- Guest Section -->
+                    <div class="space-y-8">
+                        <h3 class="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                            <span class="w-8 h-[2px] bg-indigo-500"></span>
+                            Thông tin khách hàng
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="space-y-3">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-4 tracking-widest">Họ tên khách hàng</label>
+                                <div class="relative group">
+                                    <i data-lucide="user" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-indigo-500 transition-colors"></i>
+                                    <input type="text" id="guestName" name="guestName" required placeholder="Ví dụ: Nguyễn Văn A"
+                                        class="w-full bg-slate-50 border border-slate-100 p-5 pl-14 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold transition-all">
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-4 tracking-widest">Số điện thoại</label>
+                                <div class="relative group">
+                                    <i data-lucide="phone" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-indigo-500 transition-colors"></i>
+                                    <input type="tel" id="guestPhone" name="guestPhone" required placeholder="09xxxxxxxx"
+                                        class="w-full bg-slate-50 border border-slate-100 p-5 pl-14 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold transition-all">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4 tracking-widest">Địa chỉ Email (Tùy chọn)</label>
+                            <div class="relative group">
+                                <i data-lucide="mail" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-indigo-500 transition-colors"></i>
+                                <input type="email" id="guestEmail" name="guestEmail" placeholder="khachhang@gmail.com"
+                                    class="w-full bg-slate-50 border border-slate-100 p-5 pl-14 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold transition-all">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stay Dates Section -->
+                    <div class="space-y-8">
+                        <h3 class="text-xs font-black text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                            <span class="w-8 h-[2px] bg-emerald-500"></span>
+                            Thời gian lưu trú
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 bg-emerald-50/30 p-8 rounded-[32px] border border-emerald-100/50">
+                            <div class="space-y-3">
+                                <label class="text-[10px] font-black text-emerald-600 uppercase ml-4 tracking-widest">Ngày nhận phòng (Check-in)</label>
+                                <input type="date" id="checkIn" name="checkIn" required
+                                    class="w-full bg-white border border-emerald-100 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 font-black text-emerald-700 transition-all">
+                            </div>
+                            <div class="space-y-3">
+                                <label class="text-[10px] font-black text-emerald-600 uppercase ml-4 tracking-widest">Ngày trả phòng (Check-out)</label>
+                                <input type="date" id="checkOut" name="checkOut" required
+                                    class="w-full bg-white border border-emerald-100 p-5 rounded-2xl outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 font-black text-emerald-700 transition-all">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Room Selection Section -->
+                    <div class="space-y-8">
+                        <h3 class="text-xs font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                            <span class="w-8 h-[2px] bg-amber-500"></span>
+                            Chọn phân hạng phòng & Số lượng
+                        </h3>
+                        <div id="room-types-selection" class="flex flex-col gap-6">
+                            <!-- Loaded via walk-in.js -->
+                            <div class="col-span-full py-10 text-center text-slate-400 font-bold animate-pulse">
+                                Đang tải danh sách loại phòng...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary & Submit -->
+                    <div class="pt-10 border-t border-slate-50">
+                        <div class="bg-slate-900 rounded-[40px] p-10 flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl">
+                            <div class="flex gap-10">
+                                <div>
+                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Thời gian</span>
+                                    <div class="text-white font-black text-xl" id="summary-nights">0 đêm</div>
+                                </div>
+                                <div class="w-[1px] h-12 bg-slate-800"></div>
+                                <div>
+                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Ước tính phí phòng</span>
+                                    <div class="text-indigo-400 font-black text-3xl" id="summary-total">0đ</div>
+                                </div>
+                            </div>
+                            <button type="submit" id="submit-btn"
+                                class="w-full md:w-auto bg-indigo-600 text-white px-12 py-6 rounded-[32px] font-black uppercase text-sm tracking-[0.2em] shadow-xl shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3">
+                                <span>Xác nhận & Tạo đơn</span>
+                                <i data-lucide="check-circle" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="script">
+        <script th:src="@{/js/walk-in.js}"></script>
+    </th:block>
+</body>
+
+</html>

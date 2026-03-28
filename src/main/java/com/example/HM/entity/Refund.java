@@ -13,17 +13,21 @@ import java.time.LocalDateTime;
 public class Refund extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "BookingID")
+    private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PaymentID")
     private Payment payment;
 
     @Column(name = "RefundAmount", precision = 18, scale = 2)
     private BigDecimal refundAmount;
 
-    @Column(name = "Status", length = 20)
-    private String status;
+    @Column(name = "Reason", columnDefinition = "TEXT")
+    private String reason;
 
-    @Column(name = "RequestedBy")
-    private Integer requestedBy; // Giữ theo kiểu INT của SQL hoặc đổi UUID nếu cần
+    @Column(name = "Status", length = 20)
+    private String status; // PENDING, APPROVED, REJECTED
 
     @Column(name = "RequestedAt")
     private LocalDateTime requestedAt;

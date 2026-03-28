@@ -13,15 +13,17 @@ public interface FeedbackService {
 
     // Feedback
     Feedback submitFeedback(FeedbackRequest request);
-    Page<Feedback> getAllFeedbacks(Pageable pageable);
+    Page<Feedback> getAllFeedbacks(Integer rating, Pageable pageable);
+    Feedback replyToFeedback(String feedbackId, String reply);
+    Page<Feedback> getFeedbacksByRoomType(String roomTypeId, Pageable pageable);
 
     // Room Issues
     RoomIssueReport reportIssue(RoomIssueRequest request);
-    Page<RoomIssueReport> getAllIssues(Pageable pageable);
+    Page<RoomIssueReport> getAllIssues(String status, Pageable pageable);
     RoomIssueReport resolveIssue(String issueId);
 
     // Refund
     Refund requestRefund(RefundRequest request);
-    Page<Refund> getAllRefunds(Pageable pageable);
+    Page<Refund> getAllRefunds(String status, Pageable pageable);
     Refund updateRefundStatus(String refundId, String status);
 }

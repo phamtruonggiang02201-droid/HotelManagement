@@ -2,7 +2,7 @@ package com.example.HM.config;
 
 import com.example.HM.security.CustomAuthenticationFailureHandler;
 import com.example.HM.security.CustomAuthenticationSuccessHandler;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -11,17 +11,21 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private CustomAuthenticationFailureHandler failureHandler;
+    private final CustomAuthenticationFailureHandler failureHandler;
+    private final CustomAuthenticationSuccessHandler successHandler;
 
-    @Autowired
-    private CustomAuthenticationSuccessHandler successHandler;
+    public SecurityConfig(CustomAuthenticationFailureHandler failureHandler,
+                          CustomAuthenticationSuccessHandler successHandler) {
+        this.failureHandler = failureHandler;
+        this.successHandler = successHandler;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -30,12 +34,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public pages
                 .requestMatchers("/", "/login", "/Login", "/register", "/Register", "/verify-email",
-                                "/forgot-password", "/reset-password", "/api/forgot-password", "/api/reset-password").permitAll()
+                                "/forgot-password", "/reset-password", "/api/forgot-password", "/api/reset-password",
+                                "/services/quick-order", "/api/public/**").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                 .requestMatchers("/api/payment/**").permitAll()
                 // Room & Service APIs
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/rooms/**", "/api/services/**", "/api/categories/**").permitAll()
-                .requestMatchers("/api/rooms/**", "/api/services/**").hasAnyRole("ADMIN", "MANAGER")
+                .requestMatchers(HttpMethod.GET, "/api/rooms/**", "/api/services/**", "/api/categories/**", "/api/enumerations/**", "/api/areas/**").permitAll()
+                .requestMatchers("/api/rooms/**", "/api/services/**", "/api/areas/**").hasAnyRole("ADMIN", "MANAGER")
                 
                 // Profile & Account APIs
                 .requestMatchers("/api/profile/**").authenticated()
@@ -45,11 +50,12 @@ public class SecurityConfig {
                 .requestMatchers("/bookings/**").authenticated()
                 .requestMatchers("/management/accounts/**", "/management/api/accounts/**").hasRole("ADMIN")
                 .requestMatchers("/reception/**").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
-                .requestMatchers("/management/assignments/my-schedule", "/management/assignments/api/my", "/management/assignments/api/*/status").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
-                .requestMatchers("/feedback/summary", "/feedback/api/issues/**", "/feedback/api/refunds/**").hasAnyRole("ADMIN", "MANAGER")
+                .requestMatchers("/management/assignments/my-schedule", "/management/assignments/api/**").authenticated()
+                .requestMatchers("/management/assignments/api/*/status").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
+                .requestMatchers("/feedback/summary").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
+                .requestMatchers("/feedback/api/issues/**", "/feedback/api/refunds/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers("/feedback/api/**").authenticated()
-                .requestMatchers("/management/accounts/**", "/management/api/accounts/**").hasRole("ADMIN")
-                .requestMatchers("/management/**").hasAnyRole("ADMIN", "MANAGER", "RECEPTION")
+                .requestMatchers("/management/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER", "ROLE_RECEPTION", "ROLE_CHEF", "ROLE_MASSAGE", "ROLE_HOUSEKEEPING")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

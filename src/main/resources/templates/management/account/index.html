@@ -15,10 +15,30 @@
                     <p class="text-slate-500 font-medium">Quản lý người dùng, phân quyền và trạng thái hoạt động của tài
                         khoản.</p>
                 </div>
-                <a th:href="@{/management/accounts/new}"
-                    class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-600/20 hover:scale-105 transition-all">
-                    + Thêm tài khoản mới
-                </a>
+                <div class="flex gap-4">
+                    <div class="bg-white p-2 rounded-2xl border border-slate-100 flex items-center shadow-sm w-80">
+                        <i data-lucide="search" class="w-5 h-5 text-slate-400 ml-3"></i>
+                        <input type="text" id="account-search-input" placeholder="Tìm tên, username, email..." 
+                            class="bg-transparent border-none px-4 py-2 outline-none font-bold text-slate-700 w-full placeholder:text-slate-300">
+                    </div>
+                    <div class="flex gap-3">
+                        <a th:href="@{/management/accounts/api/export}" 
+                           class="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black shadow-lg shadow-emerald-600/10 hover:bg-emerald-700 transition-all flex items-center gap-2">
+                            <i data-lucide="file-down" class="w-5 h-5"></i>
+                            <span class="hidden xl:inline">Xuất Excel</span>
+                        </a>
+                        <button onclick="document.getElementById('import-account-input').click()"
+                           class="bg-slate-100 text-slate-700 px-6 py-4 rounded-2xl font-black hover:bg-slate-200 transition-all flex items-center gap-2">
+                            <i data-lucide="file-up" class="w-5 h-5"></i>
+                            <span class="hidden xl:inline">Nhập Excel</span>
+                        </button>
+                        <input type="file" id="import-account-input" class="hidden" accept=".xlsx, .xls" onchange="handleImportAccounts(this)">
+                    </div>
+                    <a th:href="@{/management/accounts/new}"
+                        class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-600/20 hover:scale-105 transition-all">
+                        + Tài khoản
+                    </a>
+                </div>
             </div>
 
             <div class="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm overflow-x-auto">
@@ -29,6 +49,7 @@
                             <th class="px-8 py-6">Username</th>
                             <th class="px-8 py-6">Họ tên</th>
                             <th class="px-8 py-6">Email</th>
+                            <th class="px-8 py-6">Số điện thoại</th>
                             <th class="px-8 py-6">Phần quyền</th>
                             <th class="px-8 py-6">Trạng thái</th>
                             <th class="px-8 py-6">Xác thực</th>
@@ -40,7 +61,35 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            <div class="mt-8 flex justify-center gap-2" id="account-pagination">
+                <!-- Pagination buttons will be loaded via AJAX -->
+            </div>
         </section>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden items-center justify-center p-4">
+            <div class="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 scale-95 opacity-0 transition-all duration-300" id="deleteModalContent">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-14 h-14 bg-rose-100 text-rose-500 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="alert-octagon" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900">Xác nhận Xóa</h3>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Cảnh báo hệ thống</p>
+                    </div>
+                </div>
+                <div id="deleteWarningMsg" class="text-slate-600 font-medium mb-10 whitespace-pre-line leading-relaxed text-sm">
+                    Đại ca có chắc chắn muốn xóa tài khoản này không? Thao tác này sẽ chuyển trạng thái tài khoản thành đã khóa.
+                </div>
+                <input type="hidden" id="deleteTargetId">
+                <div class="flex gap-4">
+                    <button onclick="closeDeleteModal()" class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all">Quay lại</button>
+                    <button id="confirmDeleteBtn" onclick="executeDelete()" class="flex-[2] px-8 py-4 bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-rose-600 transition-all shadow-xl shadow-rose-200">Xác nhận xóa</button>
+                </div>
+            </div>
+        </div>
 
         <!-- Account Manage Modal (Placeholder for now) -->
         <div id="account-manage-modal" class="modal">
@@ -57,6 +106,35 @@
             document.addEventListener('DOMContentLoaded', () => {
                 loadAccountsForManage();
             });
+
+            async function handleImportAccounts(input) {
+                if (!input.files || input.files.length === 0) return;
+                
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                toastService.info("Đang xử lý nhập dữ liệu...");
+                
+                try {
+                    const response = await fetch('/management/accounts/api/import', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        toastService.success(result.message);
+                        loadAccountsForManage(); // Reload list
+                    } else {
+                        toastService.error(result.message);
+                    }
+                } catch (error) {
+                    toastService.error("Có lỗi xảy ra khi nhập dữ liệu.");
+                } finally {
+                    input.value = ''; // Reset input
+                }
+            }
         </script>
     </div>
 </body>

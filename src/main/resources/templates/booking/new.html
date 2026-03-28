@@ -14,24 +14,46 @@
                 <div class="bg-white rounded-[56px] p-12 border border-slate-100 shadow-sm">
                     <h2 class="text-4xl font-black text-slate-900 mb-8">Thông tin đặt phòng</h2>
                     <form id="booking-form" class="space-y-8">
-                        <input type="hidden" id="room-type-id" th:value="${roomTypeId}">
+                        <div class="relative group/search">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Tìm & Thêm loại phòng</label>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                                <input type="text" id="room-search-input" placeholder="Nhập tên loại phòng (vd: Deluxe, Suite...)"
+                                    class="w-full bg-slate-50 border border-slate-100 p-6 pl-16 rounded-3xl outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold transition-all"
+                                    oninput="handleSearch(this.value)"
+                                    onfocus="handleSearch(this.value)">
+                            </div>
+                            <!-- Search Results Dropdown -->
+                            <div id="search-results" class="absolute left-0 right-0 top-full mt-4 bg-white rounded-[32px] border border-slate-100 shadow-2xl z-50 hidden max-h-[400px] overflow-y-auto p-4 space-y-2">
+                                <!-- Results will be injected here -->
+                            </div>
+                        </div>
 
-                        <div class="grid grid-cols-2 gap-8">
+                        <div id="room-selection-container" class="space-y-4 pt-4">
+                            <!-- Room selections will be injected here -->
+                            <div class="flex items-center justify-between p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                                <p class="text-sm font-bold text-slate-400 italic">Chưa có phòng nào được chọn...</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-8 pt-4">
                             <div class="space-y-3">
                                 <label class="text-xs font-black text-slate-400 uppercase ml-4">Ngày nhận phòng</label>
                                 <input type="date" id="check-in" required onchange="calculateTotal()"
+                                    th:value="${checkIn}"
                                     class="w-full bg-slate-50 border border-slate-100 p-6 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
                             </div>
                             <div class="space-y-3">
                                 <label class="text-xs font-black text-slate-400 uppercase ml-4">Ngày trả phòng</label>
                                 <input type="date" id="check-out" required onchange="calculateTotal()"
+                                    th:value="${checkOut}"
                                     class="w-full bg-slate-50 border border-slate-100 p-6 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
                             </div>
                         </div>
 
                         <div class="space-y-3">
                             <label class="text-xs font-black text-slate-400 uppercase ml-4">Họ và tên khách hàng</label>
-                            <input type="text" id="guest-name" required placeholder="Nhập đầy đủ họ tên"
+                            <input type="text" id="guest-name" required minlength="2" maxlength="50" placeholder="Nhập đầy đủ họ tên"
                                 th:value="${account != null ? account.firstName + ' ' + account.lastName : ''}"
                                 class="w-full bg-slate-50 border border-slate-100 p-6 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
                         </div>
@@ -45,7 +67,7 @@
                             </div>
                             <div class="space-y-3">
                                 <label class="text-xs font-black text-slate-400 uppercase ml-4">Số điện thoại</label>
-                                <input type="tel" id="guest-phone" required placeholder="Nhập số điện thoại"
+                                <input type="tel" id="guest-phone" required pattern="[0-9]{10,11}" placeholder="Nhập số điện thoại (10-11 số)"
                                     th:value="${account != null ? account.phone : ''}"
                                     class="w-full bg-slate-50 border border-slate-100 p-6 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
                             </div>
@@ -97,81 +119,251 @@
     </div>
 
     <script layout:fragment="script" th:inline="javascript">
-        let roomTypeData = null;
+        let selectedRooms = []; // Array of { roomType: object, quantity: number }
+
+        let searchTimeout = null;
+        let searchCache = []; // To avoid stringifying objects in HTML
+        let allRoomTypes = []; // Cache all room types locally
+
+        async function fetchAllRoomTypes() {
+            try {
+                const response = await fetch('/api/room-types?size=100');
+                const data = await response.json();
+                allRoomTypes = data.content || [];
+            } catch (error) {
+                console.error('Error fetching room types:', error);
+            }
+        }
+
+        function selectRoomTypeById(id) {
+            const roomType = allRoomTypes.find(rt => rt.id == id);
+            if (roomType) {
+                addRoomToCart(roomType, 1);
+                document.getElementById('room-search-input').value = '';
+                document.getElementById('search-results').classList.add('hidden');
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const roomTypeId = document.getElementById('room-type-id').value.trim();
-            if (roomTypeId) {
-                await loadRoomTypeDetails(roomTypeId);
-            } else {
-                console.warn('Room Type ID is empty!');
+            // Dọn dẹp triệt để tàn dư cũ để không còn bị "ngoại bang" xâm chiếm
+            localStorage.removeItem('luxe_stay_cart');
+            selectedRooms = []; 
+            
+            // Fetch all room types
+            await fetchAllRoomTypes();
+            
+            const initialRoomTypeId = /*[[${roomTypeId}]]*/ '';
+
+            if (initialRoomTypeId) {
+                await fetchAndAddRoomType(initialRoomTypeId);
             }
 
             // Set min dates
-            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
             document.getElementById('check-in').min = today;
             document.getElementById('check-out').min = today;
 
+            if (document.getElementById('check-in').value && document.getElementById('check-out').value) {
+                calculateTotal();
+            }
+
             document.getElementById('booking-form').addEventListener('submit', handleBooking);
+
+            // Close search results when clicking outside
+            document.addEventListener('mousedown', (e) => {
+                const resultsDropdown = document.getElementById('search-results');
+                const searchInput = document.getElementById('room-search-input');
+                if (resultsDropdown && !resultsDropdown.contains(e.target) && e.target !== searchInput) {
+                    resultsDropdown.classList.add('hidden');
+                }
+            });
         });
 
-        async function loadRoomTypeDetails(id) {
+        function handleSearch(keyword) {
+            searchRoomTypes(keyword || '');
+        }
+
+        function searchRoomTypes(keyword) {
+            const term = (keyword || '').toLowerCase().trim();
+            const filtered = allRoomTypes.filter(rt => {
+                const matchesName = term === '' || rt.typeName.toLowerCase().includes(term);
+                // So sánh chuẩn để loại bỏ phòng đã chọn ra khỏi gợi ý
+                const isAlreadySelected = selectedRooms.some(sr => 
+                    String(sr.roomType.id).trim() === String(rt.id).trim()
+                );
+                return matchesName && !isAlreadySelected;
+            }).slice(0, 3);
+            
+            searchCache = filtered;
+            renderSearchResults(filtered);
+        }
+
+        function renderSearchResults(results) {
+            const dropdown = document.getElementById('search-results');
+            if (results.length === 0) {
+                dropdown.innerHTML = '<p class="p-4 text-center text-slate-400 font-bold text-sm">Không tìm thấy loại phòng nào!</p>';
+            } else {
+                dropdown.innerHTML = results.map(rt => `
+                    <button type="button" onclick="selectRoomTypeById('${rt.id}')" 
+                        class="w-full flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all text-left group border-none bg-transparent cursor-pointer">
+                        <img src="${rt.roomImage || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=80'}" 
+                             class="w-12 h-12 object-cover rounded-xl shadow-sm">
+                        <div class="flex-1">
+                            <h5 class="font-black text-slate-900 group-hover:text-indigo-600 transition-colors">${rt.typeName}</h5>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sức chứa: ${rt.capacity} người</p>
+                        </div>
+                        <p class="font-black text-indigo-600">${new Intl.NumberFormat('vi-VN').format(rt.price)}đ</p>
+                    </button>
+                `).join('');
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        async function fetchAndAddRoomType(id) {
             try {
                 const baseUrl = /*[[@{/api/room-types/}]]*/ '/api/room-types/';
                 const response = await fetch(baseUrl + id);
-                if (!response.ok) {
-                    const error = await response.json();
-                    console.error('Failed to load room type:', id, error);
-                    alert('Lỗi: ' + (error.message || 'Không tìm thấy loại phòng này trong hệ thống!'));
-                    return;
-                }
-                roomTypeData = await response.json();
+                if (!response.ok) return;
+                const roomType = await response.json();
+                addRoomToCart(roomType, 1);
+            } catch (error) {
+                console.error('Error adding room type:', error);
+            }
+        }
 
-                if (roomTypeData && roomTypeData.id) {
-                    const summary = document.getElementById('room-summary');
-                    summary.innerHTML = `
-                        <div class="flex items-center gap-6 animate-in fade-in duration-500">
-                            <img src="${roomTypeData.roomImage || 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=200'}" 
-                                 class="w-24 h-24 object-cover rounded-3xl border border-white/10 shadow-xl">
-                            <div>
-                                <h4 class="text-xl font-black mb-1">${roomTypeData.typeName}</h4>
-                                <p class="text-indigo-400 font-bold text-xs uppercase tracking-widest">Sức chứa: ${roomTypeData.capacity} người</p>
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('price-per-night').textContent = new Intl.NumberFormat('vi-VN').format(roomTypeData.price || 0) + ' VNĐ';
-                    calculateTotal();
+        async function fetchAndAddByRoomId(roomId) {
+            try {
+                // Fetch tất cả rooms để tìm, nhưng tốt nhất nên có API get room by id
+                // Hiện tại ta dùng API search hiện có với size lớn để bao phủ
+                const response = await fetch(`/api/rooms/search?keyword=&size=1000`);
+                const data = await response.json();
+                const rooms = data.content || [];
+                const room = rooms.find(r => String(r.id) === String(roomId));
+                if (room) {
+                    addRoomToCart(room.roomType, 1);
                 }
             } catch (error) {
-                console.error('Error loading room type details:', error);
+                console.error('Error fetching room by ID:', error);
             }
+        }
+
+        function addRoomToCart(roomType, quantity) {
+            // So sánh ID "siêu chuẩn" để triệt tiêu trùng lặp
+            const roomId = String(roomType.id).trim();
+            const existing = selectedRooms.find(item => String(item.roomType.id).trim() === roomId);
+            
+            if (existing) {
+                existing.quantity += quantity;
+            } else {
+                selectedRooms.push({ roomType, quantity });
+            }
+            renderRoomSelections();
+            calculateTotal();
+        }
+
+        function updateQuantity(id, delta) {
+            const item = selectedRooms.find(item => String(item.roomType.id).trim() === String(id).trim());
+            if (item) {
+                item.quantity = Math.max(1, item.quantity + delta);
+                renderRoomSelections();
+                calculateTotal();
+            }
+        }
+
+        function removeRoomType(id) {
+            selectedRooms = selectedRooms.filter(item => String(item.roomType.id).trim() !== String(id).trim());
+            renderRoomSelections();
+            calculateTotal();
+        }
+
+        function renderRoomSelections() {
+            const container = document.getElementById('room-selection-container');
+            const summary = document.getElementById('room-summary');
+            
+            if (selectedRooms.length === 0) {
+                container.innerHTML = '<div class="p-4 bg-rose-50 rounded-3xl border border-rose-100 text-rose-600 text-center font-bold text-sm">Vui lòng chọn ít nhất một loại phòng!</div>';
+                summary.innerHTML = '<p class="text-slate-500 italic text-sm">Chưa có phòng nào được chọn.</p>';
+                return;
+            }
+
+            container.innerHTML = selectedRooms.map(item => `
+                <div class="flex flex-wrap items-center justify-between p-6 bg-slate-50 rounded-[32px] border border-slate-100 gap-4 group hover:border-indigo-200 transition-all">
+                    <div class="flex items-center gap-4">
+                        <img src="${item.roomType.roomImage || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=100'}" 
+                             class="w-16 h-16 object-cover rounded-2xl shadow-sm">
+                        <div>
+                            <h4 class="font-black text-slate-900">${item.roomType.typeName}</h4>
+                            <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">${new Intl.NumberFormat('vi-VN').format(item.roomType.price)}đ / đêm</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm">
+                        <button type="button" onclick="updateQuantity('${item.roomType.id}', -1)" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all font-black text-lg">−</button>
+                        <span class="font-black text-lg w-8 text-center">${item.quantity}</span>
+                        <button type="button" onclick="updateQuantity('${item.roomType.id}', 1)" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all font-black text-lg">+</button>
+                        <button type="button" onclick="removeRoomType('${item.roomType.id}')" class="ml-2 p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            summary.innerHTML = selectedRooms.map(item => `
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center font-black text-indigo-400">
+                        x${item.quantity}
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-black">${item.roomType.typeName}</h4>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase">${new Intl.NumberFormat('vi-VN').format(item.roomType.price * item.quantity)} VNĐ</p>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
         }
 
         function calculateTotal() {
             const checkIn = document.getElementById('check-in').value;
             const checkOut = document.getElementById('check-out').value;
+            let diffDays = 1;
 
-            if (checkIn && checkOut && roomTypeData) {
+            if (checkIn && checkOut) {
                 const start = new Date(checkIn);
                 const end = new Date(checkOut);
                 const diffTime = Math.abs(end - start);
-                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 if (diffDays <= 0) diffDays = 1;
-
-                document.getElementById('night-count').textContent = diffDays;
-                const total = roomTypeData.price * diffDays;
-                document.getElementById('total-price').textContent = new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ';
             }
+
+            document.getElementById('night-count').textContent = diffDays;
+
+            let totalRoomPrice = 0;
+            selectedRooms.forEach(item => {
+                totalRoomPrice += item.roomType.price * item.quantity;
+            });
+
+            const finalTotal = totalRoomPrice * diffDays;
+            document.getElementById('price-per-night').textContent = new Intl.NumberFormat('vi-VN').format(totalRoomPrice) + ' VNĐ';
+            document.getElementById('total-price').textContent = new Intl.NumberFormat('vi-VN').format(finalTotal) + ' VNĐ';
         }
 
         async function handleBooking(e) {
             e.preventDefault();
+            if (selectedRooms.length === 0) {
+                alert('Vui lòng chọn ít nhất một loại phòng!');
+                return;
+            }
+
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="lucide-refresh-cw animate-spin w-6 h-6"></i> Đang xử lý...';
 
             const requestData = {
-                roomTypeId: document.getElementById('room-type-id').value,
+                roomSelections: selectedRooms.map(item => ({
+                    roomTypeId: item.roomType.id,
+                    quantity: item.quantity
+                })),
                 checkIn: document.getElementById('check-in').value,
                 checkOut: document.getElementById('check-out').value,
                 guestName: document.getElementById('guest-name').value,
@@ -188,7 +380,6 @@
 
                 const result = await response.json();
                 if (response.ok) {
-                    // Redirect to payment
                     window.location.href = result.paymentUrl;
                 } else {
                     alert(result.message || 'Có lỗi xảy ra khi tạo đặt phòng');
@@ -200,6 +391,8 @@
                 console.error('Error creating booking:', error);
                 alert('Có lỗi kết nối hệ thống');
                 submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="credit-card" class="w-6 h-6"></i> Thanh toán qua VN Pay';
+                lucide.createIcons();
             }
         }
     </script>

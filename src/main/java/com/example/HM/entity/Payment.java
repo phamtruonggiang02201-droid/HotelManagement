@@ -2,6 +2,7 @@ package com.example.HM.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,8 +11,10 @@ import java.time.LocalDateTime;
 @Table(name = "Payment")
 @Getter
 @Setter
+@RequiredArgsConstructor
 public class Payment extends BaseEntity {
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "BookingID")
     private Booking booking;
@@ -32,4 +35,10 @@ public class Payment extends BaseEntity {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "InvoiceID")
     private Invoice invoice;
+
+    @Column(name = "Note", length = 500)
+    private String note;
+
+    @Column(name = "TransactionNo", length = 100)
+    private String transactionNo;
 }

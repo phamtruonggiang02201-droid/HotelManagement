@@ -103,18 +103,89 @@
             transform: translateY(-5px);
             box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
         }
+
+        /* Sidebar Toggle Styles */
+        aside {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        .main-content-wrapper {
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.sidebar-collapsed aside {
+            width: 80px !important;
+        }
+
+        body.sidebar-collapsed .main-content-wrapper {
+            margin-left: 80px !important;
+        }
+
+        /* Hide elements in collapsed state */
+        body.sidebar-collapsed aside h1,
+        body.sidebar-collapsed aside .nav-link span,
+        body.sidebar-collapsed aside .pt-4,
+        body.sidebar-collapsed aside .pt-6,
+        body.sidebar-collapsed aside .font-medium,
+        body.sidebar-collapsed aside .text-xs,
+        body.sidebar-collapsed aside .sidebar-footer-text {
+            display: none !important;
+        }
+
+        body.sidebar-collapsed aside .p-8 {
+            padding: 2rem 0 !important;
+            display: flex;
+            justify-content: center;
+        }
+
+        body.sidebar-collapsed aside .nav-link {
+            justify-content: center;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        body.sidebar-collapsed aside .px-4 {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+
+        body.sidebar-collapsed aside .sidebar-logo-container {
+            justify-content: center;
+        }
+
+        #sidebar-toggle-btn {
+            transition: transform 0.3s ease;
+        }
+
+        body.sidebar-collapsed #sidebar-toggle-btn {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-collapsed-show {
+            display: none !important;
+        }
+
+        body.sidebar-collapsed .sidebar-collapsed-show {
+            display: block !important;
+        }
+
+        body.sidebar-collapsed aside .p-4 {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
     </style>
 </head>
 
 <body class="overflow-x-hidden" th:classappend="${#authorization.expression('isAuthenticated()')} ? 'logged-in' : ''">
     <div id="toast-container"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden md:hidden transition-all duration-300"></div>
 
     <div class="flex min-h-screen">
         <!-- SIDEBAR -->
         <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
         <!-- MAIN CONTENT AREA -->
-        <div class="flex-1 ml-64 min-w-0">
+        <div class="flex-1 ml-64 min-w-0 main-content-wrapper">
             <!-- Header -->
             <div th:replace="~{fragments/header :: header}"></div>
 
@@ -143,6 +214,49 @@
             }
         }
 
+        // Global toast helper
+        function showToast(message, type = 'success') {
+            if (window.toastService) {
+                if (type === 'success') toastService.success(message);
+                else if (type === 'error') toastService.error(message);
+                else toastService.info(message);
+            } else {
+                console.warn('Toast service not loaded:', message);
+            }
+        }
+
+        // Sidebar Toggle Logic
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-collapsed');
+            const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        }
+
+        // Initialize Sidebar State
+        (function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.body.classList.add('sidebar-collapsed');
+            }
+        })();
+
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.querySelector('aside');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                if (sidebar) sidebar.classList.remove('-translate-x-full');
+                if (overlay) overlay.classList.remove('hidden');
+            });
+        }
+        
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                if (sidebar) sidebar.classList.add('-translate-x-full');
+                if (overlay) overlay.classList.add('hidden');
+            });
+        }
         // Xử lý Đăng xuất AJAX
         document.addEventListener('submit', async (e) => {
             if (e.target && e.target.id === 'logoutForm') {
@@ -161,6 +275,7 @@
             }
         });
     </script>
+    <th:block layout:fragment="script"></th:block>
 </body>
 
 </html>

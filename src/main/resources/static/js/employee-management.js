@@ -1,8 +1,13 @@
+let currentEmployeePage = 0;
+let employeeSearchTimeout = null;
+let currentEmployeeSearch = '';
+
 function loadEmployees(page = 0) {
+    currentEmployeePage = page;
     const tbody = document.getElementById('employee-manage-tbody');
     tbody.innerHTML = '<tr><td colspan="8" class="px-8 py-10 text-center text-slate-400">Đang tải dữ liệu nhân viên...</td></tr>';
 
-    fetch(`/management/employees/api?page=${page}&size=10`)
+    fetch(`/management/employees/api?page=${page}&size=10&search=${encodeURIComponent(currentEmployeeSearch)}`)
         .then(res => res.json())
         .then(data => {
             tbody.innerHTML = '';
@@ -30,9 +35,9 @@ function loadEmployees(page = 0) {
                         ${new Date(emp.createdAt).toLocaleDateString('vi-VN')}
                     </td>
                     <td class="px-8 py-6">
-                        <button onclick="toggleEmployeeStatus('${emp.id}', ${emp.status})" 
-                                class="flex items-center gap-2 px-3 py-1 rounded-full transition-all hover:bg-slate-100 active:scale-95 group">
-                            <span class="w-2 h-2 rounded-full ${emp.status ? 'bg-emerald-500' : 'bg-rose-500'} group-hover:animate-pulse"></span>
+                        <button ${emp.username === 'admin' ? 'disabled' : `onclick="toggleEmployeeStatus('${emp.id}', ${emp.status})"`} 
+                                class="flex items-center gap-2 px-3 py-1 rounded-full transition-all ${emp.username === 'admin' ? 'cursor-default opacity-80' : 'hover:bg-slate-100 active:scale-95 group'}">
+                            <span class="w-2 h-2 rounded-full ${emp.status ? 'bg-emerald-500' : 'bg-rose-500'} ${emp.username === 'admin' ? '' : 'group-hover:animate-pulse'}"></span>
                             <span class="${emp.status ? 'text-emerald-600' : 'text-rose-600'} font-bold text-xs uppercase">
                                 ${emp.status ? 'Hoạt động' : 'Đã khóa'}
                             </span>
@@ -40,12 +45,14 @@ function loadEmployees(page = 0) {
                     </td>
                     <td class="px-8 py-6 text-right">
                         <div class="flex justify-end gap-2">
-                            <a href="/management/employees/${emp.id}" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-all">
-                                <i data-lucide="edit-3" class="w-5 h-5"></i>
-                            </a>
-                            <button onclick="deleteEmployee('${emp.id}')" class="p-2 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-all">
-                                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                            </button>
+                             <a href="/management/employees/${emp.id}" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-all">
+                                 <i data-lucide="edit-3" class="w-5 h-5"></i>
+                             </a>
+                             ${emp.username === 'admin' ? '' : `
+                             <button onclick="openDeleteModal('${emp.id}')" class="p-2 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-500 transition-all">
+                                 <i data-lucide="trash-2" class="w-5 h-5"></i>
+                             </button>
+                             `}
                         </div>
                     </td>
                 `;
@@ -53,13 +60,26 @@ function loadEmployees(page = 0) {
             });
 
             renderPagination(data);
-            lucide.createIcons();
-        })
-        .catch(err => {
-            console.error(err);
-            tbody.innerHTML = '<tr><td colspan="8" class="px-8 py-10 text-center text-rose-500 font-bold">Lỗi khi tải dữ liệu! Vui lòng thử lại.</td></tr>';
-        });
-}
+                lucide.createIcons();
+            })
+            .catch(err => {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="8" class="px-8 py-10 text-center text-rose-500 font-bold">Lỗi khi tải dữ liệu! Vui lòng thử lại.</td></tr>';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('employee-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(employeeSearchTimeout);
+                currentEmployeeSearch = e.target.value;
+                employeeSearchTimeout = setTimeout(() => {
+                    loadEmployees(0);
+                }, 500);
+            });
+        }
+    });
 
 function getRoleBadgeClass(role) {
     switch (role) {
@@ -85,19 +105,62 @@ function renderPagination(data) {
     }
 }
 
-function deleteEmployee(id) {
-    if (!confirm('Bạn có chắc chắn muốn xóa nhân viên này? Thao tác này không thể hoàn tác.')) return;
+function openDeleteModal(id) {
+    const modal = document.getElementById('deleteConfirmModal');
+    const content = document.getElementById('deleteModalContent');
+    const targetId = document.getElementById('deleteTargetId');
+    
+    if (targetId) targetId.value = id;
+    if (modal && content) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+}
 
-    fetch(`/management/employees/api/${id}`, { method: 'DELETE' })
-        .then(res => res.json())
-        .then(res => {
-            showToast(res.message);
-            loadEmployees(0);
-        })
-        .catch(err => {
-            console.error(err);
-            showToast('Lỗi khi xóa nhân viên!', 'error');
-        });
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteConfirmModal');
+    const content = document.getElementById('deleteModalContent');
+    
+    if (modal && content) {
+        content.classList.add('scale-95', 'opacity-0');
+        content.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
+}
+
+async function executeDelete() {
+    const id = document.getElementById('deleteTargetId').value;
+    const btn = document.getElementById('confirmDeleteBtn');
+    const originalText = btn.innerText;
+    
+    btn.disabled = true;
+    btn.innerText = 'Đang xử lý...';
+
+    try {
+        const res = await fetch(`/management/employees/api/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        
+        if (res.ok) {
+            toastService.success(result.message || 'Xóa nhân viên thành công!');
+            closeDeleteModal();
+            loadEmployees(currentEmployeePage);
+        } else {
+            toastService.error(result.message || 'Lỗi khi xóa nhân viên!');
+        }
+    } catch (err) {
+        console.error(err);
+        toastService.error('Lỗi kết nối hệ thống!');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
 }
 
 async function toggleEmployeeStatus(id, currentStatus) {
@@ -114,14 +177,14 @@ async function toggleEmployeeStatus(id, currentStatus) {
             const data = await response.json();
             
             if (response.ok) {
-                showToast(data.message);
+                toastService.success(data.message);
                 loadEmployees(0);
             } else {
                 throw new Error(data.message || 'Có lỗi xảy ra');
             }
         } catch (error) {
             console.error('Error toggling employee status:', error);
-            showToast(error.message, 'error');
+            toastService.error(error.message);
         }
     }
 }

@@ -4,6 +4,7 @@ import com.example.HM.entity.Account;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -19,9 +20,27 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     Optional<Account> findByVerificationToken(String token);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
+    boolean existsByPhone(String phone);
+    Optional<Account> findByPhone(String phone);
     Optional<Account> findByResetToken(String token);
 
-    Page<Account> findAllByRole_RoleNameIn(List<String> roleNames, Pageable pageable);
+
+    Page<Account> findAllByRole_RoleNameInAndStatusTrue(List<String> roleNames, Pageable pageable);
+    Page<Account> findAllByStatusTrue(Pageable pageable);
+
+    @Query("SELECT a FROM Account a WHERE a.status = true AND a.role.roleName IN :roleNames AND (" +
+           "LOWER(a.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Account> searchEmployees(@Param("search") String search, @Param("roleNames") List<String> roleNames, Pageable pageable);
+
+    @Query("SELECT a FROM Account a WHERE a.status = true AND (" +
+           "LOWER(a.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Account> searchAllAccounts(@Param("search") String search, Pageable pageable);
 
     @Modifying
     @Transactional

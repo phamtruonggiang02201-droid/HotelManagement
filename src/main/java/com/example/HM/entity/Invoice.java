@@ -2,6 +2,7 @@ package com.example.HM.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "Invoices")
 @Getter
 @Setter
+@RequiredArgsConstructor
 public class Invoice extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

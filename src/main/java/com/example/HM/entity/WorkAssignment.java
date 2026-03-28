@@ -12,7 +12,7 @@ import java.time.LocalDate;
 public class WorkAssignment extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false)
+    @JoinColumn(name = "employee_id", nullable = true)
     private Account employee;
 
     @Column(name = "work_date", nullable = false)
@@ -25,7 +25,19 @@ public class WorkAssignment extends BaseEntity {
     private String shift; // Sáng, Chiều, Tối
 
     @Column(name = "status", length = 20)
-    private String status = "PENDING"; // PENDING, COMPLETED, CANCELLED
+    private String status = "PENDING"; // PENDING, PROCESSING, COMPLETED, CANCELLED
+
+    @Column(name = "assignment_type", length = 20)
+    private String type = "SCHEDULE"; // SCHEDULE (Trực ca), TASK (Nhiệm vụ cụ thể)
+
+    @Column(name = "target_id", length = 50)
+    private String targetId; // Link tới BookedDetail ID hoặc các ID nghiệp vụ khác
+
+    @Column(name = "room_name", length = 50)
+    private String roomName;
+
+    @Column(name = "guest_name", length = 100)
+    private String guestName;
 
     @Column(name = "notes", length = 500)
     private String notes;

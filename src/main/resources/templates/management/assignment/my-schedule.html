@@ -7,98 +7,263 @@
 </head>
 
 <body>
-    <div layout:fragment="content" class="px-10 py-10 max-w-[1200px] mx-auto">
-        <div class="mb-12">
-            <h1 class="text-3xl font-black text-slate-900">Lịch trực của tôi</h1>
-            <p class="text-slate-500 font-medium">Theo dõi các ca làm việc và khu vực được phân công.</p>
-        </div>
-
-        <div id="my-schedule-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Loaded via JS -->
-            <div class="animate-pulse bg-white p-8 rounded-3xl border border-slate-100">
-                <div class="h-4 bg-slate-100 rounded-full w-24 mb-4"></div>
-                <div class="h-8 bg-slate-50 rounded-xl mb-6"></div>
-                <div class="h-4 bg-slate-100 rounded-full w-32"></div>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 mb-2">Lịch trực của t</h1>
+                <p class="text-slate-500 font-medium">Theo dõi ca làm việc trong tuần của đại ca.</p>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-white p-2 rounded-[24px] shadow-sm border border-slate-100">
+                <button onclick="changeWeek(-1)" class="p-3 hover:bg-slate-50 rounded-2xl text-slate-400 hover:text-indigo-600 transition-all">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <div class="px-4 text-center min-w-[200px]">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400" id="week-label">Tuần hiện tại</p>
+                    <p class="text-sm font-black text-slate-900" id="date-range-label">...</p>
+                </div>
+                <button onclick="changeWeek(1)" class="p-3 hover:bg-slate-50 rounded-2xl text-slate-400 hover:text-indigo-600 transition-all">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
             </div>
         </div>
 
-        <script>
+        <!-- Task Pool Section (New for Staff) -->
+        <div class="mb-12 bg-indigo-600 rounded-[40px] p-8 shadow-2xl shadow-indigo-200 overflow-hidden relative">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+            <div class="relative z-10">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div>
+                        <h2 class="text-2xl font-black text-white mb-2">Nhiệm vụ mới đang chờ</h2>
+                        <p class="text-indigo-100 text-sm font-medium">Chọn nhiệm vụ phù hợp để bắt đầu thực hiện ngay đại ca nhé.</p>
+                    </div>
+                    <button onclick="loadTaskPool()" class="bg-white/20 hover:bg-white/30 text-white p-3 rounded-2xl backdrop-blur-md transition-all">
+                        <i data-lucide="refresh-cw" class="w-5 h-5" id="refresh-icon"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8" id="task-pool-container">
+                    <!-- Loaded via JS -->
+                    <div class="p-8 text-center text-indigo-200 border border-white/10 rounded-3xl col-span-full italic">
+                        Đang tìm kiếm nhiệm vụ mới...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-7 gap-4" id="weekly-grid">
+            <!-- Headers (Hidden on small screens, shown as labels in JS) -->
+            <div th:each="day : ${#strings.arraySplit('Thứ 2,Thứ 3,Thứ 4,Thứ 5,Thứ 6,Thứ 7,Chủ Nhật', ',')}" 
+                 class="hidden md:block text-center py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">
+                [[${day}]]
+            </div>
+
+            <!-- Day Cells -->
+            <div th:each="i : ${#numbers.sequence(0, 6)}" 
+                 th:id="|day-cell-${i}|"
+                 class="day-cell min-h-[400px] bg-white rounded-[32px] border border-slate-100 p-4 transition-all hover:shadow-xl group">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="md:hidden text-[10px] font-black text-slate-400 uppercase day-name-mobile"></span>
+                    <span class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-sm font-black text-slate-900 day-number">00</span>
+                </div>
+                <div class="space-y-3 schedule-items">
+                    <!-- Items will go here -->
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            let currentStartDate = new Date();
+            currentStartDate.setHours(0,0,0,0);
+            // Adjust to Monday of current week
+            const day = currentStartDate.getDay();
+            const diff = currentStartDate.getDate() - day + (day === 0 ? -6 : 1);
+            currentStartDate.setDate(diff);
+
+
+            let allAssignments = [];
+
             document.addEventListener('DOMContentLoaded', () => {
                 loadMySchedule();
+                loadTaskPool();
             });
 
             function loadMySchedule() {
-                fetch('/management/assignments/api/my')
+                // Lấy 7 ngày của tuần hiện tại
+                const start = formatDateLocal(currentStartDate);
+                const end = new Date(currentStartDate);
+                end.setDate(end.getDate() + 6);
+                const endStr = formatDateLocal(end);
+
+                fetch(`/management/assignments/api?start=${start}&end=${endStr}&size=100`)
                     .then(res => res.json())
                     .then(data => {
-                        renderSchedule(data);
+                        // API trả về Page, lấy content
+                        allAssignments = data.content || [];
+                        renderCurrentWeek();
                     });
             }
 
-            function renderSchedule(data) {
-                const container = document.getElementById('my-schedule-list');
-                container.innerHTML = '';
+            function changeWeek(weeks) {
+                currentStartDate.setDate(currentStartDate.getDate() + (weeks * 7));
+                loadMySchedule(); // Cần load lại dữ liệu từ API cho dải ngày mới
+            }
 
-                if (data.length === 0) {
+            function formatDateLocal(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+
+            function renderCurrentWeek() {
+                const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+                const endDate = new Date(currentStartDate);
+                endDate.setDate(endDate.getDate() + 6);
+
+                document.getElementById('date-range-label').textContent = 
+                    `${formatDateShort(currentStartDate)} - ${formatDateShort(endDate)}`;
+
+                // Update Week Label
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const weekDiff = Math.round((currentStartDate - getMonday(today)) / (7 * 24 * 60 * 60 * 1000));
+                const label = document.getElementById('week-label');
+                if (weekDiff === 0) label.textContent = 'Tuần này';
+                else if (weekDiff === -1) label.textContent = 'Tuần trước';
+                else if (weekDiff === 1) label.textContent = 'Tuần sau';
+                else label.textContent = `Cách đây ${Math.abs(weekDiff)} tuần`;
+
+                for (let i = 0; i < 7; i++) {
+                    const targetDate = new Date(currentStartDate);
+                    targetDate.setDate(targetDate.getDate() + i);
+                    const dateStr = formatDateLocal(targetDate);
+                    
+                    const cell = document.getElementById(`day-cell-${i}`);
+                    const numSpan = cell.querySelector('.day-number');
+                    const mobileName = cell.querySelector('.day-name-mobile');
+                    const itemsContainer = cell.querySelector('.schedule-items');
+                    
+                    numSpan.textContent = targetDate.getDate();
+                    mobileName.textContent = dayNames[i];
+                    itemsContainer.innerHTML = '';
+
+                    // Highlight today
+                    if (targetDate.getTime() === today.getTime()) {
+                        cell.classList.add('border-indigo-500', 'bg-indigo-50/30', 'ring-4', 'ring-indigo-500/5');
+                        numSpan.classList.add('bg-indigo-600', 'text-white');
+                    } else {
+                        cell.classList.remove('border-indigo-500', 'bg-indigo-50/30', 'ring-4', 'ring-indigo-500/5');
+                        numSpan.classList.remove('bg-indigo-600', 'text-white');
+                    }
+
+                    // Filter assignments for this date
+                    const dailyTasks = allAssignments.filter(as => as.workDate === dateStr);
+                    
+                    if (dailyTasks.length > 0) {
+                        dailyTasks.forEach(as => {
+                            const taskDiv = document.createElement('div');
+                            taskDiv.className = `p-4 rounded-2xl ${getShiftClass(as.shift)} border shadow-sm transition-all hover:scale-[1.02]`;
+                            taskDiv.innerHTML = `
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[8px] font-black uppercase tracking-widest opacity-70">${as.shift}</span>
+                                    <i data-lucide="clock" class="w-3 h-3 opacity-50"></i>
+                                </div>
+                                <h4 class="font-black text-xs mb-1">${as.area}</h4>
+                                ${as.notes ? `<p class="text-[9px] opacity-80 italic line-clamp-2">"${as.notes}"</p>` : ''}
+                            `;
+                            itemsContainer.appendChild(taskDiv);
+                        });
+                    }
+                }
+                lucide.createIcons();
+            }
+
+            function loadTaskPool() {
+                const icon = document.getElementById('refresh-icon');
+                if (icon) icon.classList.add('animate-spin');
+                
+                fetch('/api/staff/tasks/pool')
+                    .then(res => res.json())
+                    .then(data => {
+                        renderTaskPool(data);
+                        if (icon) icon.classList.remove('animate-spin');
+                    })
+                    .catch(() => {
+                        if (icon) icon.classList.remove('animate-spin');
+                    });
+            }
+
+            function renderTaskPool(tasks) {
+                const container = document.getElementById('task-pool-container');
+                if (!container) return;
+                
+                if (tasks.length === 0) {
                     container.innerHTML = `
-                        <div class="col-span-full py-20 flex flex-col items-center justify-center bg-white rounded-[40px] border border-slate-100 border-dashed">
-                            <div class="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
-                                <i data-lucide="calendar-off" class="w-10 h-10 text-slate-300"></i>
-                            </div>
-                            <h3 class="text-xl font-black text-slate-900 mb-2">Chưa có lịch phân công</h3>
-                            <p class="text-slate-500 font-medium text-center max-w-xs">Bạn hiện chưa được phân công ca trực nào. Vui lòng liên hệ quản lý.</p>
+                        <div class="p-8 text-center text-indigo-100 bg-white/5 border border-white/10 rounded-3xl col-span-full italic">
+                            Hiện không có nhiệm vụ nào đang chờ. Đại ca có thể nghỉ ngơi một chút!
                         </div>
                     `;
-                    lucide.createIcons();
                     return;
                 }
-
-                // Sort by date (descending)
-                data.sort((a, b) => new Date(b.workDate) - new Date(a.workDate));
-
-                data.forEach(as => {
+                
+                container.innerHTML = '';
+                tasks.forEach(task => {
                     const card = document.createElement('div');
-                    card.className = 'bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300';
+                    card.className = "bg-white p-6 rounded-[32px] shadow-xl border border-indigo-100 transition-all hover:scale-[1.02] group";
                     card.innerHTML = `
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getShiftClass(as.shift)}">
-                                Ca ${as.shift}
-                            </div>
-                            <div class="text-xs font-bold text-slate-400">
-                                ${formatDate(as.workDate)}
-                            </div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-black uppercase tracking-widest">${task.type}</span>
+                            <i data-lucide="zap" class="w-4 h-4 text-amber-400 group-hover:scale-125 transition-all"></i>
                         </div>
-                        <div class="space-y-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                                    <i data-lucide="map-pin" class="w-5 h-5 text-indigo-600"></i>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Khu vực</p>
-                                    <h4 class="font-black text-slate-900">${as.area}</h4>
-                                </div>
-                            </div>
-                            ${as.notes ? `
-                                <div class="p-4 bg-slate-50 rounded-2xl">
-                                    <p class="text-xs text-slate-600 leading-relaxed italic">"${as.notes}"</p>
-                                </div>
-                            ` : ''}
+                        <h4 class="font-black text-slate-900 text-sm mb-1">${task.notes}</h4>
+                        <div class="flex items-center gap-2 text-slate-400 text-[10px] font-bold mb-6">
+                            <i data-lucide="map-pin" class="w-3 h-3"></i>
+                            ${task.area}
                         </div>
+                        <button onclick="claimTask('${task.id}')" 
+                            class="w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-indigo-600 transition-all active:scale-95">
+                            Nhận nhiệm vụ ngay
+                        </button>
                     `;
                     container.appendChild(card);
                 });
                 lucide.createIcons();
             }
 
-            function getShiftClass(shift) {
-                if (shift === 'Sáng') return 'bg-amber-100 text-amber-600';
-                if (shift === 'Chiều') return 'bg-indigo-100 text-indigo-600';
-                return 'bg-slate-800 text-slate-300';
+            function claimTask(taskId) {
+                if (!confirm('Đại ca muốn đảm nhận nhiệm vụ này?')) return;
+                fetch(`/api/staff/tasks/${taskId}/claim`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) {
+                            showToast(res.message);
+                            loadTaskPool();
+                            loadMySchedule();
+                        } else {
+                            showToast(res.message, 'error');
+                        }
+                    });
             }
 
-            function formatDate(dateStr) {
-                const date = new Date(dateStr);
-                return date.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            function getMonday(d) {
+                d = new Date(d);
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                d.setDate(diff);
+                d.setHours(0,0,0,0);
+                return d;
+            }
+
+            function getShiftClass(shift) {
+                if (shift === 'Sáng') return 'bg-amber-50 text-amber-700 border-amber-100';
+                if (shift === 'Chiều') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+                return 'bg-slate-900 text-slate-100 border-slate-800';
+            }
+
+            function formatDateShort(date) {
+                return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
             }
         </script>
     </div>

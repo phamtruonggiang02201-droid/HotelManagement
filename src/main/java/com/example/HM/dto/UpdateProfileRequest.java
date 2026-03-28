@@ -8,4 +8,5 @@ public class UpdateProfileRequest {
     private String idNumber;
     private String idType;
     private String nationality;
+    private String phone;
 }
