@@ -36,6 +36,39 @@ public class BookingController {
     private final AccountService accountService;
     private final HotelService hotelService;
     private final RoomService roomService;
+    private final RoomTypeService roomTypeService;
+
+    @GetMapping("/edit/{id}")
+    public String editBookingForm(@PathVariable String id, Model model) {
+        Booking booking = bookingService.getBookingById(id);
+        if (booking == null) return "redirect:/bookings/my-bookings";
+        
+        model.addAttribute("booking", booking);
+        model.addAttribute("roomTypes", roomTypeService.getAllRoomTypes(org.springframework.data.domain.Pageable.unpaged()).getContent());
+        return "booking/edit";
+    }
+
+    @PostMapping("/api/edit/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateBooking(@PathVariable String id, @RequestBody BookingRequest request) {
+        try {
+            bookingService.updateBooking(id, request);
+            return ResponseEntity.ok(Map.of("message", "Cập nhật đặt phòng thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/cancel/{id}")
+    @ResponseBody
+    public ResponseEntity<?> cancelBooking(@PathVariable String id) {
+        try {
+            bookingService.cancelBooking(id);
+            return ResponseEntity.ok(Map.of("message", "Hủy đặt phòng thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 
     @GetMapping("/new")
     public String bookingForm(
