@@ -53,7 +53,7 @@ public class AccountServiceImpl implements AccountService {
             return accountRepository.searchAllAccounts(search.trim(), pageable)
                     .map(this::convertToDTO);
         }
-        return accountRepository.findAllByStatusTrue(pageable)
+        return accountRepository.findAllByIsDeletedFalse(pageable)
                 .map(this::convertToDTO);
     }
 
@@ -65,7 +65,7 @@ public class AccountServiceImpl implements AccountService {
             return accountRepository.searchEmployees(search.trim(), employeeRoles, pageable)
                     .map(this::convertToEmployeeDTO);
         }
-        return accountRepository.findAllByRole_RoleNameInAndStatusTrue(employeeRoles, pageable)
+        return accountRepository.findAllByRole_RoleNameInAndIsDeletedFalse(employeeRoles, pageable)
                 .map(this::convertToEmployeeDTO);
     }
 
@@ -405,7 +405,7 @@ public class AccountServiceImpl implements AccountService {
         if (request.getIdNumber() != null) account.setIdNumber(request.getIdNumber());
         if (request.getIdType() != null) account.setIdType(request.getIdType());
         if (request.getNationality() != null) account.setNationality(request.getNationality());
-        
+
         if (request.getPhone() != null && !request.getPhone().isEmpty()) {
             if (!Pattern.matches(Constants.REGEX_PHONE, request.getPhone())) {
                 throw new RuntimeException("Số điện thoại không đúng định dạng!");
@@ -497,7 +497,7 @@ public class AccountServiceImpl implements AccountService {
     public void updateStatus(String id, boolean status) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        
+
         if (Constants.ROOT_ADMIN_USERNAME.equals(account.getUsername()) && !status) {
             throw new RuntimeException("Không thể vô hiệu hóa tài khoản root admin!");
         }
@@ -528,10 +528,10 @@ public class AccountServiceImpl implements AccountService {
     public ByteArrayInputStream exportAccountsToExcel() {
         List<Account> accounts = accountRepository.findAll()
                 .stream()
-                .filter(Account::getStatus)
+                .filter(acc -> Boolean.FALSE.equals(acc.getIsDeleted())) // ✅ chỉ lấy chưa bị xóa
                 .collect(java.util.stream.Collectors.toList());
         String[] headers = { "ID", "Username", "Email", "Full Name", "Phone", "Role", "Status" };
-        
+
         return ExcelHelper.dataToExcel(accounts, "Accounts", headers, (row, acc) -> {
             row.createCell(0).setCellValue(acc.getId());
             row.createCell(1).setCellValue(acc.getUsername());
@@ -550,7 +550,7 @@ public class AccountServiceImpl implements AccountService {
             List<Account> allAccounts = ExcelHelper.excelToData(file.getInputStream(), "Accounts", row -> {
                 String username = ExcelHelper.getCellValueAsString(row.getCell(1));
                 if (username == null || username.trim().isEmpty()) return null;
-                
+
                 Account acc = new Account();
                 acc.setUsername(username.trim());
                 acc.setEmail(ExcelHelper.getCellValueAsString(row.getCell(2)));
@@ -566,16 +566,16 @@ public class AccountServiceImpl implements AccountService {
                     }
                 }
                 acc.setPhone(ExcelHelper.getCellValueAsString(row.getCell(4)));
-                
+
                 // Default values
                 acc.setPassword(passwordEncoder.encode("123456aA@"));
                 acc.setStatus(true);
                 acc.setEmailVerified(true);
-                
+
                 String roleName = ExcelHelper.getCellValueAsString(row.getCell(5));
                 Role role = roleRepository.findByRoleName(roleName.isEmpty() ? "ROLE_USER" : roleName).orElse(null);
                 acc.setRole(role);
-                
+
                 return acc;
             });
 
@@ -587,7 +587,7 @@ public class AccountServiceImpl implements AccountService {
                 boolean exists = accountRepository.existsByUsername(acc.getUsername()) ||
                         (acc.getEmail() != null && !acc.getEmail().isEmpty() && accountRepository.existsByEmail(acc.getEmail())) ||
                         (acc.getPhone() != null && !acc.getPhone().isEmpty() && accountRepository.existsByPhone(acc.getPhone()));
-                
+
                 if (exists) {
                     duplicateCount++;
                 } else {
@@ -596,8 +596,8 @@ public class AccountServiceImpl implements AccountService {
             }
 
             accountRepository.saveAll(toSave);
-            
-            return String.format("Nhập dữ liệu thành công! Đã thêm %d tài khoản mới. Bỏ qua %d tài khoản do trùng dữ liệu (username/email/phone).", 
+
+            return String.format("Nhập dữ liệu thành công! Đã thêm %d tài khoản mới. Bỏ qua %d tài khoản do trùng dữ liệu (username/email/phone).",
                     toSave.size(), duplicateCount);
         } catch (IOException e) {
             throw new RuntimeException("Lỗi đọc file Excel: " + e.getMessage());
@@ -668,7 +668,7 @@ public class AccountServiceImpl implements AccountService {
 
     private void checkAndSavePasswordHistory(Account account, String newPassword) {
         List<PasswordHistory> history = passwordHistoryRepository.findByAccountOrderByCreatedAtDesc(account);
-        
+
         for (PasswordHistory ph : history) {
             if (passwordEncoder.matches(newPassword, ph.getPassword())) {
                 String formattedDate = ph.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
