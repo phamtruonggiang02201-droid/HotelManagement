@@ -1,144 +1,263 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{layout/main_layout}">
+    layout:decorate="~{layout/main_layout}">
 
 <head>
-    <title>Lich su thanh toan - LuxeStay</title>
+    <title>Quản lý Giao dịch - LuxeStay</title>
 </head>
 
 <body>
-<div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
-    <div class="mb-12 flex justify-between items-center gap-6">
-        <div>
-            <h1 class="text-4xl font-black text-slate-900 mb-2">Toan bo Lich su Thanh toan</h1>
-            <p class="text-slate-500 font-medium">Danh sach tat ca giao dich va yeu cau hoan tien trong he thong LuxeStay.</p>
+    <div layout:fragment="content" class="px-10 py-10 max-w-[1400px] mx-auto">
+        <div class="mb-12 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-black text-slate-900 mb-2">Quản lý Giao dịch</h1>
+                <p class="text-slate-500 font-medium">Toàn bộ lịch sử thanh toán của hệ thống LuxeStay.</p>
+            </div>
+            <div class="flex gap-4">
+                <a th:href="@{/api/payment/admin/export}" 
+                   class="bg-indigo-600 text-white px-6 py-4 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:scale-105 transition-all flex items-center gap-2">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    Xuất báo cáo Excel
+                </a>
+            </div>
         </div>
-        <div class="flex gap-4">
-            <a th:href="@{/api/payment/admin/export}"
-               class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:scale-[1.02] transition-all flex items-center gap-3">
-                <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
-                <span>Xuat Excel</span>
-            </a>
+
+        <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-50">
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">ID Giao dịch</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Khách hàng</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Mã Booking</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Số tiền</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Phương thức</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ngày thanh toán</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Trạng thái</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Yêu cầu hoàn tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        <tr th:each="payment : ${payments}" class="hover:bg-slate-50/50 transition-colors group">
+                            <td class="px-8 py-6">
+                                <span class="font-bold text-slate-900" th:text="|#${payment.id.substring(0,8)}|">#PAY-123</span>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="font-black text-slate-900" th:text="${payment.guestName}">Nguyễn Văn A</div>
+                            </td>
+                            <td class="px-8 py-6">
+                                <a th:href="@{'/bookings/' + ${payment.bookingId}}" class="font-black text-indigo-600 hover:underline" th:text="|#${payment.bookingId.substring(0,8)}...|">#BOOK-456</a>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div th:class="${payment.amount != null and payment.amount.signum() == -1 ? 'font-black text-rose-600' : 'font-black text-slate-900'}" 
+                                     th:text="${payment.amount != null ? #numbers.formatDecimal(payment.amount, 0, 'COMMA', 0, 'POINT') + ' đ' : '0 đ'}">1.500.000 đ</div>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-600 uppercase w-fit" th:text="${payment.paymentMethod}">VNPay</div>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="text-slate-500 font-medium text-sm" th:text="${#temporals.format(payment.paymentDate, 'HH:mm dd/MM/yyyy')}">10:30 15/03/2026</div>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="flex justify-center">
+                                    <span th:class="|px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${payment.paymentStatus == 'SUCCESS' ? 'bg-emerald-100 text-emerald-600' : (payment.paymentStatus == 'REFUNDED' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400')}|"
+                                          th:text="${payment.paymentStatus == 'SUCCESS' ? 'Thành công' : (payment.paymentStatus == 'REFUNDED' ? 'Hoàn tiền' : payment.paymentStatus)}">
+                                        Success
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="flex justify-center flex-col items-center gap-2">
+                                    <div th:if="${payment.refundStatus != null}">
+                                        <span th:classappend="${payment.refundStatus == 'APPROVED'} ? 'bg-emerald-100 text-emerald-600' : (${payment.refundStatus == 'REJECTED'} ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600')"
+                                              class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                            <span th:if="${payment.refundStatus == 'PENDING'}">Chờ duyệt</span>
+                                            <span th:if="${payment.refundStatus == 'APPROVED'}">Đã duyệt</span>
+                                            <span th:if="${payment.refundStatus == 'REJECTED'}">Từ chối</span>
+                                        </span>
+                                    </div>
+                                    <div th:if="${payment.refundStatus == 'PENDING'}" class="flex gap-1">
+                                        <button th:onclick="|handleRefund('${payment.refundId}', 'approve')|" 
+                                                class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Duyệt">
+                                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                        </button>
+                                        <button th:onclick="|handleRefund('${payment.refundId}', 'reject')|" 
+                                                class="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Từ chối">
+                                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                        </button>
+                                    </div>
+                                    <span th:if="${payment.refundStatus == null}" class="text-[10px] text-slate-300 font-bold italic">Không có yêu cầu</span>
+                                </div>
+                             </td>
+                        </tr>
+                        <tr th:if="${payments == null || payments.isEmpty()}">
+                            <td colspan="8" class="px-8 py-20 text-center">
+                                <div class="w-16 h-16 bg-slate-50 text-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <i data-lucide="receipt" class="w-8 h-8"></i>
+                                </div>
+                                <p class="text-slate-400 font-bold uppercase text-[11px] tracking-widest">Không có dữ liệu giao dịch</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
 
-    <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead>
-                <tr class="bg-slate-50/50 border-b border-slate-50">
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">ID giao dich</th>
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Khach hang</th>
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ma booking</th>
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">So tien</th>
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Phuong thuc</th>
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ngay thanh toan</th>
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Trang thai</th>
-                    <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Hoan tien</th>
-                </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50">
-                <tr th:if="${payments == null or payments.isEmpty()}">
-                    <td colspan="8" class="px-8 py-20 text-center">
-                        <div class="w-16 h-16 bg-slate-50 text-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <i data-lucide="receipt" class="w-8 h-8"></i>
-                        </div>
-                        <p class="text-slate-400 font-bold uppercase text-[11px] tracking-widest">Khong co du lieu giao dich</p>
-                    </td>
-                </tr>
-
-                <tr th:each="payment : ${payments}" class="hover:bg-slate-50 transition-colors group">
-                    <td class="px-8 py-6">
-                        <span class="font-black text-slate-900"
-                              th:text="${payment.id != null ? '#' + (payment.id.length() > 8 ? payment.id.substring(0, 8) : payment.id) : 'N/A'}">#PAY-123</span>
-                    </td>
-
-                    <td class="px-8 py-6">
-                        <div class="font-black text-slate-900" th:text="${payment.guestName != null ? payment.guestName : 'N/A'}">Nguyen Van A</div>
-                        <div class="text-[10px] font-bold text-slate-400">Giao dich thanh toan</div>
-                    </td>
-
-                    <td class="px-8 py-6">
-                        <span th:if="${payment.bookingId == null or payment.bookingId == 'N/A'}"
-                              class="font-black text-slate-400">N/A</span>
-                        <span th:if="${payment.bookingId != null and payment.bookingId != 'N/A'}"
-                              class="font-black text-slate-900"
-                              th:text="${'#' + (payment.bookingId.length() > 8 ? payment.bookingId.substring(0, 8) : payment.bookingId)}">#BOOK1234</span>
-                    </td>
-
-                    <td class="px-8 py-6">
-                        <div th:if="${payment.amount != null and payment.amount.signum() == -1}"
-                             class="font-black text-rose-600"
-                             th:text="${#numbers.formatDecimal(payment.amount, 0, 'COMMA', 0, 'POINT') + ' d'}">-500000 d</div>
-                        <div th:if="${payment.amount == null or payment.amount.signum() != -1}"
-                             class="font-black text-slate-900"
-                             th:text="${payment.amount != null ? #numbers.formatDecimal(payment.amount, 0, 'COMMA', 0, 'POINT') + ' d' : '0 d'}">1500000 d</div>
-                    </td>
-
-                    <td class="px-8 py-6">
-                        <span class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-600 uppercase border border-slate-200"
-                              th:text="${payment.paymentMethod != null ? payment.paymentMethod : 'N/A'}">VNPay</span>
-                    </td>
-
-                    <td class="px-8 py-6">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-2 text-xs font-black text-slate-700" th:if="${payment.paymentDate != null}">
-                                <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-indigo-500"></i>
-                                <span th:text="${#temporals.format(payment.paymentDate, 'HH:mm dd/MM/yyyy')}">10:30 15/03/2026</span>
-                            </div>
-                            <div class="text-xs font-bold text-slate-400" th:if="${payment.paymentDate == null}">N/A</div>
-                        </div>
-                    </td>
-
-                    <td class="px-8 py-6">
-                        <div class="flex justify-center">
-                            <span th:if="${payment.paymentStatus == 'SUCCESS'}"
-                                  class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm bg-emerald-100 text-emerald-600">Thanh cong</span>
-                            <span th:if="${payment.paymentStatus == 'REFUNDED'}"
-                                  class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm bg-rose-100 text-rose-600">Hoan tien</span>
-                            <span th:if="${payment.paymentStatus != 'SUCCESS' and payment.paymentStatus != 'REFUNDED'}"
-                                  class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm bg-slate-100 text-slate-500"
-                                  th:text="${payment.paymentStatus != null ? payment.paymentStatus : 'N/A'}">N/A</span>
-                        </div>
-                    </td>
-
-                    <td class="px-8 py-6">
-                        <div class="flex justify-center">
-                            <span th:if="${payment.refundStatus == null}"
-                                  class="px-3 py-1 bg-slate-100 text-slate-400 rounded-full text-[9px] font-black uppercase tracking-wider border border-slate-200">Khong co</span>
-                            <span th:if="${payment.refundStatus == 'PENDING'}"
-                                  class="px-3 py-1 bg-amber-100 text-amber-600 rounded-full text-[9px] font-black uppercase tracking-wider">Cho duyet</span>
-                            <span th:if="${payment.refundStatus == 'APPROVED'}"
-                                  class="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-wider">Da duyet</span>
-                            <span th:if="${payment.refundStatus == 'REJECTED'}"
-                                  class="px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-[9px] font-black uppercase tracking-wider">Tu choi</span>
-                        </div>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+        <!-- Pagination -->
+        <div th:if="${totalPages > 1}" class="mt-12 flex justify-center gap-2">
+            <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+               th:href="@{/api/payment/admin/history(page=${i})}"
+               th:class="|w-12 h-12 flex items-center justify-center rounded-xl font-black text-sm transition-all ${currentPage == i ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100 hover:border-indigo-600'}|"
+               th:text="${i + 1}">1</a>
         </div>
     </div>
 
-    <div th:if="${totalPages > 1}" class="mt-12 flex items-center justify-center gap-2">
-        <a th:if="${currentPage > 0}"
-           th:href="@{/api/payment/admin/history(page=${currentPage - 1})}"
-           class="px-4 h-12 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-500 font-black text-sm hover:border-indigo-600 hover:text-indigo-600 transition-all">
-            Truoc
-        </a>
+    <!-- Refund Process Modal -->
+    <div id="admin-refund-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-[40px] p-10 max-w-lg w-full mx-4 shadow-2xl scale-95 opacity-0 transition-all duration-300" id="refund-modal-content">
+            <div class="flex items-center gap-4 mb-8">
+                <div id="refund-modal-icon" class="w-14 h-14 rounded-2xl flex items-center justify-center text-white">
+                    <i data-lucide="rotate-ccw" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h3 id="refund-modal-title" class="text-xl font-black text-slate-900">Xử lý hoàn tiền</h3>
+                    <p id="refund-modal-subtitle" class="text-slate-400 text-sm font-medium">Xác nhận yêu cầu từ khách hàng</p>
+                </div>
+            </div>
 
-        <a th:each="i : ${#numbers.sequence(T(java.lang.Math).max(0, currentPage - 2), T(java.lang.Math).min(totalPages - 1, currentPage + 2))}"
-           th:href="@{/api/payment/admin/history(page=${i})}"
-           th:class="${currentPage == i} ? 'w-12 h-12 flex items-center justify-center rounded-xl font-black text-sm transition-all bg-indigo-600 text-white shadow-lg' : 'w-12 h-12 flex items-center justify-center rounded-xl font-black text-sm transition-all bg-white text-slate-400 border border-slate-100 hover:border-indigo-600 hover:text-indigo-600'"
-           th:text="${i + 1}">1</a>
+            <div id="refund-reason-container" class="hidden mb-6">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-4 mb-2 block">Lý do từ chối</label>
+                <textarea id="admin-refund-reason" rows="4"
+                    placeholder="Nhập lý do tại đây..."
+                    class="w-full bg-slate-50 rounded-2xl p-5 font-medium text-slate-700 outline-none focus:ring-4 focus:ring-rose-500/10 focus:bg-white border border-transparent focus:border-rose-200 transition-all resize-none"></textarea>
+            </div>
 
-        <a th:if="${currentPage < totalPages - 1}"
-           th:href="@{/api/payment/admin/history(page=${currentPage + 1})}"
-           class="px-4 h-12 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-500 font-black text-sm hover:border-indigo-600 hover:text-indigo-600 transition-all">
-            Sau
-        </a>
+            <div id="refund-confirm-msg" class="text-slate-600 font-medium mb-8 leading-relaxed"></div>
+
+            <div class="flex gap-3">
+                <button onclick="closeAdminRefundModal()" class="flex-1 bg-slate-100 text-slate-700 py-4 rounded-2xl font-black hover:bg-slate-200 transition-all">Hủy</button>
+                <button id="admin-refund-confirm-btn" class="flex-1 py-4 rounded-2xl font-black transition-all shadow-lg">Xác nhận</button>
+            </div>
+        </div>
     </div>
-</div>
+
+<script th:src="@{/js/toast.js}"></script>
+<link rel="stylesheet" th:href="@{/css/toast.css}">
+<script>
+    let isProcessing = false;
+    let currentRefundId = null;
+    let currentAction = null;
+
+    function openAdminRefundModal(refundId, action) {
+        currentRefundId = refundId;
+        currentAction = action;
+
+        const modal = document.getElementById('admin-refund-modal');
+        const content = document.getElementById('refund-modal-content');
+        const iconContainer = document.getElementById('refund-modal-icon');
+        const title = document.getElementById('refund-modal-title');
+        const subtitle = document.getElementById('refund-modal-subtitle');
+        const reasonContainer = document.getElementById('refund-reason-container');
+        const confirmMsg = document.getElementById('refund-confirm-msg');
+        const confirmBtn = document.getElementById('admin-refund-confirm-btn');
+
+        // Reset
+        document.getElementById('admin-refund-reason').value = '';
+        
+        if (action === 'approve') {
+            iconContainer.className = 'w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20';
+            iconContainer.innerHTML = '<i data-lucide="check-circle" class="w-7 h-7"></i>';
+            title.innerText = 'Duyệt hoàn tiền';
+            subtitle.innerText = 'Đồng ý hoàn trả tiền cho khách';
+            confirmMsg.innerText = 'Đại ca có chắc chắn muốn DUYỆT yêu cầu hoàn tiền này không? Tiền sẽ được ghi nhận hoàn trả theo quy định của hệ thống.';
+            reasonContainer.classList.add('hidden');
+            confirmBtn.className = 'flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-black hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20';
+            confirmBtn.innerText = 'Duyệt ngay';
+        } else {
+            iconContainer.className = 'w-14 h-14 bg-rose-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-rose-500/20';
+            iconContainer.innerHTML = '<i data-lucide="x-circle" class="w-7 h-7"></i>';
+            title.innerText = 'Từ chối hoàn tiền';
+            subtitle.innerText = 'Gửi phản hồi từ chối cho khách';
+            confirmMsg.innerText = 'Đại ca muốn TỪ CHỐI yêu cầu này? Vui lòng nhập lý do phía trên để khách hàng được rõ ạ.';
+            reasonContainer.classList.remove('hidden');
+            confirmBtn.className = 'flex-1 bg-rose-500 text-white py-4 rounded-2xl font-black hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20';
+            confirmBtn.innerText = 'Từ chối';
+        }
+
+        lucide.createIcons({ nodes: [iconContainer] });
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+
+        confirmBtn.onclick = executeRefund;
+    }
+
+    function closeAdminRefundModal() {
+        const modal = document.getElementById('admin-refund-modal');
+        const content = document.getElementById('refund-modal-content');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
+
+    // Replace original handleRefund with modal trigger
+    function handleRefund(refundId, action) {
+        openAdminRefundModal(refundId, action);
+    }
+
+    async function executeRefund() {
+        if (isProcessing) return;
+
+        const reason = document.getElementById('admin-refund-reason').value.trim();
+        if (currentAction === 'reject' && !reason) {
+            toastService.warning("Đại ca ơi, vui lòng nhập lý do từ chối ạ!");
+            return;
+        }
+
+        const btn = document.getElementById('admin-refund-confirm-btn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'Đang xử lý...';
+        btn.classList.add('opacity-50');
+
+        isProcessing = true;
+
+        try {
+            const url = `/api/payment/admin/refund/${currentAction}/${currentRefundId}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason })
+            });
+            const result = await response.json();
+
+            if (response.ok) {
+                toastService.success(result.message || "Xử lý thành công!");
+                closeAdminRefundModal();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                toastService.error(result.message || "Có lỗi xảy ra!");
+                isProcessing = false;
+                btn.disabled = false;
+                btn.innerText = originalText;
+                btn.classList.remove('opacity-50');
+            }
+        } catch (e) {
+            toastService.error("Có lỗi kết nối, vui lòng thử lại!");
+            isProcessing = false;
+            btn.disabled = false;
+            btn.innerText = originalText;
+            btn.classList.remove('opacity-50');
+        }
+    }
+</script>
 </body>
 
 </html>

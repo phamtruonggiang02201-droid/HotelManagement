@@ -134,6 +134,27 @@
                             </a>
                         </nav>
                     </div>
+                    
+                    <!-- Pagination for Paid Bookings -->
+                    <div th:if="${paidBookings.totalPages > 1}" class="flex justify-center mt-6">
+                        <nav class="flex items-center gap-2">
+                            <a th:if="${paidBookings.hasPrevious()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, checked_page=${checkedInBookings.number}, paid_page=${paidBookings.number - 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                            
+                            <span class="text-sm font-black text-slate-700 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                Trang <span th:text="${paidBookings.number + 1}">1</span> / <span th:text="${paidBookings.totalPages}">3</span>
+                            </span>
+
+                            <a th:if="${paidBookings.hasNext()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, checked_page=${checkedInBookings.number}, paid_page=${paidBookings.number + 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        </nav>
+                    </div>
                 </div>
             </div>
 
@@ -213,6 +234,18 @@
 
                     <div th:if="${checkedInBookings.isEmpty()}"
                         class="py-12 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 text-center">
+                    </div>
+                    
+                    <!-- Pagination for Checked-in Bookings -->
+                    <div th:if="${checkedInBookings.totalPages > 1}" class="flex justify-center mt-6">
+                        <nav class="flex items-center gap-2">
+                            <a th:if="${checkedInBookings.hasPrevious()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, paid_page=${paidBookings.number}, checked_page=${checkedInBookings.number - 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-rose-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                            
+                            <span class="text-sm font-black text-slate-700 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
                         <p class="text-slate-400 font-bold"
                            th:text="${isTodayFilter} ? 'Không có khách đang lưu trú' : 'Không có booking check-out cho ngày đã chọn'">Không có khách đang lưu trú</p>
                     </div>
@@ -227,6 +260,15 @@
                             </a>
                             
                             <span class="text-sm font-black text-slate-700 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                Trang <span th:text="${checkedInBookings.number + 1}">1</span> / <span th:text="${checkedInBookings.totalPages}">3</span>
+                            </span>
+
+                            <a th:if="${checkedInBookings.hasNext()}"
+                               th:href="@{/bookings/reception(date=${selectedDate}, keyword=${keyword}, paid_page=${paidBookings.number}, checked_page=${checkedInBookings.number + 1})}"
+                               class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-rose-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        </nav>
                                 Trang <span th:text="${checkedInBookings.number + 1}">1</span> / <span th:text="${checkedInBookings.totalPages}">3</span>
                             </span>
 

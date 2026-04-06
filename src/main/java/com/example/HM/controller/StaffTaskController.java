@@ -4,6 +4,7 @@ import com.example.HM.dto.AssignmentResponseDTO;
 import com.example.HM.security.SecurityUtils;
 import com.example.HM.service.WorkAssignmentService;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.var;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
